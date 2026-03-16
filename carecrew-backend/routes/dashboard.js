@@ -13,64 +13,103 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
   try {
     const wards = await Ward.find();
 
-    // For each ward get today's case count
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const wardData = await Promise.all(
       wards.map(async (ward) => {
-        // Get today's reports for this ward
-        const todayReports = await DiseaseReport.find({
-          wardName: ward.wardName,
-          date: { $gte: today }
-        });
+        try {
+          const todayReports = await DiseaseReport.find({
+            wardName: ward.wardName,
+            date: { $gte: today }
+          });
 
-        // Get total cases today
-        const todayCases = todayReports.reduce(
-          (sum, r) => sum + r.caseCount, 0
-        );
+          const todayCases = todayReports.reduce(
+            (sum, r) => sum + r.caseCount, 0
+          );
 
-        // Get top disease today
-        const diseaseCounts = {};
-        todayReports.forEach(r => {
-          diseaseCounts[r.diseaseName] =
-            (diseaseCounts[r.diseaseName] || 0) + r.caseCount;
-        });
-        const topDisease = Object.keys(diseaseCounts).sort(
-          (a, b) => diseaseCounts[b] - diseaseCounts[a]
-        )[0] || ward.topDisease || 'None';
+          const diseaseCounts = {};
+          todayReports.forEach(r => {
+            diseaseCounts[r.diseaseName] =
+              (diseaseCounts[r.diseaseName] || 0) + r.caseCount;
+          });
+          const topDisease = Object.keys(diseaseCounts).sort(
+            (a, b) => diseaseCounts[b] - diseaseCounts[a]
+          )[0] || ward.topDisease || 'None';
 
-        // Get latest capacity for hospitals in this ward
-        const latestCapacity = await HospitalCapacity.findOne({
-          ward: ward.wardName
-        }).sort({ lastUpdated: -1 });
+          const latestCapacity = await HospitalCapacity.findOne({
+            ward: ward.wardName
+          }).sort({ lastUpdated: -1 });
 
-        return {
-          wardName: ward.wardName,
-          wardCode: ward.wardCode,
-          population: ward.population,
-          todayCases,
-          activeCaseCount: ward.activeCaseCount,
-          topDisease,
-          availableBeds: latestCapacity ? latestCapacity.availableBeds : 0,
-          totalBeds: latestCapacity ? latestCapacity.totalBeds : 0,
-          icuAvailable: latestCapacity ? latestCapacity.icuAvailable : 0,
-          icuTotal: latestCapacity ? latestCapacity.icuTotal : 0,
-          riskLevel: ward.riskLevel,
-          accessibilityIndex: ward.accessibilityIndex,
-          lastUpdated: ward.lastUpdated
-        };
+          // Calculate available beds from ward hospitals if no capacity record
+          const defaultAvailableBeds = ward.hospitals
+            ? ward.hospitals.reduce((sum, h) => sum + (h.availableBeds || 0), 0)
+            : 0
+          const defaultTotalBeds = ward.hospitals
+            ? ward.hospitals.reduce((sum, h) => sum + (h.totalBeds || 0), 0)
+            : 0
+          const defaultIcuAvailable = ward.hospitals
+            ? ward.hospitals.reduce((sum, h) => sum + (h.icuAvailable || 0), 0)
+            : 0
+          const defaultIcuTotal = ward.hospitals
+            ? ward.hospitals.reduce((sum, h) => sum + (h.icuTotal || 0), 0)
+            : 0
+
+          return {
+            wardName: ward.wardName,
+            wardCode: ward.wardCode || '',
+            zone: ward.zone || '',
+            population: ward.population || 0,
+            todayCases,
+            activeCaseCount: ward.activeCaseCount || 0,
+            topDisease,
+            availableBeds: latestCapacity
+              ? latestCapacity.availableBeds
+              : defaultAvailableBeds,
+            totalBeds: latestCapacity
+              ? latestCapacity.totalBeds
+              : defaultTotalBeds,
+            icuAvailable: latestCapacity
+              ? latestCapacity.icuAvailable
+              : defaultIcuAvailable,
+            icuTotal: latestCapacity
+              ? latestCapacity.icuTotal
+              : defaultIcuTotal,
+            riskLevel: ward.riskLevel || 'Green',
+            accessibilityIndex: ward.accessibilityIndex || 0,
+            lastUpdated: ward.lastUpdated
+          };
+        } catch (wardErr) {
+          console.error(`Error processing ward ${ward.wardName}:`, wardErr);
+          return {
+            wardName: ward.wardName,
+            wardCode: ward.wardCode || '',
+            zone: ward.zone || '',
+            population: ward.population || 0,
+            todayCases: 0,
+            activeCaseCount: ward.activeCaseCount || 0,
+            topDisease: ward.topDisease || 'None',
+            availableBeds: 0,
+            totalBeds: 0,
+            icuAvailable: 0,
+            icuTotal: 0,
+            riskLevel: ward.riskLevel || 'Green',
+            accessibilityIndex: 0,
+            lastUpdated: ward.lastUpdated
+          };
+        }
       })
     );
 
-    // Summary stats
-    const totalCasesToday = wardData.reduce((sum, w) => sum + w.todayCases, 0);
+    const totalCasesToday = wardData.reduce(
+      (sum, w) => sum + w.todayCases, 0
+    );
     const wardsOnAlert = wardData.filter(
       w => w.riskLevel === 'Yellow' || w.riskLevel === 'Red'
     ).length;
-    const hospitalsReporting = await HospitalCapacity.distinct('hospitalName', {
-      lastUpdated: { $gte: today }
-    });
+    const hospitalsReporting = await HospitalCapacity.distinct(
+      'hospitalName', { lastUpdated: { $gte: today } }
+    );
     const appointmentsToday = await Appointment.countDocuments({
       bookingDate: { $gte: today }
     });
@@ -86,6 +125,7 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
       wards: wardData
     });
   } catch (error) {
+    console.error('Dashboard wards error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -97,7 +137,6 @@ router.get('/alerts', protect, async (req, res) => {
     const alerts = await Alert.find({ isActive: true }).sort({
       triggeredDate: -1
     });
-
     res.json({ success: true, alerts });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -105,10 +144,9 @@ router.get('/alerts', protect, async (req, res) => {
 });
 
 // @route  GET /api/dashboard/charts
-// @desc   Get chart data - top diseases and daily cases
+// @desc   Get chart data
 router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res) => {
   try {
-    // Last 14 days daily case counts
     const last14Days = [];
     for (let i = 13; i >= 0; i--) {
       const date = new Date();
@@ -123,14 +161,12 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
       });
 
       const totalCases = reports.reduce((sum, r) => sum + r.caseCount, 0);
-
       last14Days.push({
         date: date.toISOString().split('T')[0],
         cases: totalCases
       });
     }
 
-    // Top 5 diseases this week
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 

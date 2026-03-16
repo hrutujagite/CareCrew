@@ -87,7 +87,12 @@ const OfficerDashboard = () => (
       <h1 className='text-2xl font-bold text-gray-800'>
         Health Officer Dashboard
       </h1>
-      <p className='text-gray-500 mt-2'>Person B will build this page</p>
+      <p className='text-gray-500 mt-2'>
+        Person B (Satya) will build this page
+      </p>
+      <p className='text-gray-400 text-sm mt-1'>
+        Import Heatmap and ForecastGraph from ./pages/HealthOfficer/
+      </p>
     </div>
   </div>
 )
