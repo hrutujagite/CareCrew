@@ -14,48 +14,48 @@ const diseaseReportSchema = new mongoose.Schema({
     required: true,
     enum: ['Dengue', 'Malaria', 'TB', 'COVID-19', 'Cholera', 'Typhoid', 'Other']
   },
-  caseCount: {
+  // Core fields matching Hospital Dashboard doc exactly
+  newConfirmed: {
     type: Number,
     required: true,
-    min: 0
-  },
-  labConfirmed: {
-    type: Number,
+    min: 0,
     default: 0
   },
-  suspected: {
+  newRecovered: {
     type: Number,
+    required: true,
+    min: 0,
     default: 0
   },
-  labName: {
-    type: String,
-    default: null
-  },
-  testType: {
-    type: String,
-    enum: ['Blood', 'Urine', 'Sputum', 'Swab', null],
-    default: null
-  },
-  positiveCount: {
+  newDeaths: {
     type: Number,
+    required: true,
+    min: 0,
     default: 0
   },
-  negativeCount: {
-    type: Number,
-    default: 0
+  reportDate: {
+    type: Date,
+    default: Date.now
   },
-  pendingCount: {
-    type: Number,
-    default: 0
+  // Auto-derived in backend from reportDate
+  month: {
+    type: Number  // 1-12
+  },
+  year: {
+    type: Number
   },
   submittedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  },
-  date: {
-    type: Date,
-    default: Date.now
   }
 }, { timestamps: true });
+
+// Auto-derive month and year before saving
+diseaseReportSchema.pre('save', function(next) {
+  const date = this.reportDate || new Date();
+  this.month = date.getMonth() + 1;
+  this.year = date.getFullYear();
+  next();
+});
 
 module.exports = mongoose.model('DiseaseReport', diseaseReportSchema);

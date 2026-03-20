@@ -9,6 +9,7 @@ const hospitalCapacitySchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Beds
   totalBeds: {
     type: Number,
     required: true,
@@ -19,6 +20,7 @@ const hospitalCapacitySchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  // ICU
   icuTotal: {
     type: Number,
     default: 0
@@ -27,15 +29,31 @@ const hospitalCapacitySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  oxygenLevel: {
-    type: String,
-    enum: ['Full', 'Medium', 'Low', 'Critical'],
-    default: 'Full'
+  // Ventilators — was missing before
+  ventilatorsTotal: {
+    type: Number,
+    default: 0
   },
-  medicineLevel: {
-    type: String,
-    enum: ['Full', 'Medium', 'Low', 'Critical'],
-    default: 'Full'
+  ventilatorsAvailable: {
+    type: Number,
+    default: 0
+  },
+  // Oxygen — now numeric not string enum
+  // This allows real threshold alerts e.g. oxygenAvailable < 20
+  oxygenTotal: {
+    type: Number,
+    default: 0
+  },
+  oxygenAvailable: {
+    type: Number,
+    default: 0
+  },
+  // Medicine — now 0-100 percentage as per Hospital Dashboard doc
+  medicineStockPercentage: {
+    type: Number,
+    default: 100,
+    min: 0,
+    max: 100
   },
   submittedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -46,5 +64,26 @@ const hospitalCapacitySchema = new mongoose.Schema({
     default: Date.now
   }
 }, { timestamps: true });
+
+// Virtual: derive oxygen status label for citizen portal display
+hospitalCapacitySchema.virtual('oxygenStatus').get(function() {
+  if (!this.oxygenTotal || this.oxygenTotal === 0) return 'Unknown';
+  const pct = (this.oxygenAvailable / this.oxygenTotal) * 100;
+  if (pct > 50) return 'Full';
+  if (pct > 20) return 'Medium';
+  if (pct > 0) return 'Low';
+  return 'Critical';
+});
+
+// Virtual: derive medicine status label
+hospitalCapacitySchema.virtual('medicineStatus').get(function() {
+  if (this.medicineStockPercentage > 50) return 'Full';
+  if (this.medicineStockPercentage > 20) return 'Medium';
+  if (this.medicineStockPercentage > 0) return 'Low';
+  return 'Critical';
+});
+
+hospitalCapacitySchema.set('toJSON', { virtuals: true });
+hospitalCapacitySchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('HospitalCapacity', hospitalCapacitySchema);

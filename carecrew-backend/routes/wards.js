@@ -3,8 +3,19 @@ const router = express.Router();
 const Ward = require('../models/Ward');
 const { protect } = require('../middleware/auth');
 
+// @route  GET /api/wards
+// @desc   Get all ward names — PUBLIC (for dropdowns in citizen portal)
+router.get('/', async (req, res) => {
+  try {
+    const wards = await Ward.find().select('wardName wardCode population');
+    res.json({ success: true, wards });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route  GET /api/wards/all
-// @desc   Get all wards
+// @desc   Get all wards with full data (protected)
 router.get('/all', protect, async (req, res) => {
   try {
     const wards = await Ward.find();
@@ -15,11 +26,10 @@ router.get('/all', protect, async (req, res) => {
 });
 
 // @route  GET /api/wards/:wardName/index
-// @desc   Get Healthcare Accessibility Index for a ward
+// @desc   Get HAI score for a ward
 router.get('/:wardName/index', protect, async (req, res) => {
   try {
-    const { wardName } = req.params;
-    const ward = await Ward.findOne({ wardName });
+    const ward = await Ward.findOne({ wardName: req.params.wardName });
 
     if (!ward) {
       return res.status(404).json({ message: 'Ward not found' });
@@ -30,24 +40,20 @@ router.get('/:wardName/index', protect, async (req, res) => {
     );
     const hospitalCount = ward.hospitals.length;
 
-    const index = Math.max(
-      0,
-      Math.min(
-        100,
-        (totalAvailableBeds / ward.population) * 1000 +
-        hospitalCount * 10 -
-        ward.activeCaseCount * 2
-      )
-    );
+    const index = Math.round(Math.min(100, Math.max(0,
+      (totalAvailableBeds / (ward.population || 1)) * 1000 +
+      hospitalCount * 10 -
+      ward.activeCaseCount * 2
+    )));
 
     let indexLevel = 'Good';
-    if (index < 40) indexLevel = 'Poor';
+    if (index < 40) indexLevel = 'Critical';
     else if (index < 70) indexLevel = 'Moderate';
 
     res.json({
       success: true,
-      wardName,
-      accessibilityIndex: Math.round(index),
+      wardName: ward.wardName,
+      accessibilityIndex: index,
       indexLevel,
       totalAvailableBeds,
       hospitalCount,
@@ -60,15 +66,13 @@ router.get('/:wardName/index', protect, async (req, res) => {
 });
 
 // @route  GET /api/wards/:wardName
-// @desc   Get single ward details
+// @desc   Get single ward
 router.get('/:wardName', protect, async (req, res) => {
   try {
     const ward = await Ward.findOne({ wardName: req.params.wardName });
-
     if (!ward) {
       return res.status(404).json({ message: 'Ward not found' });
     }
-
     res.json({ success: true, ward });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

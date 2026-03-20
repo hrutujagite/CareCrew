@@ -11,6 +11,10 @@ const Badge = ({ severity, text }) => {
     Good: 'bg-blue-100 text-blue-800 border border-blue-200',
     Moderate: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
     Poor: 'bg-red-100 text-red-800 border border-red-200',
+    // Capitalized (from DB)
+    Outbreak: 'bg-red-100 text-red-800 border border-red-200',
+    Shortage: 'bg-orange-100 text-orange-800 border border-orange-200',
+    // Lowercase fallback
     outbreak: 'bg-red-100 text-red-800 border border-red-200',
     shortage: 'bg-orange-100 text-orange-800 border border-orange-200'
   }
@@ -25,6 +29,8 @@ const Badge = ({ severity, text }) => {
     Good: '● Good',
     Moderate: '● Moderate',
     Poor: '● Poor',
+    Outbreak: '⚠ Outbreak',
+    Shortage: '⚠ Shortage',
     outbreak: '⚠ Outbreak',
     shortage: '⚠ Shortage'
   }
@@ -32,7 +38,7 @@ const Badge = ({ severity, text }) => {
   const key = text || severity
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium 
+    <span className={`px-2 py-1 rounded-full text-xs font-medium
                       ${styles[key] || 'bg-gray-100 text-gray-800'}`}>
       {labels[key] || key}
     </span>

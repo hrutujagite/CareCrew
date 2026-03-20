@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SwasthSolapur — Smart Public Health Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #2563eb;
+      --blue-dark: #1d4ed8;
+      --blue-light: #eff6ff;
+      --blue-mid: #dbeafe;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --orange: #ea580c;
+      --orange-light: #fff7ed;
+      --yellow: #ca8a04;
+      --yellow-light: #fefce8;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --white: #ffffff;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--white);
+      color: var(--gray-800);
+      line-height: 1.6;
+    }
+
+    a { text-decoration: none; color: inherit; }
+
+    /* ── NAVBAR ── */
+    .navbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 40px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .navbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: var(--blue);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--blue);
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 1px;
+    }
+
+    .navbar-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--gray-200);
+      margin: 0 4px;
+    }
+
+    .navbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--gray-300);
+      color: var(--gray-700);
+    }
+    .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-lg { padding: 12px 28px; font-size: 15px; border-radius: 10px; }
+
+    /* ── ALERT BANNER ── */
+    .alert-banner {
+      background: #fef2f2;
+      border-bottom: 1px solid #fecaca;
+      padding: 12px 40px;
+      display: none;
+    }
+
+    .alert-banner.visible { display: block; }
+
+    .alert-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .alert-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .alert-badge {
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .alert-badge.red { background: var(--red); color: white; }
+    .alert-badge.yellow { background: #ca8a04; color: white; }
+
+    .alert-text { color: var(--gray-700); font-weight: 500; }
+    .alert-ward { color: var(--gray-400); font-size: 12px; }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #eff6ff 100%);
+      padding: 80px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--blue-mid);
+      color: var(--blue);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      border: 1px solid #bfdbfe;
+    }
+
+    .hero-badge .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero h1 {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--gray-900);
+      line-height: 1.15;
+      max-width: 800px;
+      margin: 0 auto 20px;
+    }
+
+    .hero h1 span { color: var(--blue); }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--gray-500);
+      max-width: 600px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* ── SECTION ── */
+    .section {
+      padding: 64px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--blue);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin-bottom: 12px;
+    }
+
+    .section-sub {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--gray-200);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── STATS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+      transition: box-shadow 0.2s;
+    }
+
+    .stat-card:hover { box-shadow: var(--shadow); }
+
+    .stat-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--gray-900);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    .stat-live {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--green-light);
+      color: var(--green);
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 8px;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* ── PORTAL CARDS ── */
+    .portals-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .portal-card {
+      background: var(--white);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .portal-card:hover {
+      box-shadow: var(--shadow-lg);
+      border-color: var(--blue);
+      transform: translateY(-2px);
+    }
+
+    .portal-icon {
+      font-size: 36px;
+      margin-bottom: 16px;
+    }
+
+    .portal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 8px;
+    }
+
+    .portal-desc {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .portal-features {
+      list-style: none;
+      margin-bottom: 28px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .portal-features li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+
+    .portal-features li::before {
+      content: '✓';
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ── HOSPITAL TABLE ── */
+    .hospitals-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hospitals-table thead tr {
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .hospitals-table th {
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--gray-500);
+      text-align: left;
+    }
+
+    .hospitals-table tbody tr {
+      border-bottom: 1px solid var(--gray-100);
+      transition: background 0.15s;
+    }
+
+    .hospitals-table tbody tr:last-child { border-bottom: none; }
+    .hospitals-table tbody tr:hover { background: var(--gray-50); }
+
+    .hospitals-table td {
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+
+    .hospital-name { font-weight: 600; color: var(--gray-900); }
+    .hospital-ward { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+    .beds-available {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--gray-900);
+    }
+
+    .beds-total {
+      font-size: 12px;
+      color: var(--gray-400);
+      font-weight: 400;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-normal { background: var(--green-light); color: var(--green); }
+    .status-limited { background: var(--orange-light); color: var(--orange); }
+    .status-critical { background: var(--red-light); color: var(--red); }
+
+    .progress-bar {
+      width: 80px;
+      height: 6px;
+      background: var(--gray-200);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s;
+    }
+
+    .fill-green { background: var(--green); }
+    .fill-orange { background: var(--orange); }
+    .fill-red { background: var(--red); }
+
+    /* ── HEALTH CAMPS ── */
+    .camps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .camp-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s;
+    }
+
+    .camp-card:hover { box-shadow: var(--shadow); }
+
+    .camp-type-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: var(--blue-light);
+      color: var(--blue);
+      border: 1px solid var(--blue-mid);
+      margin-bottom: 12px;
+    }
+
+    .camp-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .camp-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .camp-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    .camp-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    .camp-status.upcoming { background: var(--blue-light); color: var(--blue); }
+    .camp-status.ongoing { background: var(--green-light); color: var(--green); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: var(--gray-400);
+      font-size: 14px;
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+    }
+
+    /* ── LOADING ── */
+    .loading-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 12px;
+      height: 120px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: var(--gray-900);
+      color: var(--gray-400);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .footer-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--blue);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .footer-logo-text {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .footer-tagline {
+      font-size: 13px;
+      color: var(--gray-500);
+      margin-bottom: 20px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--gray-400);
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover { color: var(--white); }
+
+    .footer-divider {
+      border: none;
+      border-top: 1px solid #374151;
+      margin: 20px 0;
+    }
+
+    .footer-bottom {
+      font-size: 12px;
+      color: var(--gray-500);
+      line-height: 1.8;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .navbar { padding: 0 20px; }
+      .hero { padding: 48px 20px; }
+      .hero h1 { font-size: 32px; }
+      .section { padding: 48px 20px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .portals-grid { grid-template-columns: 1fr; }
+      .camps-grid { grid-template-columns: 1fr; }
+      .navbar-actions .btn-outline { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-logo">
+      <div class="logo-icon">+</div>
+      <div>
+        <div class="logo-text">SwasthSolapur</div>
+        <div class="logo-sub">Solapur Municipal Corporation</div>
+      </div>
+    </div>
+    <div class="navbar-actions">
+      <a href="http://localhost:3000/login" class="btn btn-outline btn-sm">
+        🏥 Hospital Login
+      </a>
+      <a href="http://localhost:3000/login" class="btn btn-outline btn-sm">
+        👮 Officer Login
+      </a>
+      <a href="http://localhost:3000/login" class="btn btn-primary btn-sm">
+        👤 Citizen Login
+      </a>
+    </div>
+  </nav>
+
+  <!-- ALERT BANNER -->
+  <div class="alert-banner" id="alertBanner">
+    <div class="alert-list" id="alertList"></div>
+  </div>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">
+      <div class="dot"></div>
+      Live Health Monitoring — Solapur City
+    </div>
+    <h1>Solapur's <span>Smart Public</span><br/>Health Platform</h1>
+    <p>
+      Real-time disease surveillance, hospital resources and citizen
+      health services — powered by Solapur Municipal Corporation
+    </p>
+    <div class="hero-actions">
+      <a href="http://localhost:3000/login" class="btn btn-primary btn-lg">
+        Get Started as Citizen →
+      </a>
+      <a href="#portals" class="btn btn-outline btn-lg">
+        Explore Portals
+      </a>
+    </div>
+  </section>
+
+  <!-- LIVE STATS -->
+  <div style="background: var(--gray-50); border-bottom: 1px solid var(--gray-200);">
+    <div class="section" style="padding: 48px 40px;">
+      <div class="section-header">
+        <div class="section-label">Live City Health Pulse</div>
+        <div class="section-title">Solapur Health at a Glance</div>
+        <div class="section-sub">
+          Real-time data from hospitals across all wards —
+          updated every time a hospital submits a report
+        </div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- THREE PORTALS -->
+  <div id="portals">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label">Role-Based Access</div>
+        <div class="section-title">Three Portals, One Platform</div>
+        <div class="section-sub">
+          Each stakeholder gets a dedicated, purpose-built dashboard
+          connected to the same live database
+        </div>
+      </div>
+
+      <div class="portals-grid">
+        <!-- Hospital Portal -->
+        <div class="portal-card">
+          <div class="portal-icon">🏥</div>
+          <div class="portal-title">Hospital Portal</div>
+          <div class="portal-desc">
+            For hospital staff to submit daily health data and
+            manage their facility's information
+          </div>
+          <ul class="portal-features">
+            <li>Submit daily disease reports</li>
+            <li>Update bed & ICU capacity</li>
+            <li>Report oxygen & medicine stock</li>
+            <li>Create health camps</li>
+            <li>View citizen appointments</li>
+          </ul>
+          <a href="http://localhost:3000/login"
+             class="btn btn-outline"
+             style="text-align:center; justify-content:center;">
+            Hospital Login →
+          </a>
+        </div>
+
+        <!-- Health Officer Portal -->
+        <div class="portal-card"
+             style="border-color: var(--blue); background: var(--blue-light);">
+          <div class="portal-icon">👮</div>
+          <div class="portal-title">Health Officer Portal</div>
+          <div class="portal-desc">
+            For SMC health officers to monitor all wards and
+            respond to outbreaks in real time
+          </div>
+          <ul class="portal-features">
+            <li>Ward-wise disease surveillance</li>
+            <li>Automated outbreak alerts</li>
+            <li>Healthcare Accessibility Index</li>
+            <li>Disease trend charts</li>
+            <li>CSV report export</li>
+          </ul>
+          <a href="http://localhost:3000/login"
+             class="btn btn-primary"
+             style="text-align:center; justify-content:center;">
+            Officer Login →
+          </a>
+        </div>
+
+        <!-- Citizen Portal -->
+        <div class="portal-card">
+          <div class="portal-icon">👨‍👩‍👧</div>
+          <div class="portal-title">Citizen Portal</div>
+          <div class="portal-desc">
+            For Solapur residents to access health services
+            and find hospital resources
+          </div>
+          <ul class="portal-features">
+            <li>Book specialist appointments</li>
+            <li>Find nearest hospital</li>
+            <li>Check live bed availability</li>
+            <li>View oxygen & ICU status</li>
+            <li>Track your appointments</li>
+          </ul>
+          <a href="http://localhost:3000/login"
+             class="btn btn-outline"
+             style="text-align:center; justify-content:center;">
+            Citizen Login →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- HOSPITAL AVAILABILITY -->
+  <div style="background: var(--gray-50); border-top: 1px solid var(--gray-200);
+              border-bottom: 1px solid var(--gray-200);">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label">Live Infrastructure</div>
+        <div class="section-title">Hospital Bed Availability</div>
+        <div class="section-sub">
+          Real-time bed status across Solapur hospitals —
+          updated when hospitals submit capacity reports
+        </div>
+      </div>
+
+      <div id="hospitalsContainer">
+        <div class="loading-grid">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- HEALTH CAMPS -->
+  <div>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label">Preventive Healthcare</div>
+        <div class="section-title">Upcoming Health Camps</div>
+        <div class="section-sub">
+          Free health services organized by hospitals across
+          Solapur wards — open to all residents
+        </div>
+      </div>
+
+      <div id="campsContainer">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+          <div class="skeleton" style="height:180px;"></div>
+          <div class="skeleton" style="height:180px;"></div>
+          <div class="skeleton" style="height:180px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-logo">
+      <div class="footer-logo-icon">+</div>
+      <div class="footer-logo-text">SwasthSolapur</div>
+    </div>
+    <div class="footer-tagline">
+      Smart Public Health Management System for Solapur Municipal Corporation
+    </div>
+    <div class="footer-links">
+      <a href="http://localhost:3000/login">Citizen Portal</a>
+      <a href="http://localhost:3000/login">Hospital Portal</a>
+      <a href="http://localhost:3000/login">Health Officer Portal</a>
+    </div>
+    <hr class="footer-divider" />
+    <div class="footer-bottom">
+      <p>🏆 SAMVED Hackathon 2026 — Team CareCrew</p>
+      <p style="margin-top:4px;">
+        Fr. Conceicao Rodrigues Institute of Technology, Mumbai
+      </p>
+      <p style="margin-top:4px; color: #6b7280;">
+        Mentor: Dr. Pravin S. Rahate
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    const API = 'http://localhost:5000/api'
+
+    // ── Format date ──
+    const formatDate = (str) => {
+      const d = new Date(str)
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      })
+    }
+
+    // ── Time ago ──
+    const timeAgo = (str) => {
+      const diff = Date.now() - new Date(str).getTime()
+      const mins = Math.floor(diff / 60000)
+      if (mins < 60) return `${mins}m ago`
+      const hrs = Math.floor(mins / 60)
+      if (hrs < 24) return `${hrs}h ago`
+      return `${Math.floor(hrs / 24)}d ago`
+    }
+
+    // ── Load Public Stats + Alerts ──
+    const loadPublicData = async () => {
+      try {
+        const res = await fetch(`${API}/dashboard/public`)
+        const data = await res.json()
+
+        if (!data.success) return
+
+        const { stats, alerts } = data
+
+        // Render stats
+        const statsGrid = document.getElementById('statsGrid')
+        statsGrid.innerHTML = `
+          <div class="stat-card">
+            <div class="stat-icon">🦠</div>
+            <div class="stat-value">${stats.activeCasesToday ?? 0}</div>
+            <div class="stat-label">Active Cases Today</div>
+            <div class="stat-live">● Live</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🏥</div>
+            <div class="stat-value">${stats.hospitalsReporting ?? 0}</div>
+            <div class="stat-label">Hospitals Reporting</div>
+            <div class="stat-live">● Live</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🛏️</div>
+            <div class="stat-value">${stats.totalAvailableBeds ?? 0}</div>
+            <div class="stat-label">Beds Available</div>
+            <div class="stat-live">● Live</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-value">${stats.appointmentsToday ?? 0}</div>
+            <div class="stat-label">Appointments Today</div>
+            <div class="stat-live">● Live</div>
+          </div>
+        `
+
+        // Render alert banner
+        if (alerts && alerts.length > 0) {
+          const banner = document.getElementById('alertBanner')
+          const list = document.getElementById('alertList')
+          banner.classList.add('visible')
+          list.innerHTML = alerts.map(a => `
+            <div class="alert-item">
+              <span class="alert-badge ${a.severity === 'Red' ? 'red' : 'yellow'}">
+                ${a.severity === 'Red' ? '🔴 Critical' : '🟡 Warning'}
+              </span>
+              <span class="alert-text">${a.message}</span>
+              <span class="alert-ward">— ${a.wardName}</span>
+            </div>
+          `).join('')
+        }
+
+      } catch (err) {
+        console.error('Stats load error:', err)
+        document.getElementById('statsGrid').innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; padding:32px;
+                      color:#9ca3af; font-size:14px;">
+            Could not load live stats. Make sure the backend is running on
+            port 5000.
+          </div>
+        `
+      }
+    }
+
+    // ── Load Hospitals ──
+    const loadHospitals = async () => {
+      try {
+        const res = await fetch(`${API}/hospitals`)
+        const data = await res.json()
+
+        if (!data.success || !data.hospitals.length) {
+          document.getElementById('hospitalsContainer').innerHTML =
+            '<div class="empty-state">No hospital data available</div>'
+          return
+        }
+
+        const hospitals = data.hospitals.slice(0, 8)
+
+        const getStatusClass = (s) =>
+          s === 'Critical' ? 'status-critical'
+          : s === 'Limited' ? 'status-limited'
+          : 'status-normal'
+
+        const getStatusLabel = (s) =>
+          s === 'Critical' ? '🔴 Critical'
+          : s === 'Limited' ? '🟠 Limited'
+          : '🟢 Normal'
+
+        const getFillClass = (avail, total) => {
+          if (!total) return 'fill-green'
+          const pct = avail / total
+          return pct < 0.1 ? 'fill-red'
+               : pct < 0.3 ? 'fill-orange'
+               : 'fill-green'
+        }
+
+        const getBarWidth = (avail, total) => {
+          if (!total) return '0%'
+          return Math.round((avail / total) * 100) + '%'
+        }
+
+        document.getElementById('hospitalsContainer').innerHTML = `
+          <table class="hospitals-table">
+            <thead>
+              <tr>
+                <th>Hospital</th>
+                <th>Ward</th>
+                <th>Beds Available</th>
+                <th>ICU</th>
+                <th>Oxygen</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${hospitals.map(h => `
+                <tr>
+                  <td>
+                    <div class="hospital-name">${h.hospitalName}</div>
+                  </td>
+                  <td style="color: #6b7280; font-size:13px;">${h.ward}</td>
+                  <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <span>
+                        <span class="beds-available">${h.availableBeds}</span>
+                        <span class="beds-total">/${h.totalBeds}</span>
+                      </span>
+                      <div class="progress-bar">
+                        <div class="progress-fill ${getFillClass(h.availableBeds, h.totalBeds)}"
+                             style="width:${getBarWidth(h.availableBeds, h.totalBeds)}">
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span style="font-weight:600; color:#1f2937;">
+                      ${h.icuAvailable}
+                    </span>
+                    <span style="color:#9ca3af; font-size:12px;">
+                      /${h.icuTotal}
+                    </span>
+                  </td>
+                  <td style="font-size:13px; color:#4b5563;">
+                    ${h.oxygenStatus || 'N/A'}
+                  </td>
+                  <td>
+                    <span class="status-badge ${getStatusClass(h.bedStatus)}">
+                      ${getStatusLabel(h.bedStatus)}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="text-align:center; margin-top:20px;">
+            <a href="http://localhost:3000/login"
+               class="btn btn-outline">
+              View All Hospitals in Citizen Portal →
+            </a>
+          </div>
+        `
+      } catch (err) {
+        console.error('Hospitals load error:', err)
+        document.getElementById('hospitalsContainer').innerHTML =
+          '<div class="empty-state">Could not load hospital data</div>'
+      }
+    }
+
+    // ── Load Health Camps ──
+    const loadCamps = async () => {
+      try {
+        const res = await fetch(`${API}/healthcamps`)
+        const data = await res.json()
+
+        if (!data.success || !data.camps.length) {
+          document.getElementById('campsContainer').innerHTML =
+            '<div class="empty-state">No upcoming health camps at this time</div>'
+          return
+        }
+
+        document.getElementById('campsContainer').innerHTML = `
+          <div class="camps-grid">
+            ${data.camps.map(camp => `
+              <div class="camp-card">
+                <div class="camp-type-badge">${camp.campType}</div>
+                <div class="camp-title">${camp.title}</div>
+                <div class="camp-meta">
+                  <div class="camp-meta-item">
+                    📅 ${formatDate(camp.startDate)}
+                    ${camp.startDate !== camp.endDate
+                      ? ' — ' + formatDate(camp.endDate)
+                      : ''}
+                  </div>
+                  <div class="camp-meta-item">
+                    🕐 ${camp.timing}
+                  </div>
+                  <div class="camp-meta-item">
+                    📍 ${camp.location}
+                  </div>
+                  <div class="camp-meta-item">
+                    🏥 ${camp.hospitalName}
+                  </div>
+                  <div class="camp-meta-item">
+                    📞 ${camp.contactInfo}
+                  </div>
+                </div>
+                <div class="camp-status ${camp.status === 'Ongoing'
+                  ? 'ongoing' : 'upcoming'}">
+                  ${camp.status === 'Ongoing' ? '🟢 Ongoing' : '🔵 Upcoming'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `
+      } catch (err) {
+        console.error('Camps load error:', err)
+        document.getElementById('campsContainer').innerHTML =
+          '<div class="empty-state">Could not load health camps</div>'
+      }
+    }
+
+    // ── Init ──
+    loadPublicData()
+    loadHospitals()
+    loadCamps()
+
+    // Refresh stats every 60 seconds
+    setInterval(loadPublicData, 60000)
+  </script>
+</body>
+</html>

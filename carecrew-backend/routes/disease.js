@@ -6,21 +6,16 @@ const Ward = require('../models/Ward');
 const { protect, authorizeRoles } = require('../middleware/auth');
 
 // @route  POST /api/disease/submit
-// @desc   Submit disease report
+// @desc   Submit disease report (hospitalStaff only)
 router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
     const {
       wardName,
       diseaseName,
-      caseCount,
-      labConfirmed,
-      suspected,
-      labName,
-      testType,
-      positiveCount,
-      negativeCount,
-      pendingCount,
-      date
+      newConfirmed,
+      newRecovered,
+      newDeaths,
+      reportDate
     } = req.body;
 
     // Create disease report
@@ -28,74 +23,75 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       hospitalName: req.user.hospitalName,
       wardName,
       diseaseName,
-      caseCount,
-      labConfirmed: labConfirmed || 0,
-      suspected: suspected || 0,
-      labName: labName || null,
-      testType: testType || null,
-      positiveCount: positiveCount || 0,
-      negativeCount: negativeCount || 0,
-      pendingCount: pendingCount || 0,
-      submittedBy: req.user._id,
-      date: date || Date.now()
+      newConfirmed: newConfirmed || 0,
+      newRecovered: newRecovered || 0,
+      newDeaths: newDeaths || 0,
+      reportDate: reportDate || Date.now(),
+      submittedBy: req.user._id
     });
 
-    // Update ward active case count
+    // Update ward
     const ward = await Ward.findOne({ wardName });
     if (ward) {
-      ward.activeCaseCount += caseCount;
-      ward.topDisease = diseaseName;
-      ward.lastUpdated = Date.now();
+      // activeCaseCount = total confirmed - total recovered - total deaths
+      // Recalculate from all reports for this ward (accurate, not cumulative bug)
+      const allReports = await DiseaseReport.find({ wardName });
+      const totalConfirmed = allReports.reduce((sum, r) => sum + r.newConfirmed, 0);
+      const totalRecovered = allReports.reduce((sum, r) => sum + r.newRecovered, 0);
+      const totalDeaths = allReports.reduce((sum, r) => sum + r.newDeaths, 0);
+      ward.activeCaseCount = Math.max(0, totalConfirmed - totalRecovered - totalDeaths);
 
-      // Threshold logic - determine risk level
+      // topDisease = disease with highest total confirmed cases for this ward
+      const diseaseMap = {};
+      allReports.forEach(r => {
+        diseaseMap[r.diseaseName] = (diseaseMap[r.diseaseName] || 0) + r.newConfirmed;
+      });
+      ward.topDisease = Object.keys(diseaseMap).sort(
+        (a, b) => diseaseMap[b] - diseaseMap[a]
+      )[0] || null;
+
+      // Risk level based on activeCaseCount
       let severity = 'Green';
-      let alertMessage = '';
-
-      if (ward.activeCaseCount > 50) {
-        severity = 'Red';
-        alertMessage = `Critical outbreak alert in ${wardName}: ${ward.activeCaseCount} active ${diseaseName} cases detected`;
-      } else if (ward.activeCaseCount > 25) {
-        severity = 'Yellow';
-        alertMessage = `Warning: High ${diseaseName} cases in ${wardName}: ${ward.activeCaseCount} cases detected`;
-      }
-
+      if (ward.activeCaseCount > 50) severity = 'Red';
+      else if (ward.activeCaseCount > 25) severity = 'Yellow';
       ward.riskLevel = severity;
 
-      // Calculate accessibility index
-      const hospitalCount = ward.hospitals.length;
-      const availableBeds = ward.hospitals.reduce(
+      // Recalculate HAI score
+      const totalAvailableBeds = ward.hospitals.reduce(
         (sum, h) => sum + (h.availableBeds || 0), 0
       );
-      ward.accessibilityIndex = Math.max(
-        0,
-        Math.min(
-          100,
-          (availableBeds / ward.population) * 1000 +
-          hospitalCount * 10 -
-          ward.activeCaseCount * 2
-        )
-      );
+      ward.accessibilityIndex = Math.round(Math.min(100, Math.max(0,
+        (totalAvailableBeds / (ward.population || 1)) * 1000 +
+        ward.hospitals.length * 10 -
+        ward.activeCaseCount * 2
+      )));
 
+      ward.lastUpdated = Date.now();
       await ward.save();
 
       // Create alert if Yellow or Red
       if (severity !== 'Green') {
-        // Deactivate old alerts for this ward
+        // Deactivate old outbreak alerts for this ward
         await Alert.updateMany(
-          { wardName, alertType: 'outbreak', isActive: true },
+          { wardName, alertType: 'Outbreak', isActive: true },
           { isActive: false, resolvedDate: Date.now() }
         );
 
-        // Create new alert
         await Alert.create({
           wardName,
-          alertType: 'outbreak',
+          alertType: 'Outbreak',
           severity,
-          message: alertMessage,
-          diseaseName,
+          message: `${severity === 'Red' ? 'Critical' : 'Warning'}: ${ward.activeCaseCount} active ${ward.topDisease} cases detected in ${wardName}`,
+          diseaseName: ward.topDisease,
           caseCount: ward.activeCaseCount,
           isActive: true
         });
+      } else {
+        // If back to green, resolve any active outbreak alerts
+        await Alert.updateMany(
+          { wardName, alertType: 'Outbreak', isActive: true },
+          { isActive: false, resolvedDate: Date.now() }
+        );
       }
     }
 
@@ -103,7 +99,8 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       success: true,
       message: 'Disease report submitted successfully',
       report,
-      wardRiskLevel: ward ? ward.riskLevel : 'Green'
+      wardRiskLevel: ward ? ward.riskLevel : 'Green',
+      wardActiveCases: ward ? ward.activeCaseCount : 0
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -116,9 +113,66 @@ router.get('/history', protect, authorizeRoles('hospitalStaff'), async (req, res
   try {
     const reports = await DiseaseReport.find({
       hospitalName: req.user.hospitalName
-    }).sort({ date: -1 });
+    }).sort({ reportDate: -1 });
 
     res.json({ success: true, reports });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  GET /api/disease/analytics
+// @desc   Get analytics for hospital dashboard
+router.get('/analytics', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const reports = await DiseaseReport.find({
+      hospitalName: req.user.hospitalName
+    });
+
+    const totalConfirmed = reports.reduce((sum, r) => sum + r.newConfirmed, 0);
+    const totalRecovered = reports.reduce((sum, r) => sum + r.newRecovered, 0);
+    const totalDeaths = reports.reduce((sum, r) => sum + r.newDeaths, 0);
+    const activeCases = Math.max(0, totalConfirmed - totalRecovered - totalDeaths);
+
+    // Disease-wise breakdown
+    const diseaseMap = {};
+    reports.forEach(r => {
+      if (!diseaseMap[r.diseaseName]) {
+        diseaseMap[r.diseaseName] = { confirmed: 0, recovered: 0, deaths: 0 };
+      }
+      diseaseMap[r.diseaseName].confirmed += r.newConfirmed;
+      diseaseMap[r.diseaseName].recovered += r.newRecovered;
+      diseaseMap[r.diseaseName].deaths += r.newDeaths;
+    });
+
+    // Daily trend - last 30 days
+    const last30Days = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const dayReports = reports.filter(r => {
+        const rd = new Date(r.reportDate);
+        return rd >= date && rd < nextDate;
+      });
+
+      last30Days.push({
+        date: date.toISOString().split('T')[0],
+        confirmed: dayReports.reduce((sum, r) => sum + r.newConfirmed, 0),
+        recovered: dayReports.reduce((sum, r) => sum + r.newRecovered, 0),
+        deaths: dayReports.reduce((sum, r) => sum + r.newDeaths, 0)
+      });
+    }
+
+    res.json({
+      success: true,
+      summary: { totalConfirmed, totalRecovered, totalDeaths, activeCases },
+      diseaseBreakdown: diseaseMap,
+      dailyTrend: last30Days
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

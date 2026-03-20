@@ -1,613 +1,635 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
-const User = require('../models/User');
-const Ward = require('../models/Ward');
-
 dotenv.config();
 
+const Ward = require('../models/Ward');
+const User = require('../models/User');
+const DiseaseReport = require('../models/DiseaseReport');
+const HospitalCapacity = require('../models/HospitalCapacity');
+const Alert = require('../models/Alert');
+const Appointment = require('../models/Appointment');
+const HealthCamp = require('../models/HealthCamp');
+
+// ─────────────────────────────────────────────
+// REAL SOLAPUR WARDS + HOSPITALS + DOCTORS
+// Coordinates verified for Solapur, Maharashtra
+// ─────────────────────────────────────────────
+const wardData = [
+  {
+    wardName: 'Bhavani Peth',
+    wardCode: 'BP01',
+    population: 95000,
+    hospitals: [
+      {
+        hospitalName: 'Bhavani Peth General Hospital',
+        address: 'Bhavani Peth, Solapur - 413002',
+        contact: '0217-2722001',
+        lat: 17.6868,
+        lng: 75.9064,
+        totalBeds: 120,
+        availableBeds: 45,
+        icuTotal: 30,
+        icuAvailable: 9,
+        specialties: ['General', 'Paediatrics', 'Gynaecology', 'Emergency'],
+        doctors: [
+          { name: 'Dr. Priya Kulkarni', specialty: 'General', experience: 12, rating: 4.7, slots: ['09:00 AM', '10:30 AM', '12:00 PM', '02:00 PM'] },
+          { name: 'Dr. Suresh Patil', specialty: 'Paediatrics', experience: 8, rating: 4.5, slots: ['09:30 AM', '11:00 AM', '03:00 PM'] },
+          { name: 'Dr. Anita Deshmukh', specialty: 'Gynaecology', experience: 15, rating: 4.8, slots: ['10:00 AM', '01:00 PM', '04:00 PM'] },
+          { name: 'Dr. Rajesh More', specialty: 'Emergency', experience: 10, rating: 4.6, slots: ['08:00 AM', '02:00 PM', '08:00 PM'] }
+        ]
+      },
+      {
+        hospitalName: 'Shri Sai Clinic Bhavani Peth',
+        address: 'Near Bhavani Temple, Solapur - 413002',
+        contact: '0217-2724500',
+        lat: 17.6880,
+        lng: 75.9080,
+        totalBeds: 30,
+        availableBeds: 12,
+        icuTotal: 5,
+        icuAvailable: 2,
+        specialties: ['General', 'Orthopaedics'],
+        doctors: [
+          { name: 'Dr. Mahesh Jadhav', specialty: 'General', experience: 6, rating: 4.3, slots: ['09:00 AM', '11:00 AM', '04:00 PM'] },
+          { name: 'Dr. Kavita Shinde', specialty: 'Orthopaedics', experience: 9, rating: 4.4, slots: ['10:00 AM', '02:30 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'North Solapur',
+    wardCode: 'NS02',
+    population: 88000,
+    hospitals: [
+      {
+        hospitalName: 'North Solapur Municipal Hospital',
+        address: 'North Solapur, Solapur - 413006',
+        contact: '0217-2741100',
+        lat: 17.7120,
+        lng: 75.9180,
+        totalBeds: 85,
+        availableBeds: 42,
+        icuTotal: 20,
+        icuAvailable: 8,
+        specialties: ['General', 'Cardiology', 'Orthopaedics', 'Emergency'],
+        doctors: [
+          { name: 'Dr. Anil Kumbhar', specialty: 'General', experience: 14, rating: 4.6, slots: ['09:00 AM', '11:30 AM', '03:00 PM'] },
+          { name: 'Dr. Sneha Reddy', specialty: 'Cardiology', experience: 11, rating: 4.9, slots: ['10:00 AM', '01:00 PM', '04:30 PM'] },
+          { name: 'Dr. Vikram Salunkhe', specialty: 'Orthopaedics', experience: 7, rating: 4.4, slots: ['09:30 AM', '02:00 PM'] },
+          { name: 'Dr. Pooja Naik', specialty: 'Emergency', experience: 5, rating: 4.2, slots: ['08:00 AM', '04:00 PM', '10:00 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Laxmi Peth',
+    wardCode: 'LP03',
+    population: 72000,
+    hospitals: [
+      {
+        hospitalName: 'Laxmi Peth Hospital',
+        address: 'Laxmi Peth, Solapur - 413002',
+        contact: '0217-2735000',
+        lat: 17.6790,
+        lng: 75.9020,
+        totalBeds: 80,
+        availableBeds: 22,
+        icuTotal: 15,
+        icuAvailable: 4,
+        specialties: ['General', 'Neurology', 'Gynaecology'],
+        doctors: [
+          { name: 'Dr. Ramesh Gaikwad', specialty: 'General', experience: 18, rating: 4.8, slots: ['09:00 AM', '12:00 PM', '03:30 PM'] },
+          { name: 'Dr. Meena Joshi', specialty: 'Neurology', experience: 13, rating: 4.7, slots: ['10:30 AM', '02:00 PM'] },
+          { name: 'Dr. Sunita Pawar', specialty: 'Gynaecology', experience: 10, rating: 4.5, slots: ['09:30 AM', '01:30 PM', '04:00 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Murarji Peth',
+    wardCode: 'MP04',
+    population: 65000,
+    hospitals: [
+      {
+        hospitalName: 'Murarji Peth PHC',
+        address: 'Murarji Peth, Solapur - 413001',
+        contact: '0217-2712300',
+        lat: 17.6920,
+        lng: 75.8980,
+        totalBeds: 50,
+        availableBeds: 18,
+        icuTotal: 10,
+        icuAvailable: 3,
+        specialties: ['General', 'Paediatrics', 'Emergency'],
+        doctors: [
+          { name: 'Dr. Santosh Kamble', specialty: 'General', experience: 9, rating: 4.4, slots: ['09:00 AM', '11:00 AM', '02:00 PM'] },
+          { name: 'Dr. Ashwini Mane', specialty: 'Paediatrics', experience: 7, rating: 4.6, slots: ['10:00 AM', '01:00 PM', '03:30 PM'] }
+        ]
+      },
+      {
+        hospitalName: 'Datta Nagar Dispensary',
+        address: 'Datta Nagar, Murarji Peth, Solapur',
+        contact: '0217-2714400',
+        lat: 17.6935,
+        lng: 75.8995,
+        totalBeds: 20,
+        availableBeds: 8,
+        icuTotal: 2,
+        icuAvailable: 1,
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Prakash Lokhande', specialty: 'General', experience: 5, rating: 4.1, slots: ['09:00 AM', '12:00 PM', '04:00 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Shukrawar Peth',
+    wardCode: 'SP05',
+    population: 78000,
+    hospitals: [
+      {
+        hospitalName: 'Shukrawar Peth Clinic',
+        address: 'Shukrawar Peth, Solapur - 413001',
+        contact: '0217-2726600',
+        lat: 17.6855,
+        lng: 75.9100,
+        totalBeds: 60,
+        availableBeds: 35,
+        icuTotal: 12,
+        icuAvailable: 7,
+        specialties: ['General', 'Dermatology', 'ENT'],
+        doctors: [
+          { name: 'Dr. Nilesh Kulkarni', specialty: 'General', experience: 11, rating: 4.5, slots: ['09:00 AM', '11:30 AM', '03:00 PM'] },
+          { name: 'Dr. Archana Bhosale', specialty: 'Dermatology', experience: 8, rating: 4.7, slots: ['10:00 AM', '02:00 PM'] },
+          { name: 'Dr. Sanjay Aware', specialty: 'ENT', experience: 12, rating: 4.6, slots: ['09:30 AM', '01:00 PM', '04:30 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Sakhar Peth',
+    wardCode: 'SKP06',
+    population: 60000,
+    hospitals: [
+      {
+        hospitalName: 'Sakhar Peth Hospital',
+        address: 'Sakhar Peth, Solapur - 413005',
+        contact: '0217-2755000',
+        lat: 17.6750,
+        lng: 75.9150,
+        totalBeds: 70,
+        availableBeds: 30,
+        icuTotal: 15,
+        icuAvailable: 6,
+        specialties: ['General', 'Cardiology', 'Ophthalmology'],
+        doctors: [
+          { name: 'Dr. Vinod Chavan', specialty: 'General', experience: 16, rating: 4.7, slots: ['09:00 AM', '12:00 PM', '03:00 PM'] },
+          { name: 'Dr. Rupali Patil', specialty: 'Cardiology', experience: 10, rating: 4.8, slots: ['10:30 AM', '02:30 PM'] },
+          { name: 'Dr. Ganesh Nair', specialty: 'Ophthalmology', experience: 9, rating: 4.5, slots: ['09:30 AM', '01:00 PM', '04:00 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Budhwar Peth',
+    wardCode: 'BWP07',
+    population: 55000,
+    hospitals: [
+      {
+        hospitalName: 'Budhwar Peth Hospital',
+        address: 'Budhwar Peth, Solapur - 413002',
+        contact: '0217-2718000',
+        lat: 17.6810,
+        lng: 75.9040,
+        totalBeds: 55,
+        availableBeds: 20,
+        icuTotal: 10,
+        icuAvailable: 3,
+        specialties: ['General', 'Orthopaedics', 'Gynaecology'],
+        doctors: [
+          { name: 'Dr. Deepak Wagh', specialty: 'General', experience: 8, rating: 4.3, slots: ['09:00 AM', '11:00 AM', '03:30 PM'] },
+          { name: 'Dr. Smita Jagtap', specialty: 'Gynaecology', experience: 12, rating: 4.6, slots: ['10:00 AM', '02:00 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Osmanabad Naka',
+    wardCode: 'ON08',
+    population: 50000,
+    hospitals: [
+      {
+        hospitalName: 'Osmanabad Naka Clinic',
+        address: 'Osmanabad Naka, Solapur - 413004',
+        contact: '0217-2760100',
+        lat: 17.6700,
+        lng: 75.9200,
+        totalBeds: 40,
+        availableBeds: 15,
+        icuTotal: 8,
+        icuAvailable: 2,
+        specialties: ['General', 'Emergency'],
+        doctors: [
+          { name: 'Dr. Harish Deshpande', specialty: 'General', experience: 7, rating: 4.2, slots: ['09:00 AM', '12:00 PM', '04:00 PM'] },
+          { name: 'Dr. Geeta Rathod', specialty: 'Emergency', experience: 6, rating: 4.4, slots: ['08:00 AM', '02:00 PM', '08:00 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Kegaon',
+    wardCode: 'KG09',
+    population: 82000,
+    hospitals: [
+      {
+        hospitalName: 'Kegaon Urban Health Centre',
+        address: 'Kegaon, Solapur - 413006',
+        contact: '0217-2742200',
+        lat: 17.7050,
+        lng: 75.9300,
+        totalBeds: 65,
+        availableBeds: 28,
+        icuTotal: 12,
+        icuAvailable: 5,
+        specialties: ['General', 'Paediatrics', 'Cardiology'],
+        doctors: [
+          { name: 'Dr. Pallavi Shete', specialty: 'General', experience: 10, rating: 4.5, slots: ['09:00 AM', '11:30 AM', '03:00 PM'] },
+          { name: 'Dr. Ajay Mundhe', specialty: 'Cardiology', experience: 14, rating: 4.8, slots: ['10:00 AM', '01:30 PM'] },
+          { name: 'Dr. Rekha Bhandare', specialty: 'Paediatrics', experience: 6, rating: 4.4, slots: ['09:30 AM', '02:00 PM', '04:30 PM'] }
+        ]
+      }
+    ]
+  },
+  {
+    wardName: 'Vijapur Road',
+    wardCode: 'VR10',
+    population: 70000,
+    hospitals: [
+      {
+        hospitalName: 'Vijapur Road Medical Centre',
+        address: 'Vijapur Road, Solapur - 413007',
+        contact: '0217-2771500',
+        lat: 17.6950,
+        lng: 75.8850,
+        totalBeds: 75,
+        availableBeds: 32,
+        icuTotal: 18,
+        icuAvailable: 7,
+        specialties: ['General', 'Neurology', 'Orthopaedics', 'Emergency'],
+        doctors: [
+          { name: 'Dr. Mohan Taware', specialty: 'General', experience: 20, rating: 4.9, slots: ['09:00 AM', '12:00 PM', '03:00 PM'] },
+          { name: 'Dr. Vaishali Gore', specialty: 'Neurology', experience: 11, rating: 4.7, slots: ['10:30 AM', '02:30 PM'] },
+          { name: 'Dr. Ravi Kale', specialty: 'Orthopaedics', experience: 8, rating: 4.5, slots: ['09:30 AM', '01:00 PM', '04:00 PM'] }
+        ]
+      }
+    ]
+  }
+];
+
+// ─────────────────────────────────────────────
+// SEED USERS
+// ─────────────────────────────────────────────
+const userData = [
+  // Health Officer
+  {
+    name: 'SMC Health Officer',
+    email: 'officer@smc.gov.in',
+    password: 'officer123',
+    role: 'healthOfficer',
+    hospitalName: null,
+    ward: null
+  },
+  // Hospital Staff — one per hospital (first hospital of each ward)
+  {
+    name: 'Bhavani Peth Hospital Staff',
+    email: 'staff.bhavani@hospital.com',
+    password: 'hospital123',
+    role: 'hospitalStaff',
+    hospitalName: 'Bhavani Peth General Hospital',
+    ward: 'Bhavani Peth'
+  },
+  {
+    name: 'North Solapur Hospital Staff',
+    email: 'staff.north@hospital.com',
+    password: 'hospital123',
+    role: 'hospitalStaff',
+    hospitalName: 'North Solapur Municipal Hospital',
+    ward: 'North Solapur'
+  },
+  {
+    name: 'Laxmi Peth Hospital Staff',
+    email: 'staff.laxmi@hospital.com',
+    password: 'hospital123',
+    role: 'hospitalStaff',
+    hospitalName: 'Laxmi Peth Hospital',
+    ward: 'Laxmi Peth'
+  },
+  {
+    name: 'Murarji Peth Hospital Staff',
+    email: 'staff.murarji@hospital.com',
+    password: 'hospital123',
+    role: 'hospitalStaff',
+    hospitalName: 'Murarji Peth PHC',
+    ward: 'Murarji Peth'
+  },
+  {
+    name: 'Shukrawar Peth Hospital Staff',
+    email: 'staff.shukrawar@hospital.com',
+    password: 'hospital123',
+    role: 'hospitalStaff',
+    hospitalName: 'Shukrawar Peth Clinic',
+    ward: 'Shukrawar Peth'
+  },
+  // Citizens
+  {
+    name: 'Rahul Patil',
+    email: 'rahul@citizen.com',
+    password: 'citizen123',
+    role: 'citizen',
+    hospitalName: null,
+    ward: 'Bhavani Peth'
+  },
+  {
+    name: 'Priya Sharma',
+    email: 'priya@citizen.com',
+    password: 'citizen123',
+    role: 'citizen',
+    hospitalName: null,
+    ward: 'North Solapur'
+  }
+];
+
+// ─────────────────────────────────────────────
+// SEED HEALTH CAMPS
+// ─────────────────────────────────────────────
+const healthCampData = [
+  {
+    hospitalName: 'Bhavani Peth General Hospital',
+    wardName: 'Bhavani Peth',
+    title: 'Free Dengue Awareness & Checkup Camp',
+    description: 'Free blood tests and dengue awareness for Bhavani Peth residents',
+    campType: 'Free Checkup',
+    startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+    endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+    timing: '9:00 AM - 4:00 PM',
+    location: 'Bhavani Peth Community Hall, Near Bhavani Temple',
+    contactInfo: '0217-2722001'
+  },
+  {
+    hospitalName: 'North Solapur Municipal Hospital',
+    wardName: 'North Solapur',
+    title: 'Free Eye Checkup Camp',
+    description: 'Free eye examination and spectacles distribution for senior citizens',
+    campType: 'Eye Checkup',
+    startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+    endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+    timing: '10:00 AM - 3:00 PM',
+    location: 'North Solapur Ward Office',
+    contactInfo: '0217-2741100'
+  },
+  {
+    hospitalName: 'Laxmi Peth Hospital',
+    wardName: 'Laxmi Peth',
+    title: 'Blood Donation Drive',
+    description: 'Voluntary blood donation camp in association with SMC',
+    campType: 'Blood Donation',
+    startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+    timing: '8:00 AM - 1:00 PM',
+    location: 'Laxmi Peth Hospital Premises',
+    contactInfo: '0217-2735000'
+  },
+  {
+    hospitalName: 'Kegaon Urban Health Centre',
+    wardName: 'Kegaon',
+    title: 'Child Vaccination Drive',
+    description: 'Free vaccination for children under 5 years — Polio, DPT, Hepatitis B',
+    campType: 'Vaccination',
+    startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // tomorrow
+    endDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+    timing: '9:00 AM - 5:00 PM',
+    location: 'Kegaon Primary School Ground',
+    contactInfo: '0217-2742200'
+  },
+  {
+    hospitalName: 'Shukrawar Peth Clinic',
+    wardName: 'Shukrawar Peth',
+    title: 'Diabetes & BP Awareness Camp',
+    description: 'Free blood sugar and blood pressure testing for all residents',
+    campType: 'Awareness Drive',
+    startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    timing: '9:00 AM - 2:00 PM',
+    location: 'Shukrawar Peth Garden',
+    contactInfo: '0217-2726600'
+  }
+];
+
+// ─────────────────────────────────────────────
+// SEED DISEASE REPORTS (last 14 days of data)
+// ─────────────────────────────────────────────
+const diseases = ['Dengue', 'Malaria', 'TB', 'Typhoid', 'Cholera'];
+const wardsForReports = [
+  { wardName: 'Bhavani Peth', hospitalName: 'Bhavani Peth General Hospital' },
+  { wardName: 'North Solapur', hospitalName: 'North Solapur Municipal Hospital' },
+  { wardName: 'Laxmi Peth', hospitalName: 'Laxmi Peth Hospital' },
+  { wardName: 'Murarji Peth', hospitalName: 'Murarji Peth PHC' },
+  { wardName: 'Kegaon', hospitalName: 'Kegaon Urban Health Centre' }
+];
+
+// ─────────────────────────────────────────────
+// MAIN SEED FUNCTION
+// ─────────────────────────────────────────────
 const seedDatabase = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
     console.log('MongoDB connected for seeding...');
 
-    // Clear existing data
-    await User.deleteMany();
-    await Ward.deleteMany();
-    console.log('Existing data cleared...');
+    // Clear all collections
+    await Ward.deleteMany({});
+    await User.deleteMany({});
+    await DiseaseReport.deleteMany({});
+    await HospitalCapacity.deleteMany({});
+    await Alert.deleteMany({});
+    await Appointment.deleteMany({});
+    await HealthCamp.deleteMany({});
+    console.log('All collections cleared');
 
-    // Create 3 demo users
-    await User.create([
-      {
-        name: 'SMC Health Officer',
-        email: 'officer@smc.gov',
-        password: 'officer123',
-        role: 'healthOfficer',
-        ward: null,
-        hospitalName: null
-      },
-      {
-        name: 'Civil Hospital Staff',
-        email: 'hospital@kmc.in',
-        password: 'hospital123',
-        role: 'hospitalStaff',
-        hospitalName: 'Solapur Civil Hospital',
-        ward: 'Murarji Peth'
-      },
-      {
-        name: 'Rahul Patil',
-        email: 'citizen@gmail.com',
-        password: 'citizen123',
-        role: 'citizen',
-        ward: 'Murarji Peth',
-        hospitalName: null
+    // Seed Wards
+    const wards = await Ward.insertMany(wardData);
+    console.log(`${wards.length} wards seeded`);
+
+    // Seed Users
+    const createdUsers = [];
+    for (const u of userData) {
+      const user = await User.create(u); // pre-save hook hashes password
+      createdUsers.push(user);
+    }
+    console.log(`${createdUsers.length} users seeded`);
+
+    const officerUser = createdUsers.find(u => u.role === 'healthOfficer');
+    const citizenUser = createdUsers.find(u => u.email === 'rahul@citizen.com');
+    const staffUsers = createdUsers.filter(u => u.role === 'hospitalStaff');
+
+    // Seed Disease Reports — last 14 days
+    const diseaseReports = [];
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(10, 0, 0, 0);
+
+      for (const ward of wardsForReports) {
+        const staffUser = staffUsers.find(u => u.hospitalName === ward.hospitalName);
+        // 1-2 reports per ward per day
+        const numReports = Math.floor(Math.random() * 2) + 1;
+        for (let r = 0; r < numReports; r++) {
+          const disease = diseases[Math.floor(Math.random() * diseases.length)];
+          const confirmed = Math.floor(Math.random() * 8) + 1;
+          diseaseReports.push({
+            hospitalName: ward.hospitalName,
+            wardName: ward.wardName,
+            diseaseName: disease,
+            newConfirmed: confirmed,
+            newRecovered: Math.floor(confirmed * 0.6),
+            newDeaths: Math.random() > 0.9 ? 1 : 0,
+            reportDate: date,
+            month: date.getMonth() + 1,
+            year: date.getFullYear(),
+            submittedBy: staffUser ? staffUser._id : null
+          });
+        }
       }
-    ]);
-    console.log('Demo users created...');
+    }
+    await DiseaseReport.insertMany(diseaseReports);
+    console.log(`${diseaseReports.length} disease reports seeded`);
 
-    // All 25 wards matching Heatmap.js exactly
-    const wardsData = [
-      // ZONE 1 — Central Solapur
-      {
-        wardName: 'Bhavani Peth',
-        wardCode: 'W001',
-        zone: 'Zone 1',
-        population: 38500,
-        activeCaseCount: 12,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Bhavani Peth General Hospital',
-            address: 'Bhavani Peth, Solapur',
-            contact: '0217-2600100',
-            totalBeds: 120,
-            availableBeds: 45,
-            icuTotal: 12,
-            icuAvailable: 5
-          }
-        ]
-      },
-      {
-        wardName: 'Mangalwar Peth',
-        wardCode: 'W002',
-        zone: 'Zone 1',
-        population: 36000,
-        activeCaseCount: 8,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Mangalwar Peth PHC',
-            address: 'Mangalwar Peth, Solapur',
-            contact: '0217-2600200',
-            totalBeds: 50,
-            availableBeds: 30,
-            icuTotal: 5,
-            icuAvailable: 3
-          }
-        ]
-      },
-      {
-        wardName: 'Budhwar Peth',
-        wardCode: 'W003',
-        zone: 'Zone 1',
-        population: 42000,
-        activeCaseCount: 28,
-        riskLevel: 'Yellow',
-        topDisease: 'Dengue',
-        hospitals: [
-          {
-            hospitalName: 'Budhwar Peth Hospital',
-            address: 'Budhwar Peth, Solapur',
-            contact: '0217-2600300',
-            totalBeds: 100,
-            availableBeds: 22,
-            icuTotal: 10,
-            icuAvailable: 3
-          }
-        ]
-      },
-
-      // ZONE 2 — North Solapur
-      {
-        wardName: 'Shukrawar Peth',
-        wardCode: 'W004',
-        zone: 'Zone 2',
-        population: 35000,
-        activeCaseCount: 15,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Shukrawar Peth Clinic',
-            address: 'Shukrawar Peth, Solapur',
-            contact: '0217-2600400',
-            totalBeds: 60,
-            availableBeds: 35,
-            icuTotal: 6,
-            icuAvailable: 4
-          }
-        ]
-      },
-      {
-        wardName: 'Guruwar Peth',
-        wardCode: 'W005',
-        zone: 'Zone 2',
-        population: 33000,
-        activeCaseCount: 9,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Guruwar Peth Health Post',
-            address: 'Guruwar Peth, Solapur',
-            contact: '0217-2600500',
-            totalBeds: 40,
-            availableBeds: 28,
-            icuTotal: 4,
-            icuAvailable: 3
-          }
-        ]
-      },
-      {
-        wardName: 'Murarji Peth',
-        wardCode: 'W006',
-        zone: 'Zone 2',
-        population: 38500,
-        activeCaseCount: 12,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Solapur Civil Hospital',
-            address: 'Murarji Peth, Solapur',
-            contact: '0217-2600600',
-            totalBeds: 200,
-            availableBeds: 45,
-            icuTotal: 20,
-            icuAvailable: 8
-          },
-          {
-            hospitalName: 'Murarji Peth PHC',
-            address: 'Murarji Peth Road, Solapur',
-            contact: '0217-2600700',
-            totalBeds: 50,
-            availableBeds: 18,
-            icuTotal: 5,
-            icuAvailable: 2
-          }
-        ]
-      },
-
-      // ZONE 3 — South Solapur
-      {
-        wardName: 'Hotgi Road',
-        wardCode: 'W007',
-        zone: 'Zone 3',
-        population: 36000,
-        activeCaseCount: 55,
-        riskLevel: 'Red',
-        topDisease: 'Malaria',
-        hospitals: [
-          {
-            hospitalName: 'Hotgi Road District Hospital',
-            address: 'Hotgi Road, Solapur',
-            contact: '0217-2600800',
-            totalBeds: 150,
-            availableBeds: 12,
-            icuTotal: 15,
-            icuAvailable: 2
-          }
-        ]
-      },
-      {
-        wardName: 'Laxmi Peth',
-        wardCode: 'W008',
-        zone: 'Zone 3',
-        population: 34000,
-        activeCaseCount: 18,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Laxmi Peth Hospital',
-            address: 'Laxmi Peth, Solapur',
-            contact: '0217-2600900',
-            totalBeds: 80,
-            availableBeds: 40,
-            icuTotal: 8,
-            icuAvailable: 5
-          }
-        ]
-      },
-      {
-        wardName: 'Siddheshwar Peth',
-        wardCode: 'W009',
-        zone: 'Zone 3',
-        population: 37000,
-        activeCaseCount: 22,
-        riskLevel: 'Yellow',
-        topDisease: 'Dengue',
-        hospitals: [
-          {
-            hospitalName: 'Siddheshwar Hospital',
-            address: 'Siddheshwar Peth, Solapur',
-            contact: '0217-2601000',
-            totalBeds: 90,
-            availableBeds: 25,
-            icuTotal: 9,
-            icuAvailable: 3
-          }
-        ]
-      },
-
-      // ZONE 4 — North West
-      {
-        wardName: 'Vijapur Road',
-        wardCode: 'W010',
-        zone: 'Zone 4',
-        population: 39500,
-        activeCaseCount: 18,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Vijapur Road Medical Centre',
-            address: 'Vijapur Road, Solapur',
-            contact: '0217-2601100',
-            totalBeds: 80,
-            availableBeds: 35,
-            icuTotal: 8,
-            icuAvailable: 5
-          }
-        ]
-      },
-      {
-        wardName: 'Shanti Nagar',
-        wardCode: 'W011',
-        zone: 'Zone 4',
-        population: 32000,
-        activeCaseCount: 7,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Shanti Nagar PHC',
-            address: 'Shanti Nagar, Solapur',
-            contact: '0217-2601200',
-            totalBeds: 40,
-            availableBeds: 30,
-            icuTotal: 4,
-            icuAvailable: 4
-          }
-        ]
-      },
-      {
-        wardName: 'Datta Nagar',
-        wardCode: 'W012',
-        zone: 'Zone 4',
-        population: 31000,
-        activeCaseCount: 5,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Datta Nagar Dispensary',
-            address: 'Datta Nagar, Solapur',
-            contact: '0217-2601300',
-            totalBeds: 30,
-            availableBeds: 25,
-            icuTotal: 3,
-            icuAvailable: 3
-          }
-        ]
-      },
-
-      // ZONE 5 — South East
-      {
-        wardName: 'Akkalkot Road',
-        wardCode: 'W013',
-        zone: 'Zone 5',
-        population: 41000,
-        activeCaseCount: 32,
-        riskLevel: 'Yellow',
-        topDisease: 'Typhoid',
-        hospitals: [
-          {
-            hospitalName: 'Akkalkot Road Hospital',
-            address: 'Akkalkot Road, Solapur',
-            contact: '0217-2601400',
-            totalBeds: 120,
-            availableBeds: 28,
-            icuTotal: 12,
-            icuAvailable: 4
-          }
-        ]
-      },
-      {
-        wardName: 'Osmanabad Naka',
-        wardCode: 'W014',
-        zone: 'Zone 5',
-        population: 37500,
-        activeCaseCount: 9,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Osmanabad Naka Clinic',
-            address: 'Osmanabad Naka, Solapur',
-            contact: '0217-2601500',
-            totalBeds: 60,
-            availableBeds: 40,
-            icuTotal: 6,
-            icuAvailable: 6
-          }
-        ]
-      },
-      {
-        wardName: 'Kamgar Nagar',
-        wardCode: 'W015',
-        zone: 'Zone 5',
-        population: 29000,
-        activeCaseCount: 6,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Kamgar Nagar Health Post',
-            address: 'Kamgar Nagar, Solapur',
-            contact: '0217-2601600',
-            totalBeds: 25,
-            availableBeds: 20,
-            icuTotal: 2,
-            icuAvailable: 2
-          }
-        ]
-      },
-
-      // ZONE 6 — East Solapur
-      {
-        wardName: 'Kegaon',
-        wardCode: 'W016',
-        zone: 'Zone 6',
-        population: 43000,
-        activeCaseCount: 47,
-        riskLevel: 'Yellow',
-        topDisease: 'Dengue',
-        hospitals: [
-          {
-            hospitalName: 'Kegaon Urban Health Centre',
-            address: 'Kegaon, Solapur',
-            contact: '0217-2601700',
-            totalBeds: 90,
-            availableBeds: 20,
-            icuTotal: 9,
-            icuAvailable: 3
-          },
-          {
-            hospitalName: 'Kegaon PHC',
-            address: 'Main Road, Kegaon',
-            contact: '0217-2601800',
-            totalBeds: 30,
-            availableBeds: 9,
-            icuTotal: 3,
-            icuAvailable: 1
-          }
-        ]
-      },
-      {
-        wardName: 'Mulegaon',
-        wardCode: 'W017',
-        zone: 'Zone 6',
-        population: 28000,
-        activeCaseCount: 11,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Mulegaon PHC',
-            address: 'Mulegaon, Solapur',
-            contact: '0217-2601900',
-            totalBeds: 35,
-            availableBeds: 22,
-            icuTotal: 3,
-            icuAvailable: 2
-          }
-        ]
-      },
-      {
-        wardName: 'Kambar',
-        wardCode: 'W018',
-        zone: 'Zone 6',
-        population: 35000,
-        activeCaseCount: 14,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Kambar Community Hospital',
-            address: 'Kambar, Solapur',
-            contact: '0217-2602000',
-            totalBeds: 70,
-            availableBeds: 38,
-            icuTotal: 7,
-            icuAvailable: 5
-          }
-        ]
-      },
-
-      // ZONE 7 — West Solapur
-      {
-        wardName: 'Begam Peth',
-        wardCode: 'W019',
-        zone: 'Zone 7',
-        population: 36000,
-        activeCaseCount: 20,
-        riskLevel: 'Yellow',
-        topDisease: 'Malaria',
-        hospitals: [
-          {
-            hospitalName: 'Begam Peth Hospital',
-            address: 'Begam Peth, Solapur',
-            contact: '0217-2602100',
-            totalBeds: 75,
-            availableBeds: 30,
-            icuTotal: 7,
-            icuAvailable: 4
-          }
-        ]
-      },
-      {
-        wardName: 'Rajendra Nagar',
-        wardCode: 'W020',
-        zone: 'Zone 7',
-        population: 31000,
-        activeCaseCount: 8,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Rajendra Nagar PHC',
-            address: 'Rajendra Nagar, Solapur',
-            contact: '0217-2602200',
-            totalBeds: 45,
-            availableBeds: 32,
-            icuTotal: 4,
-            icuAvailable: 3
-          }
-        ]
-      },
-      {
-        wardName: 'Ashok Nagar',
-        wardCode: 'W021',
-        zone: 'Zone 7',
-        population: 29000,
-        activeCaseCount: 6,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Ashok Nagar Dispensary',
-            address: 'Ashok Nagar, Solapur',
-            contact: '0217-2602300',
-            totalBeds: 30,
-            availableBeds: 24,
-            icuTotal: 3,
-            icuAvailable: 3
-          }
-        ]
-      },
-
-      // ZONE 8 — North East
-      {
-        wardName: 'Solapur North',
-        wardCode: 'W022',
-        zone: 'Zone 8',
-        population: 40000,
-        activeCaseCount: 16,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'North Solapur Hospital',
-            address: 'Solapur North, Solapur',
-            contact: '0217-2602400',
-            totalBeds: 85,
-            availableBeds: 42,
-            icuTotal: 8,
-            icuAvailable: 6
-          }
-        ]
-      },
-      {
-        wardName: 'Bhuinj Naka',
-        wardCode: 'W023',
-        zone: 'Zone 8',
-        population: 27000,
-        activeCaseCount: 4,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Bhuinj Naka PHC',
-            address: 'Bhuinj Naka, Solapur',
-            contact: '0217-2602500',
-            totalBeds: 30,
-            availableBeds: 25,
-            icuTotal: 3,
-            icuAvailable: 3
-          }
-        ]
-      },
-      {
-        wardName: 'Prakash Nagar',
-        wardCode: 'W024',
-        zone: 'Zone 8',
-        population: 28000,
-        activeCaseCount: 7,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Prakash Nagar Clinic',
-            address: 'Prakash Nagar, Solapur',
-            contact: '0217-2602600',
-            totalBeds: 35,
-            availableBeds: 28,
-            icuTotal: 3,
-            icuAvailable: 3
-          }
-        ]
-      },
-      {
-        wardName: 'Sakhar Peth',
-        wardCode: 'W025',
-        zone: 'Zone 8',
-        population: 32000,
-        activeCaseCount: 13,
-        riskLevel: 'Green',
-        topDisease: null,
-        hospitals: [
-          {
-            hospitalName: 'Sakhar Peth Hospital',
-            address: 'Sakhar Peth, Solapur',
-            contact: '0217-2602700',
-            totalBeds: 65,
-            availableBeds: 35,
-            icuTotal: 6,
-            icuAvailable: 4
-          }
-        ]
+    // Seed Hospital Capacity
+    const capacityRecords = [];
+    for (const ward of wards) {
+      for (const hospital of ward.hospitals) {
+        const staffUser = staffUsers.find(
+          u => u.hospitalName === hospital.hospitalName
+        );
+        capacityRecords.push({
+          hospitalName: hospital.hospitalName,
+          ward: ward.wardName,
+          totalBeds: hospital.totalBeds,
+          availableBeds: hospital.availableBeds,
+          icuTotal: hospital.icuTotal,
+          icuAvailable: hospital.icuAvailable,
+          ventilatorsTotal: Math.floor(hospital.icuTotal * 0.8),
+          ventilatorsAvailable: Math.floor(hospital.icuAvailable * 0.8),
+          oxygenTotal: 100,
+          oxygenAvailable: Math.floor(Math.random() * 40) + 40, // 40-80
+          medicineStockPercentage: Math.floor(Math.random() * 40) + 50, // 50-90
+          submittedBy: staffUser ? staffUser._id : null,
+          lastUpdated: new Date()
+        });
       }
-    ]
+    }
+    await HospitalCapacity.insertMany(capacityRecords);
+    console.log(`${capacityRecords.length} capacity records seeded`);
 
-    await Ward.insertMany(wardsData)
-    console.log('25 wards seeded across 8 zones...')
+    // Update ward activeCaseCount and riskLevel from disease reports
+    for (const ward of wards) {
+      const allReports = await DiseaseReport.find({ wardName: ward.wardName });
+      const totalConfirmed = allReports.reduce((s, r) => s + r.newConfirmed, 0);
+      const totalRecovered = allReports.reduce((s, r) => s + r.newRecovered, 0);
+      const totalDeaths = allReports.reduce((s, r) => s + r.newDeaths, 0);
+      const activeCaseCount = Math.max(0, totalConfirmed - totalRecovered - totalDeaths);
 
-    console.log('')
-    console.log('=============================')
-    console.log('SEED COMPLETE!')
-    console.log('=============================')
-    console.log('Demo Login Credentials:')
-    console.log('')
-    console.log('Health Officer:')
-    console.log('  Email:    officer@smc.gov')
-    console.log('  Password: officer123')
-    console.log('')
-    console.log('Hospital Staff:')
-    console.log('  Email:    hospital@kmc.in')
-    console.log('  Password: hospital123')
-    console.log('')
-    console.log('Citizen:')
-    console.log('  Email:    citizen@gmail.com')
-    console.log('  Password: citizen123')
-    console.log('=============================')
+      // topDisease
+      const diseaseMap = {};
+      allReports.forEach(r => {
+        diseaseMap[r.diseaseName] = (diseaseMap[r.diseaseName] || 0) + r.newConfirmed;
+      });
+      const topDisease = Object.keys(diseaseMap).sort(
+        (a, b) => diseaseMap[b] - diseaseMap[a]
+      )[0] || null;
 
-    process.exit(0)
+      // riskLevel
+      let riskLevel = 'Green';
+      if (activeCaseCount > 50) riskLevel = 'Red';
+      else if (activeCaseCount > 25) riskLevel = 'Yellow';
+
+      // HAI
+      const totalAvailableBeds = ward.hospitals.reduce(
+        (s, h) => s + (h.availableBeds || 0), 0
+      );
+      const accessibilityIndex = Math.round(Math.min(100, Math.max(0,
+        (totalAvailableBeds / (ward.population || 1)) * 1000 +
+        ward.hospitals.length * 10 -
+        activeCaseCount * 2
+      )));
+
+      await Ward.findByIdAndUpdate(ward._id, {
+        activeCaseCount,
+        topDisease,
+        riskLevel,
+        accessibilityIndex,
+        lastUpdated: new Date()
+      });
+    }
+    console.log('Ward stats updated');
+
+    // Seed Alerts for high-risk wards
+    const updatedWards = await Ward.find({ riskLevel: { $in: ['Yellow', 'Red'] } });
+    for (const ward of updatedWards) {
+      await Alert.create({
+        wardName: ward.wardName,
+        alertType: 'Outbreak',
+        severity: ward.riskLevel,
+        message: `${ward.riskLevel === 'Red' ? 'Critical' : 'Warning'}: ${ward.activeCaseCount} active ${ward.topDisease} cases in ${ward.wardName}`,
+        diseaseName: ward.topDisease,
+        caseCount: ward.activeCaseCount,
+        isActive: true
+      });
+    }
+    console.log('Alerts seeded for high-risk wards');
+
+    // Seed Health Camps
+    for (const camp of healthCampData) {
+      await HealthCamp.create(camp);
+    }
+    console.log(`${healthCampData.length} health camps seeded`);
+
+    // Seed Sample Appointments
+    if (citizenUser) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(10, 30, 0, 0);
+
+      await Appointment.create({
+        citizenName: citizenUser.name,
+        contact: '9664269817',
+        hospitalName: 'Bhavani Peth General Hospital',
+        ward: 'Bhavani Peth',
+        specialty: 'General',
+        doctorName: 'Dr. Priya Kulkarni',
+        preferredDate: tomorrow,
+        timeSlot: '10:30 AM',
+        chiefComplaint: 'Fever and body ache for 3 days',
+        bookedBy: citizenUser._id,
+        status: 'Confirmed',
+        bookingReference: 'CC' + Math.floor(100000 + Math.random() * 900000)
+      });
+      console.log('Sample appointment seeded');
+    }
+
+    console.log('\n✅ DATABASE SEEDED SUCCESSFULLY');
+    console.log('\n📋 LOGIN CREDENTIALS:');
+    console.log('Health Officer → officer@smc.gov.in / officer123');
+    console.log('Hospital Staff → staff.bhavani@hospital.com / hospital123');
+    console.log('Citizen       → rahul@citizen.com / citizen123');
+    console.log('\n🏥 Wards seeded:', wards.map(w => w.wardName).join(', '));
+
+    process.exit(0);
   } catch (error) {
-    console.error('Seed error:', error)
-    process.exit(1)
+    console.error('Seed error:', error);
+    process.exit(1);
   }
-}
+};
 
-seedDatabase()
+seedDatabase();

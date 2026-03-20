@@ -1,33 +1,59 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import {
+  BrowserRouter, Routes, Route, Navigate, useNavigate
+} from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import Login from './pages/Login'
 
-// Protected route component
+// Citizen pages
+import CitizenHome from './pages/Citizen/Home'
+import AppointmentBooking from './pages/Citizen/AppointmentBooking'
+import FindHospital from './pages/Citizen/FindHospital'
+import BedAvailability from './pages/Citizen/BedAvailability'
+import MyAppointments from './pages/Citizen/MyAppointments'
+
+// Protected route
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth()
-
-  if (!user) {
-    return <Navigate to='/login' replace />
-  }
-
+  if (!user) return <Navigate to='/login' replace />
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to='/login' replace />
   }
-
   return children
 }
 
-// Placeholder navbar for all 3 portals
+// Placeholder navbar for hospital + officer portals
 const PlaceholderNav = () => {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [isMarathi, setIsMarathi] = useState(false)
+  const [ready, setReady] = useState(false)
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
+  useEffect(() => {
+    const check = setInterval(() => {
+      if (document.querySelector('.goog-te-combo')) {
+        setReady(true)
+        clearInterval(check)
+      }
+    }, 300)
+    setTimeout(() => clearInterval(check), 10000)
+    return () => clearInterval(check)
+  }, [])
+
+  const handleTranslate = () => {
+    const select = document.querySelector('.goog-te-combo')
+    if (!select) return
+    if (!isMarathi) {
+      select.value = 'mr'
+      select.dispatchEvent(new Event('change'))
+      setIsMarathi(true)
+    } else {
+      select.value = 'en'
+      select.dispatchEvent(new Event('change'))
+      setIsMarathi(false)
+    }
   }
 
   const roleColors = {
@@ -35,7 +61,6 @@ const PlaceholderNav = () => {
     hospitalStaff: 'bg-teal-100 text-teal-700',
     citizen: 'bg-purple-100 text-purple-700'
   }
-
   const roleLabels = {
     healthOfficer: 'Health Officer',
     hospitalStaff: 'Hospital Staff',
@@ -44,11 +69,11 @@ const PlaceholderNav = () => {
 
   return (
     <div className='bg-white border-b border-gray-200 px-6 py-3
-                    flex items-center justify-between'>
+                    flex items-center justify-between sticky top-0 z-50'>
       <div className='flex items-center gap-3'>
         <div className='w-8 h-8 bg-blue-600 rounded-lg flex items-center
                         justify-center'>
-          <span className='text-white text-sm font-bold'>CC</span>
+          <span className='text-white text-sm font-bold'>+</span>
         </div>
         <span className='text-blue-600 font-bold text-lg'>CareCrew</span>
         <span className='text-gray-300'>|</span>
@@ -57,6 +82,14 @@ const PlaceholderNav = () => {
         </span>
       </div>
       <div className='flex items-center gap-4'>
+        <button
+          onClick={handleTranslate}
+          className='text-sm px-3 py-1 rounded-full border border-blue-200
+                     text-blue-600 hover:bg-blue-50 transition-colors
+                     font-medium'
+        >
+          🌐 {isMarathi ? 'English' : 'मराठी'}
+        </button>
         {user && (
           <span className={`text-xs px-2 py-1 rounded-full font-medium
                            ${roleColors[user.role]}`}>
@@ -69,9 +102,9 @@ const PlaceholderNav = () => {
           </span>
         )}
         <button
-          onClick={handleLogout}
-          className='text-sm text-red-500 hover:text-red-700
-                     font-medium transition-colors'>
+          onClick={() => { logout(); navigate('/login') }}
+          className='text-sm text-red-500 hover:text-red-700 font-medium'
+        >
           Logout
         </button>
       </div>
@@ -79,7 +112,7 @@ const PlaceholderNav = () => {
   )
 }
 
-// Placeholder pages
+// Placeholder pages for portals not yet built
 const OfficerDashboard = () => (
   <div className='min-h-screen bg-gray-50'>
     <PlaceholderNav />
@@ -87,12 +120,7 @@ const OfficerDashboard = () => (
       <h1 className='text-2xl font-bold text-gray-800'>
         Health Officer Dashboard
       </h1>
-      <p className='text-gray-500 mt-2'>
-        Person B (Satya) will build this page
-      </p>
-      <p className='text-gray-400 text-sm mt-1'>
-        Import Heatmap and ForecastGraph from ./pages/HealthOfficer/
-      </p>
+      <p className='text-gray-500 mt-2'>Person B (Satya) builds this page</p>
     </div>
   </div>
 )
@@ -104,19 +132,7 @@ const HospitalDashboard = () => (
       <h1 className='text-2xl font-bold text-gray-800'>
         Hospital Staff Portal
       </h1>
-      <p className='text-gray-500 mt-2'>Person C will build this page</p>
-    </div>
-  </div>
-)
-
-const CitizenHome = () => (
-  <div className='min-h-screen bg-gray-50'>
-    <PlaceholderNav />
-    <div className='p-8 text-center'>
-      <h1 className='text-2xl font-bold text-gray-800'>
-        Citizen Portal
-      </h1>
-      <p className='text-gray-500 mt-2'>Person E will build this page</p>
+      <p className='text-gray-500 mt-2'>Person C builds this page</p>
     </div>
   </div>
 )
@@ -126,7 +142,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Public route */}
+      {/* Public */}
       <Route
         path='/login'
         element={
@@ -147,7 +163,7 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Health Officer routes */}
+      {/* Health Officer */}
       <Route
         path='/officer/*'
         element={
@@ -157,7 +173,7 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Hospital Staff routes */}
+      {/* Hospital Staff */}
       <Route
         path='/hospital/*'
         element={
@@ -167,25 +183,51 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Citizen routes */}
+      {/* Citizen Portal */}
       <Route
-        path='/citizen/*'
+        path='/citizen/home'
         element={
           <ProtectedRoute allowedRoles={['citizen']}>
             <CitizenHome />
           </ProtectedRoute>
         }
       />
+      <Route
+        path='/citizen/appointments/book'
+        element={
+          <ProtectedRoute allowedRoles={['citizen']}>
+            <AppointmentBooking />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path='/citizen/hospitals'
+        element={
+          <ProtectedRoute allowedRoles={['citizen']}>
+            <FindHospital />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path='/citizen/beds'
+        element={
+          <ProtectedRoute allowedRoles={['citizen']}>
+            <BedAvailability />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path='/citizen/my-appointments'
+        element={
+          <ProtectedRoute allowedRoles={['citizen']}>
+            <MyAppointments />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* Default redirect */}
-      <Route
-        path='/'
-        element={<Navigate to='/login' replace />}
-      />
-      <Route
-        path='*'
-        element={<Navigate to='/login' replace />}
-      />
+      {/* Default */}
+      <Route path='/' element={<Navigate to='/login' replace />} />
+      <Route path='*' element={<Navigate to='/login' replace />} />
     </Routes>
   )
 }

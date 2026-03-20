@@ -40,17 +40,19 @@ const Alert = ({ alerts = [] }) => {
         return (
           <div
             key={alert._id}
-            className={`border-l-4 rounded-lg p-4 flex items-start 
+            className={`border-l-4 rounded-lg p-4 flex items-start
                         justify-between ${style.container}`}
           >
             <div className='flex items-start gap-3'>
               <span className='text-lg'>{style.icon}</span>
               <div>
                 <p className={`text-sm font-semibold ${style.title}`}>
-                  {alert.alertType === 'outbreak'
+                  {/* Fixed: handle both Outbreak/outbreak and Shortage/shortage */}
+                  {alert.alertType === 'Outbreak' ||
+                   alert.alertType === 'outbreak'
                     ? '⚠ Outbreak Alert'
-                    : '⚠ Shortage Alert'}{' '}
-                  — {alert.wardName}
+                    : '⚠ Shortage Alert'
+                  }{' '}— {alert.wardName}
                 </p>
                 <p className={`text-sm mt-1 ${style.message}`}>
                   {alert.message}

@@ -7,7 +7,8 @@ const alertSchema = new mongoose.Schema({
   },
   alertType: {
     type: String,
-    enum: ['outbreak', 'shortage'],
+    // Capitalized to match Health Officer dashboard doc exactly
+    enum: ['Outbreak', 'Shortage'],
     required: true
   },
   severity: {

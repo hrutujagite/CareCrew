@@ -24,7 +24,6 @@ const Login = () => {
 
       login(res.data.user, res.data.token)
 
-      // Redirect based on role
       if (res.data.user.role === 'healthOfficer') {
         navigate('/officer/dashboard')
       } else if (res.data.user.role === 'hospitalStaff') {
@@ -41,16 +40,22 @@ const Login = () => {
     }
   }
 
+  const fillCredentials = (email, password) => {
+    setEmail(email)
+    setPassword(password)
+    setError('')
+  }
+
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 
+    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-blue-100
                     flex items-center justify-center p-4'>
       <div className='bg-white rounded-2xl shadow-lg p-8 w-full max-w-md'>
 
         {/* Logo */}
         <div className='flex flex-col items-center mb-8'>
-          <div className='w-14 h-14 bg-blue-600 rounded-2xl flex items-center 
+          <div className='w-14 h-14 bg-blue-600 rounded-2xl flex items-center
                           justify-center mb-3'>
-            <span className='text-white text-2xl font-bold'>CC</span>
+            <span className='text-white text-2xl font-bold'>+</span>
           </div>
           <h1 className='text-2xl font-bold text-gray-800'>CareCrew</h1>
           <p className='text-sm text-gray-500 mt-1'>
@@ -61,9 +66,9 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Error message */}
+        {/* Error */}
         {error && (
-          <div className='bg-red-50 border border-red-200 rounded-lg p-3 
+          <div className='bg-red-50 border border-red-200 rounded-lg p-3
                           mb-4'>
             <p className='text-sm text-red-600'>{error}</p>
           </div>
@@ -81,8 +86,8 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder='Enter your email'
               required
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg 
-                         text-sm focus:outline-none focus:ring-2 
+              className='w-full px-3 py-2 border border-gray-300 rounded-lg
+                         text-sm focus:outline-none focus:ring-2
                          focus:ring-blue-500 focus:border-transparent'
             />
           </div>
@@ -97,8 +102,8 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder='Enter your password'
               required
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg 
-                         text-sm focus:outline-none focus:ring-2 
+              className='w-full px-3 py-2 border border-gray-300 rounded-lg
+                         text-sm focus:outline-none focus:ring-2
                          focus:ring-blue-500 focus:border-transparent'
             />
           </div>
@@ -106,30 +111,54 @@ const Login = () => {
           <button
             type='submit'
             disabled={loading}
-            className='w-full bg-blue-600 text-white py-2 rounded-lg 
-                       font-medium text-sm hover:bg-blue-700 
-                       transition-colors disabled:opacity-50 
+            className='w-full bg-blue-600 text-white py-2 rounded-lg
+                       font-medium text-sm hover:bg-blue-700
+                       transition-colors disabled:opacity-50
                        disabled:cursor-not-allowed mt-2'
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        {/* Demo credentials */}
+        {/* Demo credentials - clickable */}
         <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
-          <p className='text-xs font-semibold text-gray-500 mb-2'>
-            DEMO CREDENTIALS
+          <p className='text-xs font-semibold text-gray-500 mb-3 uppercase
+                        tracking-wide'>
+            Demo Credentials — Click to Fill
           </p>
-          <div className='flex flex-col gap-1'>
-            <p className='text-xs text-gray-500'>
-              Health Officer: officer@smc.gov / officer123
-            </p>
-            <p className='text-xs text-gray-500'>
-              Hospital Staff: hospital@kmc.in / hospital123
-            </p>
-            <p className='text-xs text-gray-500'>
-              Citizen: citizen@gmail.com / citizen123
-            </p>
+          <div className='flex flex-col gap-2'>
+            {[
+              {
+                role: 'Health Officer',
+                email: 'officer@smc.gov.in',
+                password: 'officer123',
+                color: 'text-amber-600 bg-amber-50 border-amber-200'
+              },
+              {
+                role: 'Hospital Staff',
+                email: 'staff.bhavani@hospital.com',
+                password: 'hospital123',
+                color: 'text-teal-600 bg-teal-50 border-teal-200'
+              },
+              {
+                role: 'Citizen',
+                email: 'rahul@citizen.com',
+                password: 'citizen123',
+                color: 'text-purple-600 bg-purple-50 border-purple-200'
+              },
+            ].map((cred, i) => (
+              <button
+                key={i}
+                type='button'
+                onClick={() => fillCredentials(cred.email, cred.password)}
+                className={`w-full text-left px-3 py-2 rounded-lg border
+                            text-xs transition-colors hover:opacity-80
+                            ${cred.color}`}
+              >
+                <span className='font-semibold'>{cred.role}:</span>{' '}
+                {cred.email}
+              </button>
+            ))}
           </div>
         </div>
 
