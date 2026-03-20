@@ -6,14 +6,19 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import Login from './pages/Login'
 
-// Citizen pages
-import CitizenHome from './pages/Citizen/Home'
+import HospitalHome from './pages/HospitalStaff/HospitalHome'
+import DiseaseForm from './pages/HospitalStaff/DiseaseForm'
+import CapacityForm from './pages/HospitalStaff/CapacityForm'
+import History from './pages/HospitalStaff/History'
+import HealthCampForm from './pages/HospitalStaff/HealthCampForm'
+
 import AppointmentBooking from './pages/Citizen/AppointmentBooking'
 import FindHospital from './pages/Citizen/FindHospital'
 import BedAvailability from './pages/Citizen/BedAvailability'
 import MyAppointments from './pages/Citizen/MyAppointments'
+import CitizenHome from './pages/Citizen/Home'
 
-// Protected route
+// Protected route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth()
   if (!user) return <Navigate to='/login' replace />
@@ -126,16 +131,16 @@ const OfficerDashboard = () => (
 )
 
 const HospitalDashboard = () => (
-  <div className='min-h-screen bg-gray-50'>
-    <PlaceholderNav />
-    <div className='p-8 text-center'>
-      <h1 className='text-2xl font-bold text-gray-800'>
-        Hospital Staff Portal
-      </h1>
-      <p className='text-gray-500 mt-2'>Person C builds this page</p>
-    </div>
-  </div>
+  <Routes>
+    <Route path="dashboard" element={<HospitalHome />} />
+    <Route path="disease-form" element={<DiseaseForm />} />
+    <Route path="capacity-form" element={<CapacityForm />} />
+    <Route path="history" element={<History />} />
+    <Route path="create-camp" element={<HealthCampForm />} />
+    <Route path="*" element={<Navigate to="dashboard" replace />} />
+  </Routes>
 )
+
 
 const AppRoutes = () => {
   const { user } = useAuth()
@@ -152,8 +157,8 @@ const AppRoutes = () => {
                 user.role === 'healthOfficer'
                   ? '/officer/dashboard'
                   : user.role === 'hospitalStaff'
-                  ? '/hospital/dashboard'
-                  : '/citizen/home'
+                    ? '/hospital/dashboard'
+                    : '/citizen/home'
               }
               replace
             />

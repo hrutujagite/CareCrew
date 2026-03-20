@@ -143,10 +143,10 @@ const AppointmentBooking = () => {
   const handleSubmit = async () => {
     setError('')
     const { hospitalName, ward, specialty, doctorName,
-            preferredDate, timeSlot, chiefComplaint } = form
+      preferredDate, timeSlot, chiefComplaint } = form
 
     if (!hospitalName || !specialty || !doctorName ||
-        !preferredDate || !timeSlot) {
+      !preferredDate || !timeSlot) {
       setError('Please fill all required fields')
       return
     }
@@ -166,9 +166,7 @@ const AppointmentBooking = () => {
           doctorName,
           preferredDate,
           timeSlot,
-          chiefComplaint,
-          citizenName: user.name,
-          contact: user.contact || ''
+          chiefComplaint
         })
       })
       const data = await res.json()
@@ -191,13 +189,16 @@ const AppointmentBooking = () => {
         <div className='max-w-md mx-auto mt-16'>
           <Card>
             <div className='flex flex-col items-center text-center py-6'>
-              <div className='w-16 h-16 bg-green-100 rounded-full flex
+              <div className='w-16 h-16 bg-yellow-100 rounded-full flex
                               items-center justify-center mb-4'>
-                <span className='text-green-600 text-2xl'>✓</span>
+                <span className='text-yellow-600 text-2xl'>⏳</span>
               </div>
               <h2 className='text-xl font-bold text-gray-800 mb-1'>
-                Appointment Confirmed!
+                Appointment Requested!
               </h2>
+              <p className='text-sm text-yellow-600 font-medium mb-1'>
+                Awaiting confirmation from the hospital
+              </p>
               <p className='text-sm text-gray-500 mb-6'>
                 Reference:{' '}
                 <span className='text-blue-600 font-semibold'>
@@ -344,9 +345,9 @@ const AppointmentBooking = () => {
                                        rounded-lg border text-xs font-medium
                                        flex-shrink-0 transition-colors
                                        ${isSelected
-                                         ? 'bg-blue-600 text-white border-blue-600'
-                                         : 'border-gray-200 text-gray-600 hover:border-blue-300'
-                                       }`}
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'border-gray-200 text-gray-600 hover:border-blue-300'
+                              }`}
                           >
                             <span className='uppercase text-xs'>
                               {date.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -378,9 +379,9 @@ const AppointmentBooking = () => {
                           className={`px-4 py-2 rounded-lg border text-sm
                                      font-medium transition-colors
                                      ${form.timeSlot === slot
-                                       ? 'bg-blue-600 text-white border-blue-600'
-                                       : 'border-gray-200 text-gray-600 hover:border-blue-300'
-                                     }`}
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-200 text-gray-600 hover:border-blue-300'
+                            }`}
                         >
                           {slot}
                         </button>
