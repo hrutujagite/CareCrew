@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
   citizenName: { type: String, required: true, trim: true },
-  contact: { type: String, required: true },
+  contact: { type: String, default: '' },
   hospitalName: { type: String, required: true },
   ward: { type: String, required: true },
   specialty: {
@@ -15,7 +15,7 @@ const appointmentSchema = new mongoose.Schema({
   timeSlot: { type: String, required: true },
   chiefComplaint: { type: String, default: '' },
   bookingDate: { type: Date, default: Date.now },
-  status: { type: String, enum: ['Confirmed','Pending','Cancelled'], default: 'Confirmed' },
+  status: { type: String, enum: ['Pending', 'Confirmed', 'Cancelled'], default: 'Pending' },
   bookingReference: { type: String, unique: true, sparse: true },
   bookedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });

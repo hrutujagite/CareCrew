@@ -15,7 +15,7 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       newConfirmed,
       newRecovered,
       newDeaths,
-      reportDate
+      date
     } = req.body;
 
     // Create disease report
@@ -26,22 +26,24 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       newConfirmed: newConfirmed || 0,
       newRecovered: newRecovered || 0,
       newDeaths: newDeaths || 0,
-      reportDate: reportDate || Date.now(),
-      submittedBy: req.user._id
+      submittedBy: req.user._id,
+      date: date || Date.now()
     });
 
     // Update ward
     const ward = await Ward.findOne({ wardName });
     if (ward) {
-      // activeCaseCount = total confirmed - total recovered - total deaths
-      // Recalculate from all reports for this ward (accurate, not cumulative bug)
-      const allReports = await DiseaseReport.find({ wardName });
-      const totalConfirmed = allReports.reduce((sum, r) => sum + r.newConfirmed, 0);
-      const totalRecovered = allReports.reduce((sum, r) => sum + r.newRecovered, 0);
-      const totalDeaths = allReports.reduce((sum, r) => sum + r.newDeaths, 0);
-      ward.activeCaseCount = Math.max(0, totalConfirmed - totalRecovered - totalDeaths);
+      // Fix: properly update active cases
+      // confirmed adds to active, recovered and deaths reduce active
+      ward.activeCaseCount = Math.max(
+        0,
+        (ward.activeCaseCount || 0) + Number(newConfirmed || 0) - Number(newRecovered || 0) - Number(newDeaths || 0)
+      );
+      ward.topDisease = diseaseName;
+      ward.lastUpdated = Date.now();
 
       // topDisease = disease with highest total confirmed cases for this ward
+      const allReports = await DiseaseReport.find({ wardName });
       const diseaseMap = {};
       allReports.forEach(r => {
         diseaseMap[r.diseaseName] = (diseaseMap[r.diseaseName] || 0) + r.newConfirmed;

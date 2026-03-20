@@ -14,14 +14,12 @@ router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
       doctorName,
       preferredDate,
       timeSlot,
-      chiefComplaint,
-      citizenName,
-      contact
+      chiefComplaint
     } = req.body;
 
     const appointment = await Appointment.create({
-      citizenName,
-      contact,
+      citizenName: req.user.name,
+      contact: req.user.contact || '',
       hospitalName,
       ward,
       specialty,
@@ -30,7 +28,7 @@ router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
       timeSlot,
       chiefComplaint: chiefComplaint || '',
       bookedBy: req.user._id,
-      status: 'Confirmed',
+      status: 'Pending',
       bookingReference: 'CC' + Math.floor(100000 + Math.random() * 900000)
     });
 
@@ -63,9 +61,6 @@ router.get('/my', protect, authorizeRoles('citizen'), async (req, res) => {
 // @desc   Get all appointments for this hospital (hospitalStaff only)
 router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const appointments = await Appointment.find({
       hospitalName: req.user.hospitalName
     }).sort({ preferredDate: -1 }).limit(100);
@@ -91,8 +86,10 @@ router.get('/all', protect, authorizeRoles('healthOfficer'), async (req, res) =>
 });
 
 // @route  PUT /api/appointments/:id/cancel
-// @desc   Cancel an appointment (citizen only)
-router.put('/:id/cancel', protect, authorizeRoles('citizen'), async (req, res) => {
+// @desc   Cancel an appointment
+//         citizen → can cancel their own appointment
+//         hospitalStaff → can cancel any appointment at their hospital
+router.put('/:id/cancel', protect, authorizeRoles('citizen', 'hospitalStaff'), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
 
@@ -100,8 +97,18 @@ router.put('/:id/cancel', protect, authorizeRoles('citizen'), async (req, res) =
       return res.status(404).json({ message: 'Appointment not found' });
     }
 
-    if (appointment.bookedBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized' });
+    // Citizen can only cancel their own
+    if (req.user.role === 'citizen') {
+      if (appointment.bookedBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
+    }
+
+    // Hospital staff can only cancel at their hospital
+    if (req.user.role === 'hospitalStaff') {
+      if (appointment.hospitalName !== req.user.hospitalName) {
+        return res.status(403).json({ message: 'Not authorized' });
+      }
     }
 
     appointment.status = 'Cancelled';
@@ -110,6 +117,40 @@ router.put('/:id/cancel', protect, authorizeRoles('citizen'), async (req, res) =
     res.json({
       success: true,
       message: 'Appointment cancelled successfully',
+      appointment
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  PUT /api/appointments/:id/confirm
+// @desc   Confirm an appointment (hospitalStaff only)
+router.put('/:id/confirm', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    // Hospital staff can only confirm at their hospital
+    if (appointment.hospitalName !== req.user.hospitalName) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (appointment.status === 'Cancelled') {
+      return res.status(400).json({
+        message: 'Cannot confirm a cancelled appointment'
+      });
+    }
+
+    appointment.status = 'Confirmed';
+    await appointment.save();
+
+    res.json({
+      success: true,
+      message: 'Appointment confirmed successfully',
       appointment
     });
   } catch (error) {
