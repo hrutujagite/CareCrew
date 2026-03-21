@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../context/AuthContext'
 
@@ -57,12 +57,9 @@ const Login = () => {
                           justify-center mb-3'>
             <span className='text-white text-2xl font-bold'>+</span>
           </div>
-          <h1 className='text-2xl font-bold text-gray-800'>CareCrew</h1>
+          <h1 className='text-2xl font-bold text-gray-800'>SwasthSolapur</h1>
           <p className='text-sm text-gray-500 mt-1'>
             Solapur Municipal Corporation
-          </p>
-          <p className='text-xs text-gray-400 mt-1'>
-            Smart Public Health Management System
           </p>
         </div>
 
@@ -120,7 +117,20 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Demo credentials - clickable */}
+        {/* Register link — goes to homepage portal cards */}
+        <div className='mt-4 text-center'>
+          <p className='text-sm text-gray-500'>
+            Don't have an account?{' '}
+            <a
+              href='http://localhost:3001/#portals'
+              className='text-blue-600 font-semibold hover:underline'
+            >
+              Register →
+            </a>
+          </p>
+        </div>
+
+        {/* Demo credentials */}
         <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
           <p className='text-xs font-semibold text-gray-500 mb-3 uppercase
                         tracking-wide'>

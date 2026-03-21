@@ -15,3 +15,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+/* Hide Google Translate banner */
+.skiptranslate { display: none !important; }
+.goog-te-banner-frame { display: none !important; }
+body { top: 0 !important; }

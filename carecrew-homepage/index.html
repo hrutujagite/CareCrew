@@ -15,12 +15,6 @@
       --blue-mid: #dbeafe;
       --green: #16a34a;
       --green-light: #f0fdf4;
-      --red: #dc2626;
-      --red-light: #fef2f2;
-      --orange: #ea580c;
-      --orange-light: #fff7ed;
-      --yellow: #ca8a04;
-      --yellow-light: #fefce8;
       --gray-50: #f9fafb;
       --gray-100: #f3f4f6;
       --gray-200: #e5e7eb;
@@ -93,17 +87,10 @@
       margin-top: 1px;
     }
 
-    .navbar-divider {
-      width: 1px;
-      height: 28px;
-      background: var(--gray-200);
-      margin: 0 4px;
-    }
-
     .navbar-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .btn {
@@ -124,7 +111,11 @@
       border: 1.5px solid var(--gray-300);
       color: var(--gray-700);
     }
-    .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+    .btn-outline:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+      background: var(--blue-light);
+    }
 
     .btn-primary {
       background: var(--blue);
@@ -134,46 +125,6 @@
 
     .btn-sm { padding: 6px 14px; font-size: 12px; }
     .btn-lg { padding: 12px 28px; font-size: 15px; border-radius: 10px; }
-
-    /* ── ALERT BANNER ── */
-    .alert-banner {
-      background: #fef2f2;
-      border-bottom: 1px solid #fecaca;
-      padding: 12px 40px;
-      display: none;
-    }
-
-    .alert-banner.visible { display: block; }
-
-    .alert-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .alert-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-    }
-
-    .alert-badge {
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      flex-shrink: 0;
-    }
-
-    .alert-badge.red { background: var(--red); color: white; }
-    .alert-badge.yellow { background: #ca8a04; color: white; }
-
-    .alert-text { color: var(--gray-700); font-weight: 500; }
-    .alert-ward { color: var(--gray-400); font-size: 12px; }
 
     /* ── HERO ── */
     .hero {
@@ -237,6 +188,19 @@
       flex-wrap: wrap;
     }
 
+    .hero-register {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    .hero-register a {
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    .hero-register a:hover { text-decoration: underline; }
+
     /* ── SECTION ── */
     .section {
       padding: 64px 40px;
@@ -277,56 +241,6 @@
       border-top: 1px solid var(--gray-200);
       max-width: 1200px;
       margin: 0 auto;
-    }
-
-    /* ── STATS ── */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-    }
-
-    .stat-card {
-      background: var(--white);
-      border: 1px solid var(--gray-200);
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: var(--shadow-sm);
-      text-align: center;
-      transition: box-shadow 0.2s;
-    }
-
-    .stat-card:hover { box-shadow: var(--shadow); }
-
-    .stat-icon {
-      font-size: 28px;
-      margin-bottom: 12px;
-    }
-
-    .stat-value {
-      font-size: 36px;
-      font-weight: 800;
-      color: var(--gray-900);
-      line-height: 1;
-      margin-bottom: 6px;
-    }
-
-    .stat-label {
-      font-size: 13px;
-      color: var(--gray-500);
-      font-weight: 500;
-    }
-
-    .stat-live {
-      display: inline-block;
-      font-size: 10px;
-      font-weight: 700;
-      background: var(--green-light);
-      color: var(--green);
-      padding: 2px 8px;
-      border-radius: 10px;
-      margin-top: 8px;
-      border: 1px solid #bbf7d0;
     }
 
     /* ── PORTAL CARDS ── */
@@ -395,94 +309,6 @@
       font-weight: 700;
       flex-shrink: 0;
     }
-
-    /* ── HOSPITAL TABLE ── */
-    .hospitals-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--white);
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid var(--gray-200);
-      box-shadow: var(--shadow-sm);
-    }
-
-    .hospitals-table thead tr {
-      background: var(--gray-50);
-      border-bottom: 1px solid var(--gray-200);
-    }
-
-    .hospitals-table th {
-      padding: 12px 16px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--gray-500);
-      text-align: left;
-    }
-
-    .hospitals-table tbody tr {
-      border-bottom: 1px solid var(--gray-100);
-      transition: background 0.15s;
-    }
-
-    .hospitals-table tbody tr:last-child { border-bottom: none; }
-    .hospitals-table tbody tr:hover { background: var(--gray-50); }
-
-    .hospitals-table td {
-      padding: 14px 16px;
-      font-size: 14px;
-      color: var(--gray-700);
-    }
-
-    .hospital-name { font-weight: 600; color: var(--gray-900); }
-    .hospital-ward { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
-
-    .beds-available {
-      font-weight: 700;
-      font-size: 16px;
-      color: var(--gray-900);
-    }
-
-    .beds-total {
-      font-size: 12px;
-      color: var(--gray-400);
-      font-weight: 400;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .status-normal { background: var(--green-light); color: var(--green); }
-    .status-limited { background: var(--orange-light); color: var(--orange); }
-    .status-critical { background: var(--red-light); color: var(--red); }
-
-    .progress-bar {
-      width: 80px;
-      height: 6px;
-      background: var(--gray-200);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.5s;
-    }
-
-    .fill-green { background: var(--green); }
-    .fill-orange { background: var(--orange); }
-    .fill-red { background: var(--red); }
 
     /* ── HEALTH CAMPS ── */
     .camps-grid {
@@ -562,19 +388,17 @@
       border: 1px solid var(--gray-200);
     }
 
-    /* ── LOADING ── */
-    .loading-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 20px;
-    }
-
+    /* ── SKELETON ── */
     .skeleton {
-      background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+      background: linear-gradient(
+        90deg,
+        var(--gray-100) 25%,
+        var(--gray-200) 50%,
+        var(--gray-100) 75%
+      );
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
       border-radius: 12px;
-      height: 120px;
     }
 
     @keyframes shimmer {
@@ -651,16 +475,48 @@
       line-height: 1.8;
     }
 
+    /* ── LANGUAGE TOGGLE ── */
+    .lang-btn {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--gray-300);
+      color: var(--gray-600);
+      background: transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+    }
+    .lang-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+      background: var(--blue-light);
+    }
+    /* Hide Google Translate toolbar completely */
+    .skiptranslate { display: none !important; }
+    .goog-te-banner-frame { display: none !important; }
+    body > .skiptranslate { display: none !important; }
+    .goog-te-banner-frame,
+    .goog-te-balloon-frame,
+    #goog-gt-tt,
+    .goog-te-ftab-float,
+    .goog-te-menu-value:hover,
+    .goog-te-gadget { display: none !important; }
+    body { top: 0 !important; position: static !important; }
+    iframe.goog-te-banner-frame { display: none !important; }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       .navbar { padding: 0 20px; }
       .hero { padding: 48px 20px; }
       .hero h1 { font-size: 32px; }
       .section { padding: 48px 20px; }
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
       .portals-grid { grid-template-columns: 1fr; }
       .camps-grid { grid-template-columns: 1fr; }
-      .navbar-actions .btn-outline { display: none; }
     }
   </style>
 </head>
@@ -676,28 +532,32 @@
       </div>
     </div>
     <div class="navbar-actions">
-      <a href="http://localhost:3000/login" class="btn btn-outline btn-sm">
-        🏥 Hospital Login
-      </a>
-      <a href="http://localhost:3000/login" class="btn btn-outline btn-sm">
-        👮 Officer Login
-      </a>
+      <button id="langToggle" onclick="handleTranslate()" class="lang-btn">
+        🌐 <span id="langLabel">मराठी</span>
+      </button>
       <a href="http://localhost:3000/login" class="btn btn-primary btn-sm">
-        👤 Citizen Login
+        Login
       </a>
     </div>
   </nav>
 
-  <!-- ALERT BANNER -->
-  <div class="alert-banner" id="alertBanner">
-    <div class="alert-list" id="alertList"></div>
-  </div>
+  <!-- Google Translate (hidden) -->
+  <div id="google_translate_element" style="display:none"></div>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement(
+        { pageLanguage: "en", includedLanguages: "mr,en" },
+        "google_translate_element"
+      )
+    }
+  </script>
+  <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
   <!-- HERO -->
   <section class="hero">
     <div class="hero-badge">
       <div class="dot"></div>
-      Live Health Monitoring — Solapur City
+      Smart Health Platform — Solapur City
     </div>
     <h1>Solapur's <span>Smart Public</span><br/>Health Platform</h1>
     <p>
@@ -706,36 +566,17 @@
     </p>
     <div class="hero-actions">
       <a href="http://localhost:3000/login" class="btn btn-primary btn-lg">
-        Get Started as Citizen →
+        Login →
       </a>
       <a href="#portals" class="btn btn-outline btn-lg">
         Explore Portals
       </a>
     </div>
+    <p class="hero-register">
+      Don't have an account?
+      <a href="#portals">Register here</a>
+    </p>
   </section>
-
-  <!-- LIVE STATS -->
-  <div style="background: var(--gray-50); border-bottom: 1px solid var(--gray-200);">
-    <div class="section" style="padding: 48px 40px;">
-      <div class="section-header">
-        <div class="section-label">Live City Health Pulse</div>
-        <div class="section-title">Solapur Health at a Glance</div>
-        <div class="section-sub">
-          Real-time data from hospitals across all wards —
-          updated every time a hospital submits a report
-        </div>
-      </div>
-
-      <div class="stats-grid" id="statsGrid">
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-        <div class="skeleton"></div>
-      </div>
-    </div>
-  </div>
-
-  <hr class="section-divider" />
 
   <!-- THREE PORTALS -->
   <div id="portals">
@@ -768,13 +609,12 @@
           <a href="http://localhost:3000/login"
              class="btn btn-outline"
              style="text-align:center; justify-content:center;">
-            Hospital Login →
+            Register Your Hospital →
           </a>
         </div>
 
         <!-- Health Officer Portal -->
-        <div class="portal-card"
-             style="border-color: var(--blue); background: var(--blue-light);">
+        <div class="portal-card">
           <div class="portal-icon">👮</div>
           <div class="portal-title">Health Officer Portal</div>
           <div class="portal-desc">
@@ -789,9 +629,9 @@
             <li>CSV report export</li>
           </ul>
           <a href="http://localhost:3000/login"
-             class="btn btn-primary"
+             class="btn btn-outline"
              style="text-align:center; justify-content:center;">
-            Officer Login →
+            Register as Health Officer →
           </a>
         </div>
 
@@ -810,37 +650,11 @@
             <li>View oxygen & ICU status</li>
             <li>Track your appointments</li>
           </ul>
-          <a href="http://localhost:3000/login"
+          <a href="http://localhost:3000/register/citizen"
              class="btn btn-outline"
              style="text-align:center; justify-content:center;">
-            Citizen Login →
+            Register as Citizen →
           </a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <hr class="section-divider" />
-
-  <!-- HOSPITAL AVAILABILITY -->
-  <div style="background: var(--gray-50); border-top: 1px solid var(--gray-200);
-              border-bottom: 1px solid var(--gray-200);">
-    <div class="section">
-      <div class="section-header">
-        <div class="section-label">Live Infrastructure</div>
-        <div class="section-title">Hospital Bed Availability</div>
-        <div class="section-sub">
-          Real-time bed status across Solapur hospitals —
-          updated when hospitals submit capacity reports
-        </div>
-      </div>
-
-      <div id="hospitalsContainer">
-        <div class="loading-grid">
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
         </div>
       </div>
     </div>
@@ -899,9 +713,47 @@
   </footer>
 
   <script>
+
+    // ── Hide Google Translate banner aggressively ──
+    function hideGoogleBanner() {
+      const banner = document.querySelector('.goog-te-banner-frame')
+      if (banner) banner.style.display = 'none'
+      document.body.style.top = '0px'
+      document.body.style.position = 'static'
+    }
+    setInterval(hideGoogleBanner, 300)
+    document.addEventListener('DOMContentLoaded', hideGoogleBanner)
+
+    // ── Language toggle (mirrors Navbar.js logic) ──
+    let isMarathi = false
+    let translateReady = false
+
+    const checkTranslate = setInterval(() => {
+      const select = document.querySelector(".goog-te-combo")
+      if (select) {
+        translateReady = true
+        clearInterval(checkTranslate)
+      }
+    }, 300)
+
+    function handleTranslate() {
+      const select = document.querySelector(".goog-te-combo")
+      if (!select) return
+      if (!isMarathi) {
+        select.value = "mr"
+        select.dispatchEvent(new Event("change"))
+        document.getElementById("langLabel").textContent = "English"
+        isMarathi = true
+      } else {
+        select.value = "en"
+        select.dispatchEvent(new Event("change"))
+        document.getElementById("langLabel").textContent = "मराठी"
+        isMarathi = false
+      }
+    }
+
     const API = 'http://localhost:5000/api'
 
-    // ── Format date ──
     const formatDate = (str) => {
       const d = new Date(str)
       return d.toLocaleDateString('en-IN', {
@@ -909,187 +761,6 @@
       })
     }
 
-    // ── Time ago ──
-    const timeAgo = (str) => {
-      const diff = Date.now() - new Date(str).getTime()
-      const mins = Math.floor(diff / 60000)
-      if (mins < 60) return `${mins}m ago`
-      const hrs = Math.floor(mins / 60)
-      if (hrs < 24) return `${hrs}h ago`
-      return `${Math.floor(hrs / 24)}d ago`
-    }
-
-    // ── Load Public Stats + Alerts ──
-    const loadPublicData = async () => {
-      try {
-        const res = await fetch(`${API}/dashboard/public`)
-        const data = await res.json()
-
-        if (!data.success) return
-
-        const { stats, alerts } = data
-
-        // Render stats
-        const statsGrid = document.getElementById('statsGrid')
-        statsGrid.innerHTML = `
-          <div class="stat-card">
-            <div class="stat-icon">🦠</div>
-            <div class="stat-value">${stats.activeCasesToday ?? 0}</div>
-            <div class="stat-label">Active Cases Today</div>
-            <div class="stat-live">● Live</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🏥</div>
-            <div class="stat-value">${stats.hospitalsReporting ?? 0}</div>
-            <div class="stat-label">Hospitals Reporting</div>
-            <div class="stat-live">● Live</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🛏️</div>
-            <div class="stat-value">${stats.totalAvailableBeds ?? 0}</div>
-            <div class="stat-label">Beds Available</div>
-            <div class="stat-live">● Live</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">📅</div>
-            <div class="stat-value">${stats.appointmentsToday ?? 0}</div>
-            <div class="stat-label">Appointments Today</div>
-            <div class="stat-live">● Live</div>
-          </div>
-        `
-
-        // Render alert banner
-        if (alerts && alerts.length > 0) {
-          const banner = document.getElementById('alertBanner')
-          const list = document.getElementById('alertList')
-          banner.classList.add('visible')
-          list.innerHTML = alerts.map(a => `
-            <div class="alert-item">
-              <span class="alert-badge ${a.severity === 'Red' ? 'red' : 'yellow'}">
-                ${a.severity === 'Red' ? '🔴 Critical' : '🟡 Warning'}
-              </span>
-              <span class="alert-text">${a.message}</span>
-              <span class="alert-ward">— ${a.wardName}</span>
-            </div>
-          `).join('')
-        }
-
-      } catch (err) {
-        console.error('Stats load error:', err)
-        document.getElementById('statsGrid').innerHTML = `
-          <div style="grid-column:1/-1; text-align:center; padding:32px;
-                      color:#9ca3af; font-size:14px;">
-            Could not load live stats. Make sure the backend is running on
-            port 5000.
-          </div>
-        `
-      }
-    }
-
-    // ── Load Hospitals ──
-    const loadHospitals = async () => {
-      try {
-        const res = await fetch(`${API}/hospitals`)
-        const data = await res.json()
-
-        if (!data.success || !data.hospitals.length) {
-          document.getElementById('hospitalsContainer').innerHTML =
-            '<div class="empty-state">No hospital data available</div>'
-          return
-        }
-
-        const hospitals = data.hospitals.slice(0, 8)
-
-        const getStatusClass = (s) =>
-          s === 'Critical' ? 'status-critical'
-          : s === 'Limited' ? 'status-limited'
-          : 'status-normal'
-
-        const getStatusLabel = (s) =>
-          s === 'Critical' ? '🔴 Critical'
-          : s === 'Limited' ? '🟠 Limited'
-          : '🟢 Normal'
-
-        const getFillClass = (avail, total) => {
-          if (!total) return 'fill-green'
-          const pct = avail / total
-          return pct < 0.1 ? 'fill-red'
-               : pct < 0.3 ? 'fill-orange'
-               : 'fill-green'
-        }
-
-        const getBarWidth = (avail, total) => {
-          if (!total) return '0%'
-          return Math.round((avail / total) * 100) + '%'
-        }
-
-        document.getElementById('hospitalsContainer').innerHTML = `
-          <table class="hospitals-table">
-            <thead>
-              <tr>
-                <th>Hospital</th>
-                <th>Ward</th>
-                <th>Beds Available</th>
-                <th>ICU</th>
-                <th>Oxygen</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${hospitals.map(h => `
-                <tr>
-                  <td>
-                    <div class="hospital-name">${h.hospitalName}</div>
-                  </td>
-                  <td style="color: #6b7280; font-size:13px;">${h.ward}</td>
-                  <td>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                      <span>
-                        <span class="beds-available">${h.availableBeds}</span>
-                        <span class="beds-total">/${h.totalBeds}</span>
-                      </span>
-                      <div class="progress-bar">
-                        <div class="progress-fill ${getFillClass(h.availableBeds, h.totalBeds)}"
-                             style="width:${getBarWidth(h.availableBeds, h.totalBeds)}">
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span style="font-weight:600; color:#1f2937;">
-                      ${h.icuAvailable}
-                    </span>
-                    <span style="color:#9ca3af; font-size:12px;">
-                      /${h.icuTotal}
-                    </span>
-                  </td>
-                  <td style="font-size:13px; color:#4b5563;">
-                    ${h.oxygenStatus || 'N/A'}
-                  </td>
-                  <td>
-                    <span class="status-badge ${getStatusClass(h.bedStatus)}">
-                      ${getStatusLabel(h.bedStatus)}
-                    </span>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <div style="text-align:center; margin-top:20px;">
-            <a href="http://localhost:3000/login"
-               class="btn btn-outline">
-              View All Hospitals in Citizen Portal →
-            </a>
-          </div>
-        `
-      } catch (err) {
-        console.error('Hospitals load error:', err)
-        document.getElementById('hospitalsContainer').innerHTML =
-          '<div class="empty-state">Could not load hospital data</div>'
-      }
-    }
-
-    // ── Load Health Camps ──
     const loadCamps = async () => {
       try {
         const res = await fetch(`${API}/healthcamps`)
@@ -1111,21 +782,12 @@
                   <div class="camp-meta-item">
                     📅 ${formatDate(camp.startDate)}
                     ${camp.startDate !== camp.endDate
-                      ? ' — ' + formatDate(camp.endDate)
-                      : ''}
+                      ? ' — ' + formatDate(camp.endDate) : ''}
                   </div>
-                  <div class="camp-meta-item">
-                    🕐 ${camp.timing}
-                  </div>
-                  <div class="camp-meta-item">
-                    📍 ${camp.location}
-                  </div>
-                  <div class="camp-meta-item">
-                    🏥 ${camp.hospitalName}
-                  </div>
-                  <div class="camp-meta-item">
-                    📞 ${camp.contactInfo}
-                  </div>
+                  <div class="camp-meta-item">🕐 ${camp.timing}</div>
+                  <div class="camp-meta-item">📍 ${camp.location}</div>
+                  <div class="camp-meta-item">🏥 ${camp.hospitalName}</div>
+                  <div class="camp-meta-item">📞 ${camp.contactInfo}</div>
                 </div>
                 <div class="camp-status ${camp.status === 'Ongoing'
                   ? 'ongoing' : 'upcoming'}">
@@ -1136,19 +798,12 @@
           </div>
         `
       } catch (err) {
-        console.error('Camps load error:', err)
         document.getElementById('campsContainer').innerHTML =
-          '<div class="empty-state">Could not load health camps</div>'
+          '<div class="empty-state">Could not load health camps. Make sure backend is running on port 5000.</div>'
       }
     }
 
-    // ── Init ──
-    loadPublicData()
-    loadHospitals()
     loadCamps()
-
-    // Refresh stats every 60 seconds
-    setInterval(loadPublicData, 60000)
   </script>
 </body>
 </html>

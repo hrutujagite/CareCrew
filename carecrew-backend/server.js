@@ -21,6 +21,7 @@ const appointmentRoutes = require('./routes/appointments');
 const forecastRoutes = require('./routes/forecast');
 const wardRoutes = require('./routes/wards');
 const healthCampRoutes = require('./routes/healthcamps');
+const chatRoutes = require('./routes/chat');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/disease', diseaseRoutes);
@@ -31,6 +32,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/forecast', forecastRoutes);
 app.use('/api/wards', wardRoutes);
 app.use('/api/healthcamps', healthCampRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check
 app.get('/', (req, res) => {

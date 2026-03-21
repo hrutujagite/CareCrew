@@ -22,12 +22,14 @@ const userSchema = new mongoose.Schema({
     enum: ['healthOfficer', 'hospitalStaff', 'citizen'],
     required: true
   },
-  // For hospitalStaff — must match exact hospitalName in Ward collection
+  contact: {
+    type: String,
+    default: ''
+  },
   hospitalName: {
     type: String,
     default: null
   },
-  // For hospitalStaff — must match exact wardName in Ward collection
   ward: {
     type: String,
     default: null

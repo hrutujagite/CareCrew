@@ -7,12 +7,12 @@ const User = require('../models/User');
 // @desc   Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, hospitalName, ward } = req.body;
+    const { name, email, password, role, contact, hospitalName, ward } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Email already registered' });
     }
 
     // Create new user
@@ -21,6 +21,7 @@ router.post('/register', async (req, res) => {
       email,
       password,
       role,
+      contact: contact || '',
       hospitalName: hospitalName || null,
       ward: ward || null
     });
@@ -40,6 +41,7 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        contact: user.contact,
         hospitalName: user.hospitalName,
         ward: user.ward
       }
@@ -55,19 +57,16 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check if user exists
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Generate token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -82,6 +81,7 @@ router.post('/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        contact: user.contact || '',
         hospitalName: user.hospitalName,
         ward: user.ward
       }

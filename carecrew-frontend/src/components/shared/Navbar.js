@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 
-const Navbar = () => {
+const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -13,7 +13,6 @@ const Navbar = () => {
   const timeoutRef = useRef(null)
 
   useEffect(() => {
-    // Poll for Google Translate widget to be ready
     intervalRef.current = setInterval(() => {
       const select = document.querySelector('.goog-te-combo')
       if (select) {
@@ -23,7 +22,6 @@ const Navbar = () => {
       }
     }, 300)
 
-    // Give up after 15 seconds
     timeoutRef.current = setTimeout(() => {
       clearInterval(intervalRef.current)
     }, 15000)
@@ -54,7 +52,6 @@ const Navbar = () => {
   const handleTranslate = () => {
     const select = document.querySelector('.goog-te-combo')
     if (!select) {
-      // Widget not ready — retry after short delay
       setTimeout(() => {
         const retrySelect = document.querySelector('.goog-te-combo')
         if (retrySelect) applyTranslation(retrySelect)
@@ -80,14 +77,36 @@ const Navbar = () => {
     <nav className='bg-white border-b border-gray-200 px-6 py-3
                     flex items-center justify-between sticky top-0 z-50'>
 
-      {/* Left — Logo */}
+      {/* Left — Hamburger (citizen only) + Logo */}
       <div className='flex items-center gap-3'>
+
+        {/* Hamburger — only rendered if onMenuClick prop is passed */}
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className='w-8 h-8 flex flex-col items-center justify-center
+                       gap-1.5 rounded-lg hover:bg-gray-100 transition-colors
+                       flex-shrink-0'
+            aria-label='Toggle menu'
+          >
+            <span className='w-4.5 h-0.5 bg-gray-600 rounded-full block
+                             w-[18px]'></span>
+            <span className='w-4.5 h-0.5 bg-gray-600 rounded-full block
+                             w-[18px]'></span>
+            <span className='w-4.5 h-0.5 bg-gray-600 rounded-full block
+                             w-[18px]'></span>
+          </button>
+        )}
+
+        {/* Logo */}
         <div className='flex items-center gap-2'>
           <div className='w-8 h-8 bg-blue-600 rounded-lg flex items-center
                           justify-center'>
             <span className='text-white text-sm font-bold'>+</span>
           </div>
-          <span className='text-blue-600 font-bold text-lg'>CareCrew</span>
+          <span className='text-blue-600 font-bold text-lg'>
+            SwasthSolapur
+          </span>
         </div>
         <span className='text-gray-300'>|</span>
         <span className='text-xs text-gray-500'>

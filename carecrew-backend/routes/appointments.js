@@ -159,3 +159,4 @@ router.put('/:id/confirm', protect, authorizeRoles('hospitalStaff'), async (req,
 });
 
 module.exports = router;
+

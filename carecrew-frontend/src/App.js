@@ -5,6 +5,7 @@ import {
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import Login from './pages/Login'
+import CitizenRegister from './pages/Register/CitizenRegister'
 
 import HospitalHome from './pages/HospitalStaff/HospitalHome'
 import DiseaseForm from './pages/HospitalStaff/DiseaseForm'
@@ -13,8 +14,6 @@ import History from './pages/HospitalStaff/History'
 import HealthCampForm from './pages/HospitalStaff/HealthCampForm'
 
 import AppointmentBooking from './pages/Citizen/AppointmentBooking'
-import FindHospital from './pages/Citizen/FindHospital'
-import BedAvailability from './pages/Citizen/BedAvailability'
 import MyAppointments from './pages/Citizen/MyAppointments'
 import CitizenHome from './pages/Citizen/Home'
 
@@ -80,7 +79,7 @@ const PlaceholderNav = () => {
                         justify-center'>
           <span className='text-white text-sm font-bold'>+</span>
         </div>
-        <span className='text-blue-600 font-bold text-lg'>CareCrew</span>
+        <span className='text-blue-600 font-bold text-lg'>SwasthSolapur</span>
         <span className='text-gray-300'>|</span>
         <span className='text-xs text-gray-500'>
           Solapur Municipal Corporation
@@ -117,7 +116,7 @@ const PlaceholderNav = () => {
   )
 }
 
-// Placeholder pages for portals not yet built
+// Placeholder pages
 const OfficerDashboard = () => (
   <div className='min-h-screen bg-gray-50'>
     <PlaceholderNav />
@@ -168,6 +167,16 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Citizen Registration — public */}
+      <Route
+        path='/register/citizen'
+        element={
+          user
+            ? <Navigate to='/citizen/home' replace />
+            : <CitizenRegister />
+        }
+      />
+
       {/* Health Officer */}
       <Route
         path='/officer/*'
@@ -202,22 +211,6 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['citizen']}>
             <AppointmentBooking />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path='/citizen/hospitals'
-        element={
-          <ProtectedRoute allowedRoles={['citizen']}>
-            <FindHospital />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path='/citizen/beds'
-        element={
-          <ProtectedRoute allowedRoles={['citizen']}>
-            <BedAvailability />
           </ProtectedRoute>
         }
       />
