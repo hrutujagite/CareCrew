@@ -8,19 +8,16 @@ import { useAuth } from '../../context/AuthContext'
 import { InlineLoader } from '../../components/shared/Loader'
 
 const WARDS = [
+  'Bhavani Peth',
+  'North Solapur',
+  'Laxmi Peth',
   'Murarji Peth',
-  'Budhwar Peth',
-  'Hotgi Road',
-  'Vijapur Road',
-  'Akkalkot Road',
-  'Osmanabad Naka',
   'Kegaon',
-  'Kambar'
 ]
 
 const ForecastGraph = () => {
   const { token } = useAuth()
-  const [selectedWard, setSelectedWard] = useState('Murarji Peth')
+  const [selectedWard, setSelectedWard] = useState('Bhavani Peth')
   const [forecastData, setForecastData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

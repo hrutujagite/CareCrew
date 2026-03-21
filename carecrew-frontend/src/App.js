@@ -12,6 +12,7 @@ import AppointmentBooking from './pages/Citizen/AppointmentBooking'
 import FindHospital from './pages/Citizen/FindHospital'
 import BedAvailability from './pages/Citizen/BedAvailability'
 import MyAppointments from './pages/Citizen/MyAppointments'
+import OfficerDashboard from './pages/HealthOfficer/Dashboard'
 
 // Protected route
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -113,17 +114,7 @@ const PlaceholderNav = () => {
 }
 
 // Placeholder pages for portals not yet built
-const OfficerDashboard = () => (
-  <div className='min-h-screen bg-gray-50'>
-    <PlaceholderNav />
-    <div className='p-8 text-center'>
-      <h1 className='text-2xl font-bold text-gray-800'>
-        Health Officer Dashboard
-      </h1>
-      <p className='text-gray-500 mt-2'>Person B (Satya) builds this page</p>
-    </div>
-  </div>
-)
+
 
 const HospitalDashboard = () => (
   <div className='min-h-screen bg-gray-50'>
