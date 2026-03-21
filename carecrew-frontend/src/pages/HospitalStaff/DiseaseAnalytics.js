@@ -472,7 +472,6 @@ const DiseaseAnalytics = ({ diseaseHistory, latestCapacity }) => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-2xl font-black text-gray-800 tracking-tight">Disease Analytics</h3>
           <p className="text-xs text-gray-500 font-medium mt-1">Live updates as of {lastFetched}</p>
         </div>
       </div>

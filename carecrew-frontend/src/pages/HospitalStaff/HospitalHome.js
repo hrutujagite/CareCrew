@@ -68,7 +68,11 @@ const HospitalHome = () => {
         axios.get('http://localhost:5000/api/healthcamps/all', { headers }).catch(() => ({ data: { camps: [] } })),
       ])
       if (dashRes.data?.latestCapacity) setLatestCapacity(dashRes.data.latestCapacity)
-      if (diseaseRes.data?.reports) setDiseaseHistory(diseaseRes.data.reports)
+      if (diseaseRes.data?.reports) {
+        setDiseaseHistory(
+          [...diseaseRes.data.reports].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        )
+      }
       if (apptRes.data?.appointments) setAppointments(apptRes.data.appointments)
       if (campsRes.data?.camps) setHealthCamps(campsRes.data.camps)
 
@@ -219,18 +223,7 @@ const HospitalHome = () => {
             </div>
           </div>
 
-          {/* Detailed Profile moved to bottom */}
-          <div className={`px-5 py-5 border-t border-gray-100 bg-gray-50/50 flex-shrink-0 transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'}`}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm flex-shrink-0 mb-0">
-                S
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-gray-800 tracking-wide uppercase">Hospital Staff</p>
-                <p className="text-[10px] text-gray-500 truncate" title={user?.email || 'staff@hospital.com'}>{user?.email || 'staff@hospital.com'}</p>
-              </div>
-            </div>
-          </div>
+          
         </aside>
 
         {/* ╔═══════════════════════════════════╗ */}

@@ -102,9 +102,6 @@ const DiseaseForm = () => {
     if (form.newConfirmed < 0) return 'Confirmed cases cannot be negative.'
     if (form.newRecovered < 0) return 'Recovered count cannot be negative.'
     if (form.newDeaths < 0) return 'Deaths count cannot be negative.'
-    if (form.newRecovered + form.newDeaths > form.newConfirmed) {
-      return `Recovered (${form.newRecovered}) + Deaths (${form.newDeaths}) cannot exceed Confirmed cases (${form.newConfirmed}).`
-    }
     return null
   }
 
