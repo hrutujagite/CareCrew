@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Ward = require('../models/Ward');
 const HospitalCapacity = require('../models/HospitalCapacity');
-const { protect } = require('../middleware/auth');
+const { protect, authorizeRoles } = require('../middleware/auth');
 
 // @route  GET /api/hospitals
 // @desc   Get all hospitals with live bed availability
@@ -264,6 +264,82 @@ router.post('/add', protect, async (req, res) => {
       message: `Hospital "${hospitalName}" added to ${wardName} successfully`,
       hospital: ward.hospitals[ward.hospitals.length - 1]
     });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+
+// @route  POST /api/hospitals/doctors
+// @desc   Add a doctor to hospital staff's hospital (hospitalStaff only)
+router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const { name, specialty, experience, rating, slots } = req.body;
+
+    if (!name || !specialty) {
+      return res.status(400).json({ success: false, message: 'Name and specialty are required' });
+    }
+
+    const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
+    if (!ward) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    const hospitalIndex = ward.hospitals.findIndex(h => h.hospitalName === req.user.hospitalName);
+    if (hospitalIndex === -1) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    ward.hospitals[hospitalIndex].doctors.push({ name, specialty, experience: experience || 0, slots: slots || [] });
+    await ward.save();
+
+    const newDoctor = ward.hospitals[hospitalIndex].doctors[ward.hospitals[hospitalIndex].doctors.length - 1];
+    res.status(201).json({ success: true, message: 'Doctor added successfully', doctor: newDoctor });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  PUT /api/hospitals/doctors/:doctorId
+// @desc   Edit a doctor (hospitalStaff only)
+router.put('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const { name, specialty, experience, rating, slots } = req.body;
+
+    const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
+    if (!ward) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    const hospital = ward.hospitals.find(h => h.hospitalName === req.user.hospitalName);
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    const doctor = hospital.doctors.id(req.params.doctorId);
+    if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    if (name) doctor.name = name;
+    if (specialty) doctor.specialty = specialty;
+    if (experience !== undefined) doctor.experience = experience;
+    if (slots) doctor.slots = slots;
+
+    await ward.save();
+    res.json({ success: true, message: 'Doctor updated successfully', doctor });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  DELETE /api/hospitals/doctors/:doctorId
+// @desc   Remove a doctor (hospitalStaff only)
+router.delete('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
+    if (!ward) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    const hospital = ward.hospitals.find(h => h.hospitalName === req.user.hospitalName);
+    if (!hospital) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    const doctorIndex = hospital.doctors.findIndex(d => d._id.toString() === req.params.doctorId);
+    if (doctorIndex === -1) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    hospital.doctors.splice(doctorIndex, 1);
+    await ward.save();
+
+    res.json({ success: true, message: 'Doctor removed successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

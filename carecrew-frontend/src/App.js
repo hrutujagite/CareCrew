@@ -6,18 +6,17 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { LanguageProvider } from './context/LanguageContext'
 import Login from './pages/Login'
 import CitizenRegister from './pages/Register/CitizenRegister'
-
 import HospitalHome from './pages/HospitalStaff/HospitalHome'
 import DiseaseForm from './pages/HospitalStaff/DiseaseForm'
 import CapacityForm from './pages/HospitalStaff/CapacityForm'
 import History from './pages/HospitalStaff/History'
 import HealthCampForm from './pages/HospitalStaff/HealthCampForm'
-
 import AppointmentBooking from './pages/Citizen/AppointmentBooking'
 import MyAppointments from './pages/Citizen/MyAppointments'
 import CitizenHome from './pages/Citizen/Home'
-
 import OfficerDashboard from './pages/HealthOfficer/Dashboard'
+import HospitalRegister from './pages/Register/HospitalRegister'
+import OfficerRegister from './pages/Register/OfficerRegister'
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -164,6 +163,25 @@ const AppRoutes = () => {
             : <CitizenRegister />
         }
       />
+        {/* Hospital Registration — public */}
+<Route
+  path='/register/hospital'
+  element={
+    user
+      ? <Navigate to='/hospital/dashboard' replace />
+      : <HospitalRegister />
+  }
+/>
+
+{/* Health Officer Registration — public */}
+<Route
+  path='/register/officer'
+  element={
+    user
+      ? <Navigate to='/officer/dashboard' replace />
+      : <OfficerRegister />
+  }
+/>
 
       {/* Health Officer */}
       <Route

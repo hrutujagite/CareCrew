@@ -535,6 +535,10 @@
       <button id="langToggle" onclick="handleTranslate()" class="lang-btn">
         🌐 <span id="langLabel">मराठी</span>
       </button>
+      <a href="#health-camps" class="btn btn-outline btn-sm"
+         onclick="document.getElementById('health-camps').scrollIntoView({behavior:'smooth'}); return false;">
+        🏕️ Health Camps
+      </a>
       <a href="http://localhost:3000/login" class="btn btn-primary btn-sm">
         Login
       </a>
@@ -606,7 +610,7 @@
             <li>Create health camps</li>
             <li>View citizen appointments</li>
           </ul>
-          <a href="http://localhost:3000/login"
+          <a href="http://localhost:3000/register/hospital"
              class="btn btn-outline"
              style="text-align:center; justify-content:center;">
             Register Your Hospital →
@@ -628,7 +632,7 @@
             <li>Disease trend charts</li>
             <li>CSV report export</li>
           </ul>
-          <a href="http://localhost:3000/login"
+          <a href="http://localhost:3000/register/officer"
              class="btn btn-outline"
              style="text-align:center; justify-content:center;">
             Register as Health Officer →
@@ -663,6 +667,7 @@
   <hr class="section-divider" />
 
   <!-- HEALTH CAMPS -->
+  <span id="health-camps"></span>
   <div>
     <div class="section">
       <div class="section-header">
