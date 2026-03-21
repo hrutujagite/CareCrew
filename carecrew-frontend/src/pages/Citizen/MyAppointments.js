@@ -9,6 +9,72 @@ import { InlineLoader } from '../../components/shared/Loader'
 
 const BASE_URL = 'http://localhost:5000/api'
 
+// ── Star Rating Component ─────────────────────────────────────────────────────
+const StarRating = ({ appointmentId, existingRating, onRated }) => {
+  const { token } = useAuth()
+  const [hovered, setHovered] = useState(0)
+  const [selected, setSelected] = useState(existingRating || 0)
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(!!existingRating)
+
+  const handleRate = async (stars) => {
+    if (done || submitting) return
+    setSelected(stars)
+    setSubmitting(true)
+    try {
+      const res = await fetch(`${BASE_URL}/appointments/${appointmentId}/rate`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating: stars })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setDone(true)
+        onRated(appointmentId, stars)
+      }
+    } catch (err) {
+      setSelected(existingRating || 0)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className='flex flex-col gap-1 mt-3'>
+      <p className='text-xs text-gray-400'>
+        {done ? 'Your rating' : 'Rate your experience'}
+      </p>
+      <div className='flex items-center gap-1'>
+        {[1, 2, 3, 4, 5].map(star => (
+          <button
+            key={star}
+            disabled={done || submitting}
+            onClick={() => handleRate(star)}
+            onMouseEnter={() => !done && setHovered(star)}
+            onMouseLeave={() => !done && setHovered(0)}
+            className='text-2xl transition-transform hover:scale-110
+                       disabled:cursor-default'
+          >
+            <span className={(hovered || selected) >= star
+              ? 'text-yellow-400'
+              : 'text-gray-200'}>
+              ★
+            </span>
+          </button>
+        ))}
+        {done && (
+          <span className='text-xs text-green-600 ml-2 font-medium'>
+            ✓ Rated
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const MyAppointments = () => {
   const { token } = useAuth()
   const navigate = useNavigate()
@@ -46,11 +112,9 @@ const MyAppointments = () => {
       })
       const data = await res.json()
       if (data.success) {
+        // Update locally — reflects immediately without refetch
         setAppointments(prev =>
-          prev.map(a => a._id === id
-            ? { ...a, status: 'Cancelled' }
-            : a
-          )
+          prev.map(a => a._id === id ? { ...a, status: 'Cancelled' } : a)
         )
       }
     } catch (err) {
@@ -60,14 +124,30 @@ const MyAppointments = () => {
     }
   }
 
-  const isFuture = (dateStr) => {
-    return new Date(dateStr) > new Date()
+  const handleRated = (appointmentId, stars) => {
+    setAppointments(prev =>
+      prev.map(a => a._id === appointmentId ? { ...a, rating: stars } : a)
+    )
   }
+
+  const isFuture = (dateStr) => new Date(dateStr) > new Date()
+  const isPast = (dateStr) => new Date(dateStr) < new Date()
 
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleDateString('en-IN', {
       day: '2-digit', month: 'short', year: 'numeric'
     })
+  }
+
+  // Can cancel if Pending or Confirmed AND date is in the future
+  const canCancel = (appt) => {
+    return (appt.status === 'Confirmed' || appt.status === 'Pending') &&
+      isFuture(appt.preferredDate)
+  }
+
+  // Can rate if Confirmed AND date has passed AND not already rated
+  const canRate = (appt) => {
+    return appt.status === 'Confirmed' && isPast(appt.preferredDate)
   }
 
   return (
@@ -129,10 +209,7 @@ const MyAppointments = () => {
                     <span className='text-sm font-bold text-blue-600'>
                       {appt.bookingReference}
                     </span>
-                    <Badge
-                      severity={appt.status}
-                      text={appt.status}
-                    />
+                    <Badge severity={appt.status} text={appt.status} />
                   </div>
 
                   {/* Details grid */}
@@ -165,22 +242,30 @@ const MyAppointments = () => {
                       </p>
                     </div>
                   )}
+
+                  {/* Star Rating — only for past confirmed appointments */}
+                  {canRate(appt) && (
+                    <StarRating
+                      appointmentId={appt._id}
+                      existingRating={appt.rating}
+                      onRated={handleRated}
+                    />
+                  )}
                 </div>
 
-                {/* Cancel button */}
+                {/* Cancel button — Pending OR Confirmed, future only */}
                 <div className='flex-shrink-0'>
-                  {appt.status === 'Confirmed' &&
-                    isFuture(appt.preferredDate) && (
-                      <Button
-                        label={cancelling === appt._id
-                          ? 'Cancelling...'
-                          : 'Cancel'
-                        }
-                        variant='danger'
-                        disabled={cancelling === appt._id}
-                        onClick={() => handleCancel(appt._id)}
-                      />
-                    )}
+                  {canCancel(appt) && (
+                    <Button
+                      label={cancelling === appt._id
+                        ? 'Cancelling...'
+                        : 'Cancel'
+                      }
+                      variant='danger'
+                      disabled={cancelling === appt._id}
+                      onClick={() => handleCancel(appt._id)}
+                    />
+                  )}
                 </div>
               </div>
             </div>

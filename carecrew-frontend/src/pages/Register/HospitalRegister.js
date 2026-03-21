@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-
+ 
 const WARDS = [
   { wardName: 'Bhavani Peth', zone: 'Zone 1' },
   { wardName: 'North Solapur', zone: 'Zone 2' },
@@ -28,27 +28,26 @@ const WARDS = [
   { wardName: 'Shanti Nagar', zone: 'Zone 24' },
   { wardName: 'Kamgar Nagar', zone: 'Zone 25' },
 ]
-
+ 
 const SPECIALTIES = [
   'General', 'Cardiology', 'Paediatrics', 'Orthopaedics',
   'Gynaecology', 'Neurology', 'Dermatology', 'ENT',
   'Ophthalmology', 'Emergency'
 ]
-
+ 
 const STEPS = [
   'Hospital Info',
   'Location',
-  'Capacity',
   'Specialties',
   'Staff Account'
 ]
-
+ 
 const HospitalRegister = () => {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
+ 
   const [form, setForm] = useState({
     // Step 1
     hospitalName: '',
@@ -60,11 +59,6 @@ const HospitalRegister = () => {
     lat: '',
     lng: '',
     // Step 3
-    totalBeds: '',
-    availableBeds: '',
-    icuTotal: '',
-    icuAvailable: '',
-    // Step 4
     specialties: [],
     // Step 5
     staffName: '',
@@ -72,7 +66,7 @@ const HospitalRegister = () => {
     password: '',
     confirmPassword: ''
   })
-
+ 
   // Auto fill zone when ward changes
   const handleWardChange = (e) => {
     const selectedWard = WARDS.find(w => w.wardName === e.target.value)
@@ -82,11 +76,11 @@ const HospitalRegister = () => {
       zone: selectedWard?.zone || ''
     }))
   }
-
+ 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
-
+ 
   const handleSpecialtyToggle = (specialty) => {
     setForm(prev => ({
       ...prev,
@@ -95,7 +89,7 @@ const HospitalRegister = () => {
         : [...prev.specialties, specialty]
     }))
   }
-
+ 
   const validateStep = () => {
     setError('')
     if (step === 0) {
@@ -112,27 +106,12 @@ const HospitalRegister = () => {
       }
     }
     if (step === 2) {
-      if (!form.totalBeds || !form.availableBeds ||
-          !form.icuTotal || !form.icuAvailable) {
-        setError('Please fill all capacity fields')
-        return false
-      }
-      if (parseInt(form.availableBeds) > parseInt(form.totalBeds)) {
-        setError('Available beds cannot exceed total beds')
-        return false
-      }
-      if (parseInt(form.icuAvailable) > parseInt(form.icuTotal)) {
-        setError('Available ICU cannot exceed total ICU')
-        return false
-      }
-    }
-    if (step === 3) {
       if (form.specialties.length === 0) {
         setError('Please select at least one specialty')
         return false
       }
     }
-    if (step === 4) {
+    if (step === 3) {
       if (!form.staffName || !form.email ||
           !form.password || !form.confirmPassword) {
         setError('Please fill all required fields')
@@ -149,16 +128,16 @@ const HospitalRegister = () => {
     }
     return true
   }
-
+ 
   const handleNext = () => {
     if (validateStep()) setStep(prev => prev + 1)
   }
-
+ 
   const handleBack = () => {
     setError('')
     setStep(prev => prev - 1)
   }
-
+ 
   const handleSubmit = async () => {
     if (!validateStep()) return
     setLoading(true)
@@ -188,12 +167,12 @@ const HospitalRegister = () => {
       setLoading(false)
     }
   }
-
+ 
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-blue-100
                     flex items-center justify-center p-4'>
       <div className='bg-white rounded-2xl shadow-lg w-full max-w-lg'>
-
+ 
         {/* Header */}
         <div className='p-6 border-b border-gray-100'>
           <div className='flex items-center gap-3 mb-4'>
@@ -210,7 +189,7 @@ const HospitalRegister = () => {
               </p>
             </div>
           </div>
-
+ 
           {/* Step indicators */}
           <div className='flex items-center gap-1'>
             {STEPS.map((s, i) => (
@@ -246,10 +225,10 @@ const HospitalRegister = () => {
             ))}
           </div>
         </div>
-
+ 
         {/* Form body */}
         <div className='p-6'>
-
+ 
           {/* Error */}
           {error && (
             <div className='bg-red-50 border border-red-200 rounded-lg p-3
@@ -257,7 +236,7 @@ const HospitalRegister = () => {
               <p className='text-sm text-red-600'>{error}</p>
             </div>
           )}
-
+ 
           {/* STEP 0 — Hospital Info */}
           {step === 0 && (
             <div className='flex flex-col gap-4'>
@@ -336,7 +315,7 @@ const HospitalRegister = () => {
               )}
             </div>
           )}
-
+ 
           {/* STEP 1 — Location */}
           {step === 1 && (
             <div className='flex flex-col gap-4'>
@@ -385,88 +364,9 @@ const HospitalRegister = () => {
               </div>
             </div>
           )}
-
-          {/* STEP 2 — Capacity */}
+ 
+          {/* STEP 2 — Specialties */}
           {step === 2 && (
-            <div className='flex flex-col gap-4'>
-              <h2 className='text-sm font-semibold text-gray-700 uppercase
-                             tracking-wide'>
-                Initial Capacity
-              </h2>
-              <p className='text-xs text-gray-500'>
-                You can update these daily after registration.
-              </p>
-              <div className='grid grid-cols-2 gap-4'>
-                <div className='flex flex-col gap-1'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    Total Beds <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    name='totalBeds'
-                    value={form.totalBeds}
-                    onChange={handleChange}
-                    type='number'
-                    min='0'
-                    placeholder='e.g. 120'
-                    className='w-full px-3 py-2 border border-gray-300
-                               rounded-lg text-sm focus:outline-none
-                               focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
-                <div className='flex flex-col gap-1'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    Available Beds <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    name='availableBeds'
-                    value={form.availableBeds}
-                    onChange={handleChange}
-                    type='number'
-                    min='0'
-                    placeholder='e.g. 45'
-                    className='w-full px-3 py-2 border border-gray-300
-                               rounded-lg text-sm focus:outline-none
-                               focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
-                <div className='flex flex-col gap-1'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    ICU Total <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    name='icuTotal'
-                    value={form.icuTotal}
-                    onChange={handleChange}
-                    type='number'
-                    min='0'
-                    placeholder='e.g. 30'
-                    className='w-full px-3 py-2 border border-gray-300
-                               rounded-lg text-sm focus:outline-none
-                               focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
-                <div className='flex flex-col gap-1'>
-                  <label className='text-sm font-medium text-gray-700'>
-                    ICU Available <span className='text-red-500'>*</span>
-                  </label>
-                  <input
-                    name='icuAvailable'
-                    value={form.icuAvailable}
-                    onChange={handleChange}
-                    type='number'
-                    min='0'
-                    placeholder='e.g. 9'
-                    className='w-full px-3 py-2 border border-gray-300
-                               rounded-lg text-sm focus:outline-none
-                               focus:ring-2 focus:ring-blue-500'
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3 — Specialties */}
-          {step === 3 && (
             <div className='flex flex-col gap-4'>
               <h2 className='text-sm font-semibold text-gray-700 uppercase
                              tracking-wide'>
@@ -498,9 +398,9 @@ const HospitalRegister = () => {
               )}
             </div>
           )}
-
-          {/* STEP 4 — Staff Account */}
-          {step === 4 && (
+ 
+          {/* STEP 3 — Staff Account */}
+          {step === 3 && (
             <div className='flex flex-col gap-4'>
               <h2 className='text-sm font-semibold text-gray-700 uppercase
                              tracking-wide'>
@@ -570,9 +470,9 @@ const HospitalRegister = () => {
               </div>
             </div>
           )}
-
+ 
         </div>
-
+ 
         {/* Footer buttons */}
         <div className='px-6 pb-6 flex items-center justify-between gap-3'>
           {step > 0 ? (
@@ -592,7 +492,7 @@ const HospitalRegister = () => {
               Already registered? Login
             </Link>
           )}
-
+ 
           {step < STEPS.length - 1 ? (
             <button
               onClick={handleNext}
@@ -614,10 +514,10 @@ const HospitalRegister = () => {
             </button>
           )}
         </div>
-
+ 
       </div>
     </div>
   )
 }
-
+ 
 export default HospitalRegister

@@ -159,4 +159,67 @@ router.put('/:id/confirm', protect, authorizeRoles('hospitalStaff'), async (req,
   }
 });
  
+
+// @route  PUT /api/appointments/:id/rate
+// @desc   Rate a completed appointment (citizen only)
+//         Also updates doctor's average rating in Ward model
+router.put('/:id/rate', protect, authorizeRoles('citizen'), async (req, res) => {
+  try {
+    const { rating } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    if (appointment.bookedBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (appointment.status !== 'Confirmed') {
+      return res.status(400).json({ message: 'Only confirmed appointments can be rated' });
+    }
+
+    if (new Date(appointment.preferredDate) > new Date()) {
+      return res.status(400).json({ message: 'Cannot rate a future appointment' });
+    }
+
+    if (appointment.rating) {
+      return res.status(400).json({ message: 'You have already rated this appointment' });
+    }
+
+    appointment.rating = rating;
+    await appointment.save();
+
+    // Recalculate doctor's average rating in Ward model
+    const Ward = require('../models/Ward');
+    const ward = await Ward.findOne({ 'hospitals.hospitalName': appointment.hospitalName });
+    if (ward) {
+      const hospital = ward.hospitals.find(h => h.hospitalName === appointment.hospitalName);
+      if (hospital) {
+        const doctor = hospital.doctors.find(d => d.name === appointment.doctorName);
+        if (doctor) {
+          const ratedAppts = await Appointment.find({
+            hospitalName: appointment.hospitalName,
+            doctorName: appointment.doctorName,
+            rating: { $ne: null }
+          });
+          const avg = ratedAppts.reduce((sum, a) => sum + a.rating, 0) / ratedAppts.length;
+          doctor.rating = Math.round(avg * 10) / 10;
+          await ward.save();
+        }
+      }
+    }
+
+    res.json({ success: true, message: 'Rating submitted successfully', rating });
+  } catch (error) {
+    console.error('Rate error:', error.message);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

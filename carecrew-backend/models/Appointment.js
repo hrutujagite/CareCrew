@@ -60,6 +60,12 @@ const appointmentSchema = new mongoose.Schema({
   bookedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: null
   }
 }, { timestamps: true });
 

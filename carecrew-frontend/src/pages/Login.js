@@ -51,6 +51,17 @@ const Login = () => {
                     flex items-center justify-center p-4'>
       <div className='bg-white rounded-2xl shadow-lg p-8 w-full max-w-md'>
 
+        {/* Back to Homepage */}
+        <div className='mb-4'>
+          <a
+            href='http://localhost:3001'
+            className='flex items-center gap-1 text-sm text-gray-400
+                       hover:text-blue-600 transition-colors w-fit'
+          >
+            ← Back to Homepage
+          </a>
+        </div>
+
         {/* Logo */}
         <div className='flex flex-col items-center mb-8'>
           <div className='w-14 h-14 bg-blue-600 rounded-2xl flex items-center

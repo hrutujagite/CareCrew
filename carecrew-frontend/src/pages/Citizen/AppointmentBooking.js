@@ -436,15 +436,29 @@ const AppointmentBooking = () => {
                 </div>
 
                 <div className='mt-4 flex flex-col gap-2'>
-                  <div className='bg-blue-50 rounded-lg p-3 flex items-center
-                                  gap-2'>
-                    <span className='text-yellow-500'>⭐</span>
-                    <div>
-                      <p className='text-sm font-semibold text-gray-800'>
-                        {selectedDoctor.rating}/5 Rating
-                      </p>
+                  {selectedDoctor.rating ? (
+                    <div className='bg-blue-50 rounded-lg p-3 flex items-center
+                                    gap-2'>
+                      <div className='flex flex-col'>
+                        <div className='flex items-center gap-1'>
+                          {[1,2,3,4,5].map(s => (
+                            <span key={s} className={s <= Math.round(selectedDoctor.rating)
+                              ? 'text-yellow-400 text-base'
+                              : 'text-gray-200 text-base'}>★</span>
+                          ))}
+                        </div>
+                        <p className='text-xs text-gray-500 mt-0.5'>
+                          {selectedDoctor.rating}/5 · Citizen rated
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className='bg-gray-50 rounded-lg p-3 flex items-center
+                                    gap-2'>
+                      <span className='text-gray-300 text-base'>★★★★★</span>
+                      <p className='text-xs text-gray-400'>Not yet rated</p>
+                    </div>
+                  )}
                   <div className='bg-blue-50 rounded-lg p-3 flex items-center
                                   gap-2'>
                     <span>🏥</span>
@@ -476,7 +490,6 @@ const AppointmentBooking = () => {
                 {[
                   'Please arrive 15 minutes prior to your scheduled time',
                   'Bring a valid ID for check-in',
-                  'Cancellation requires at least 24 hours notice',
                 ].map((info, i) => (
                   <div key={i} className='flex items-start gap-2'>
                     <span className='text-blue-500 text-xs mt-0.5'>ℹ️</span>

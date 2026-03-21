@@ -117,6 +117,17 @@ const Navbar = ({ onMenuClick }) => {
       {/* Right */}
       <div className='flex items-center gap-4'>
 
+        {/* Back to Homepage */}
+        <a
+          href='http://localhost:3001'
+          className='text-sm px-3 py-1 rounded-full border border-gray-200
+                     text-gray-600 hover:bg-gray-50 hover:border-blue-300
+                     hover:text-blue-600 transition-colors flex items-center
+                     gap-1'
+        >
+          🏠 Homepage
+        </a>
+
         {/* Language toggle */}
         <button
           onClick={handleTranslate}
