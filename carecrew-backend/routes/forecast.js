@@ -21,10 +21,10 @@ router.get('/:ward', protect, async (req, res) => {
 
       const reports = await DiseaseReport.find({
         wardName: ward,
-        date: { $gte: date, $lt: nextDate }
-      });
-
-      const totalCases = reports.reduce((sum, r) => sum + r.caseCount, 0);
+        reportDate: { $gte: date, $lt: nextDate }
+      })
+      // ── ONLY CHANGE: r.caseCount → r.newConfirmed (matches seed field name)
+      const totalCases = reports.reduce((sum, r) => sum + r.newConfirmed, 0);
 
       last14Days.push({
         date: date.toISOString().split('T')[0],

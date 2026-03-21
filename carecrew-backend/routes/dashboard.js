@@ -153,6 +153,9 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             appointmentsToday,
             riskLevel: ward.riskLevel || 'Green',
             accessibilityIndex: ward.accessibilityIndex || 0,
+            medicineStockPercentage: latestCapacity
+              ? latestCapacity.medicineStockPercentage
+              : null,
             lastUpdated: ward.lastUpdated
           };
         } catch (wardErr) {
@@ -171,9 +174,11 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             hospitals: ward.hospitals.length,
             hospitalName: '',
             appointmentsToday: 0,
-            riskLevel: ward.riskLevel || 'Green',
-            accessibilityIndex: 0,
-            lastUpdated: ward.lastUpdated
+            // NEW
+        riskLevel: ward.riskLevel || 'Green',
+        accessibilityIndex: 0,
+        medicineStockPercentage: null,
+        lastUpdated: ward.lastUpdated
           };
         }
       })
@@ -205,7 +210,7 @@ router.get('/alerts', protect, async (req, res) => {
 // @desc   Chart data — Health Officer only
 router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res) => {
   try {
-    // Daily cases — last 14 days
+    // Daily cases by disease — last 14 days
     const last14Days = [];
     for (let i = 13; i >= 0; i--) {
       const date = new Date();
@@ -218,10 +223,13 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
         reportDate: { $gte: date, $lt: nextDate }
       });
 
-      last14Days.push({
-        date: date.toISOString().split('T')[0],
-        cases: reports.reduce((sum, r) => sum + r.newConfirmed, 0)
+      // One object per day with each disease as its own key
+      const dayEntry = { date: date.toISOString().split('T')[0] };
+      reports.forEach(r => {
+        dayEntry[r.diseaseName] = (dayEntry[r.diseaseName] || 0) + r.newConfirmed;
       });
+
+      last14Days.push(dayEntry);
     }
 
     // Top diseases this week
@@ -244,7 +252,6 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
 
     res.json({
       success: true,
-      // dailyCases matches Health Officer doc field name exactly
       dailyCases: last14Days,
       topDiseases
     });

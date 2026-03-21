@@ -17,6 +17,8 @@ import AppointmentBooking from './pages/Citizen/AppointmentBooking'
 import MyAppointments from './pages/Citizen/MyAppointments'
 import CitizenHome from './pages/Citizen/Home'
 
+import OfficerDashboard from './pages/HealthOfficer/Dashboard'
+
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth()
@@ -27,7 +29,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   return children
 }
 
-// Placeholder navbar for hospital + officer portals
+// Shared Navbar
 const PlaceholderNav = () => {
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -116,30 +118,16 @@ const PlaceholderNav = () => {
   )
 }
 
-// Placeholder pages
-const OfficerDashboard = () => (
-  <div className='min-h-screen bg-gray-50'>
-    <PlaceholderNav />
-    <div className='p-8 text-center'>
-      <h1 className='text-2xl font-bold text-gray-800'>
-        Health Officer Dashboard
-      </h1>
-      <p className='text-gray-500 mt-2'>Person B (Satya) builds this page</p>
-    </div>
-  </div>
-)
-
 const HospitalDashboard = () => (
   <Routes>
-    <Route path="dashboard" element={<HospitalHome />} />
-    <Route path="disease-form" element={<DiseaseForm />} />
-    <Route path="capacity-form" element={<CapacityForm />} />
-    <Route path="history" element={<History />} />
-    <Route path="create-camp" element={<HealthCampForm />} />
-    <Route path="*" element={<Navigate to="dashboard" replace />} />
+    <Route path='dashboard' element={<HospitalHome />} />
+    <Route path='disease-form' element={<DiseaseForm />} />
+    <Route path='capacity-form' element={<CapacityForm />} />
+    <Route path='history' element={<History />} />
+    <Route path='create-camp' element={<HealthCampForm />} />
+    <Route path='*' element={<Navigate to='dashboard' replace />} />
   </Routes>
 )
-
 
 const AppRoutes = () => {
   const { user } = useAuth()
@@ -167,7 +155,7 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Citizen Registration — public */}
+      {/* Citizen Registration */}
       <Route
         path='/register/citizen'
         element={

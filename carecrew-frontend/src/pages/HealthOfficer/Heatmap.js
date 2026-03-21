@@ -1,52 +1,34 @@
 import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, useMap } from 'react-leaflet'
 import axios from 'axios'
 import { useAuth } from '../../context/AuthContext'
 import { InlineLoader } from '../../components/shared/Loader'
 import 'leaflet/dist/leaflet.css'
 
+const BoundsEnforcer = () => {
+  const map = useMap()   // ← only works INSIDE MapContainer
+  useEffect(() => {
+    map.setMaxBounds(SOLAPUR_BOUNDS)
+    map.setMinZoom(12)
+    map.options.maxBoundsViscosity = 1.0
+    map.on('drag', () => {
+      map.panInsideBounds(SOLAPUR_BOUNDS, { animate: false })
+    })
+  }, [map])
+  return null
+}
 // Real Solapur SMC ward locations with accurate coordinates
 const SOLAPUR_WARDS = [
-  // Zone 1 — Central Solapur
-  { wardName: 'Bhavani Peth', zone: 'Zone 1', lat: 17.6720, lng: 75.9180 },
-  { wardName: 'Mangalwar Peth', zone: 'Zone 1', lat: 17.6745, lng: 75.9150 },
-  { wardName: 'Budhwar Peth', zone: 'Zone 1', lat: 17.6730, lng: 75.9200 },
-
-  // Zone 2 — North Solapur
-  { wardName: 'Shukrawar Peth', zone: 'Zone 2', lat: 17.6780, lng: 75.9120 },
-  { wardName: 'Guruwar Peth', zone: 'Zone 2', lat: 17.6760, lng: 75.9090 },
-  { wardName: 'Murarji Peth', zone: 'Zone 2', lat: 17.6800, lng: 75.9160 },
-
-  // Zone 3 — South Solapur
-  { wardName: 'Hotgi Road', zone: 'Zone 3', lat: 17.6520, lng: 75.9100 },
-  { wardName: 'Laxmi Peth', zone: 'Zone 3', lat: 17.6580, lng: 75.9050 },
-  { wardName: 'Siddheshwar Peth', zone: 'Zone 3', lat: 17.6650, lng: 75.9070 },
-
-  // Zone 4 — North West
-  { wardName: 'Vijapur Road', zone: 'Zone 4', lat: 17.6900, lng: 75.9000 },
-  { wardName: 'Shanti Nagar', zone: 'Zone 4', lat: 17.6870, lng: 75.8980 },
-  { wardName: 'Datta Nagar', zone: 'Zone 4', lat: 17.6840, lng: 75.8950 },
-
-  // Zone 5 — South East
-  { wardName: 'Akkalkot Road', zone: 'Zone 5', lat: 17.6600, lng: 75.9300 },
-  { wardName: 'Osmanabad Naka', zone: 'Zone 5', lat: 17.6630, lng: 75.9350 },
-  { wardName: 'Kamgar Nagar', zone: 'Zone 5', lat: 17.6580, lng: 75.9280 },
-
-  // Zone 6 — East Solapur
-  { wardName: 'Kegaon', zone: 'Zone 6', lat: 17.6700, lng: 75.9420 },
-  { wardName: 'Mulegaon', zone: 'Zone 6', lat: 17.6680, lng: 75.9450 },
-  { wardName: 'Kambar', zone: 'Zone 6', lat: 17.6750, lng: 75.9400 },
-
-  // Zone 7 — West Solapur
-  { wardName: 'Begam Peth', zone: 'Zone 7', lat: 17.6710, lng: 75.8950 },
-  { wardName: 'Rajendra Nagar', zone: 'Zone 7', lat: 17.6690, lng: 75.8900 },
-  { wardName: 'Ashok Nagar', zone: 'Zone 7', lat: 17.6730, lng: 75.8870 },
-
-  // Zone 8 — North East
-  { wardName: 'Solapur North', zone: 'Zone 8', lat: 17.6950, lng: 75.9200 },
-  { wardName: 'Bhuinj Naka', zone: 'Zone 8', lat: 17.6920, lng: 75.9250 },
-  { wardName: 'Prakash Nagar', zone: 'Zone 8', lat: 17.6880, lng: 75.9300 },
-  { wardName: 'Sakhar Peth', zone: 'Zone 8', lat: 17.6820, lng: 75.9220 },
+  { wardName: 'Bhavani Peth',   zone: 'BP01',  lat: 17.6868, lng: 75.9064 },
+  { wardName: 'North Solapur',  zone: 'NS02',  lat: 17.7120, lng: 75.9180 },
+  { wardName: 'Laxmi Peth',     zone: 'LP03',  lat: 17.6790, lng: 75.9020 },
+  { wardName: 'Murarji Peth',   zone: 'MP04',  lat: 17.6920, lng: 75.8980 },
+  { wardName: 'Shukrawar Peth', zone: 'SP05',  lat: 17.6855, lng: 75.9100 },
+  { wardName: 'Sakhar Peth',    zone: 'SKP06', lat: 17.6750, lng: 75.9150 },
+  { wardName: 'Budhwar Peth',   zone: 'BWP07', lat: 17.6810, lng: 75.9040 },
+  { wardName: 'Osmanabad Naka', zone: 'ON08',  lat: 17.6700, lng: 75.9200 },
+  { wardName: 'Kegaon',         zone: 'KG09',  lat: 17.7050, lng: 75.9300 },
+  { wardName: 'Vijapur Road',   zone: 'VR10',  lat: 17.6950, lng: 75.8850 },
 ]
 
 // Get color based on case count
@@ -72,6 +54,11 @@ const getRiskLevel = (cases) => {
   return 'Green'
 }
 
+const SOLAPUR_BOUNDS = [
+  [17.6300, 75.8500],
+  [17.7300, 75.9700]
+]
+
 const Heatmap = () => {
   const { token } = useAuth()
   const [wardData, setWardData] = useState({})
@@ -84,21 +71,16 @@ const Heatmap = () => {
     return () => clearInterval(interval)
   }, [])
 
- const fetchWardData = async () => {
+  const fetchWardData = async () => {
     try {
       const res = await axios.get(
         'http://localhost:5000/api/dashboard/wards',
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      console.log('API Response:', res.data)
-      console.log('Wards:', res.data.wards)
-      
-      // Convert array to object for easy lookup by wardName
       const dataMap = {}
       const wards = res.data.wards || []
       wards.forEach(w => {
         dataMap[w.wardName] = w
-        console.log(`Ward: ${w.wardName}, Cases: ${w.activeCaseCount}`)
       })
       setWardData(dataMap)
       setLastUpdated(new Date().toLocaleTimeString())
@@ -108,8 +90,9 @@ const Heatmap = () => {
       setLoading(false)
     }
   }
+
   const getWardCases = (wardName) => {
-    return wardData[wardName]?.activeCaseCount || 0
+    return wardData[wardName]?.activeCases || 0
   }
 
   const getWardInfo = (wardName) => {
@@ -154,18 +137,24 @@ const Heatmap = () => {
       {/* Map */}
       <div
         className='rounded-xl overflow-hidden border border-gray-200'
-        style={{ height: '500px' }}
+        style={{ height: '500px', width: '100%' }}
       >
         <MapContainer
           center={[17.6799, 75.9064]}
-          zoom={14}
+          zoom={13}
+          minZoom={12}
+          maxZoom={16}
+          maxBounds={SOLAPUR_BOUNDS}
+          maxBoundsViscosity={1.0}
           style={{ height: '100%', width: '100%' }}
+          whenCreated={(map) => {
+            map.setMaxBounds(SOLAPUR_BOUNDS)
+          }}
         >
           <TileLayer
-            url='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url='https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+            attribution='&copy; OpenStreetMap contributors'
           />
-
           {SOLAPUR_WARDS.map((ward) => {
             const cases = getWardCases(ward.wardName)
             const info = getWardInfo(ward.wardName)
@@ -186,13 +175,49 @@ const Heatmap = () => {
               >
                 {/* Tooltip shows on hover */}
                 <Tooltip direction='top' offset={[0, -10]}>
-                  <span style={{
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '12px',
-                    fontWeight: 600
-                  }}>
-                    {ward.wardName} — {cases} cases
-                  </span>
+                  <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '12px', minWidth: '160px' }}>
+                    <p style={{ fontWeight: 700, fontSize: '13px', marginBottom: '6px', borderBottom: '1px solid #E2E8F0', paddingBottom: '4px' }}>
+                      {ward.wardName}
+                    </p>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr>
+                          <td style={{ color: '#64748B', paddingBottom: '3px', paddingRight: '12px' }}>Active Cases</td>
+                          <td style={{ fontWeight: 700, color: color, textAlign: 'right' }}>{info.activeCases ?? cases}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ color: '#64748B', paddingBottom: '3px' }}>Cases Today</td>
+                          <td style={{ fontWeight: 600, color: '#2563EB', textAlign: 'right' }}>{info.todayCases ?? 0}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ color: '#64748B', paddingBottom: '3px' }}>Top Disease</td>
+                          <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{info.topDisease || '—'}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ color: '#64748B', paddingBottom: '3px' }}>Risk Level</td>
+                          <td style={{
+                            fontWeight: 700, textAlign: 'right',
+                            color: (info.riskLevel || '').toLowerCase() === 'red' ? '#DC2626'
+                              : (info.riskLevel || '').toLowerCase() === 'yellow' ? '#D97706' : '#16A34A'
+                          }}>
+                            {info.riskLevel || getRiskLevel(cases)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ color: '#64748B', paddingBottom: '3px' }}>Available Beds</td>
+                          <td style={{ fontWeight: 600, color: (info.availableBeds ?? 0) < 10 ? '#DC2626' : '#16A34A', textAlign: 'right' }}>
+                            {info.availableBeds ?? '—'}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ color: '#64748B' }}>ICU Available</td>
+                          <td style={{ fontWeight: 600, color: (info.icuAvailable ?? 0) < 3 ? '#DC2626' : '#2563EB', textAlign: 'right' }}>
+                            {info.icuAvailable ?? '—'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </Tooltip>
 
                 {/* Popup shows on click */}
@@ -215,72 +240,38 @@ const Heatmap = () => {
                     <table style={{ width: '100%', fontSize: '12px' }}>
                       <tbody>
                         <tr>
-                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>
-                            Zone
-                          </td>
-                          <td style={{
-                            fontWeight: 600,
-                            color: '#1E293B',
-                            textAlign: 'right'
-                          }}>
+                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>Zone</td>
+                          <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>
                             {ward.zone}
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>
-                            Active Cases
-                          </td>
-                          <td style={{
-                            fontWeight: 700,
-                            color: color,
-                            textAlign: 'right'
-                          }}>
+                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>Active Cases</td>
+                          <td style={{ fontWeight: 700, color: color, textAlign: 'right' }}>
                             {cases}
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>
-                            Top Disease
-                          </td>
-                          <td style={{
-                            fontWeight: 600,
-                            color: '#1E293B',
-                            textAlign: 'right'
-                          }}>
+                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>Top Disease</td>
+                          <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>
                             {info.topDisease || 'None reported'}
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>
-                            Available Beds
-                          </td>
-                          <td style={{
-                            fontWeight: 600,
-                            color: '#1E293B',
-                            textAlign: 'right'
-                          }}>
+                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>Available Beds</td>
+                          <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>
                             {info.availableBeds || 'N/A'}
                           </td>
                         </tr>
                         <tr>
-                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>
-                            ICU Available
-                          </td>
-                          <td style={{
-                            fontWeight: 600,
-                            color: '#1E293B',
-                            textAlign: 'right'
-                          }}>
+                          <td style={{ color: '#64748B', paddingBottom: '4px' }}>ICU Available</td>
+                          <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>
                             {info.icuAvailable || 'N/A'}
                           </td>
                         </tr>
                         <tr>
                           <td style={{ color: '#64748B' }}>Risk Level</td>
-                          <td style={{
-                            fontWeight: 700,
-                            color: color,
-                            textAlign: 'right'
-                          }}>
+                          <td style={{ fontWeight: 700, color: color, textAlign: 'right' }}>
                             {riskLevel}
                           </td>
                         </tr>
@@ -298,6 +289,7 @@ const Heatmap = () => {
       <div className='grid grid-cols-2 gap-2 md:grid-cols-4'>
         {SOLAPUR_WARDS.map(ward => {
           const cases = getWardCases(ward.wardName)
+          const info = getWardInfo(ward.wardName)
           const color = getColor(cases)
           const borderColor = cases > 50
             ? 'border-red-200 bg-red-50'
@@ -310,8 +302,16 @@ const Heatmap = () => {
           return (
             <div
               key={ward.wardName}
-              className={`rounded-lg border p-2 flex items-center 
-                         justify-between ${borderColor}`}
+              className={`rounded-lg border p-2 flex items-center justify-between ${borderColor}`}
+              style={{ position: 'relative', cursor: 'default' }}
+              onMouseEnter={e => {
+                const tooltip = e.currentTarget.querySelector('.ward-tooltip')
+                if (tooltip) tooltip.style.display = 'block'
+              }}
+              onMouseLeave={e => {
+                const tooltip = e.currentTarget.querySelector('.ward-tooltip')
+                if (tooltip) tooltip.style.display = 'none'
+              }}
             >
               <div>
                 <p className='text-xs font-semibold text-gray-700'>
@@ -319,12 +319,68 @@ const Heatmap = () => {
                 </p>
                 <p className='text-xs text-gray-500'>{ward.zone}</p>
               </div>
-              <span
-                className='text-sm font-bold'
-                style={{ color }}
-              >
+              <span className='text-sm font-bold' style={{ color }}>
                 {cases}
               </span>
+
+              {/* Hover tooltip */}
+              <div className='ward-tooltip' style={{
+                display: 'none',
+                position: 'absolute',
+                bottom: '110%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: '#fff',
+                border: '1px solid #E2E8F0',
+                borderRadius: '10px',
+                padding: '10px 14px',
+                zIndex: 999,
+                minWidth: '180px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                pointerEvents: 'none',
+              }}>
+                <p style={{ fontWeight: 700, fontSize: '13px', color: '#1E293B', marginBottom: '6px', borderBottom: '1px solid #F1F5F9', paddingBottom: '4px' }}>
+                  {ward.wardName}
+                </p>
+                <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ color: '#64748B', paddingBottom: '3px', paddingRight: '10px' }}>Active Cases</td>
+                      <td style={{ fontWeight: 700, color, textAlign: 'right' }}>{info.activeCases ?? cases}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#64748B', paddingBottom: '3px' }}>Cases Today</td>
+                      <td style={{ fontWeight: 600, color: '#2563EB', textAlign: 'right' }}>{info.todayCases ?? 0}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#64748B', paddingBottom: '3px' }}>Top Disease</td>
+                      <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{info.topDisease || '—'}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#64748B', paddingBottom: '3px' }}>Risk Level</td>
+                      <td style={{
+                        fontWeight: 700, textAlign: 'right',
+                        color: (info.riskLevel || '').toLowerCase() === 'red' ? '#DC2626'
+                          : (info.riskLevel || '').toLowerCase() === 'yellow' ? '#D97706' : '#16A34A'
+                      }}>
+                        {info.riskLevel || getRiskLevel(cases)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#64748B', paddingBottom: '3px' }}>Available Beds</td>
+                      <td style={{ fontWeight: 600, color: (info.availableBeds ?? 0) < 10 ? '#DC2626' : '#16A34A', textAlign: 'right' }}>
+                        {info.availableBeds ?? '—'}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#64748B' }}>ICU Available</td>
+                      <td style={{ fontWeight: 600, color: (info.icuAvailable ?? 0) < 3 ? '#DC2626' : '#2563EB', textAlign: 'right' }}>
+                        {info.icuAvailable ?? '—'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
         })}
