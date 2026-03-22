@@ -312,7 +312,7 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
   if (!ward) return null
 
   const wardAlerts = alerts.filter((a) => a.wardName === ward.wardName && a.isActive)
-  const hai = ward.accessibilityIndex ?? 0
+  const hai = calcHAI(ward)
   const haiColor = hai > 70 ? '#16A34A' : hai >= 40 ? '#D97706' : '#DC2626'
   const haiLabel = hai > 70 ? 'Good' : hai >= 40 ? 'Moderate' : 'Critical'
   const bedOccupancy = ward.totalBeds
