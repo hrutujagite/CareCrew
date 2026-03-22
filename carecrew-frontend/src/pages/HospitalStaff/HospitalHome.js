@@ -164,14 +164,13 @@ const HospitalHome = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-     <div className="min-h-screen bg-slate-50 relative z-0">
+     <div className="bg-slate-50 relative z-0">
       {/* Decorative Premium Background */}
       <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary-200/30 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <Navbar />
 
-      <div className="flex w-full" style={{ minHeight: 'calc(100vh - 56px)' }}>
-
+      <div className="flex w-full" style={{ height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
         {/* ╔═══════════════════════════════════╗ */}
         {/* ║          LEFT SIDEBAR             ║ */}
         {/* ╚═══════════════════════════════════╝ */}
@@ -230,7 +229,7 @@ const HospitalHome = () => {
         {/* ╔═══════════════════════════════════╗ */}
         {/* ║         MAIN CONTENT AREA         ║ */}
         {/* ╚═══════════════════════════════════╝ */}
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 overflow-y-auto">
 
           {/* Section header */}
           <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between border-b border-gray-200 pb-4 gap-4">
