@@ -9,7 +9,6 @@ import Navbar from '../../components/shared/Navbar'
 import Card, { StatCard } from '../../components/shared/Card'
 import { InlineLoader } from '../../components/shared/Loader'
 import { useAuth } from '../../context/AuthContext'
-import { useLanguage } from '../../context/LanguageContext'
 import Heatmap from './Heatmap'
 import ForecastGraph from './ForecastGraph'
 
@@ -531,8 +530,6 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { token } = useAuth()
-  const { t } = useLanguage()
-
   const [wards, setWards] = useState([])
   const [alerts, setAlerts] = useState([])
   const [charts, setCharts] = useState({ topDiseases: [], dailyCases: [] })

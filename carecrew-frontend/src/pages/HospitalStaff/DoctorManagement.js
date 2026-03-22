@@ -38,12 +38,7 @@ const DoctorManagement = () => {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
-
-  useEffect(() => {
-    fetchDoctors()
-  }, [fetchDoctors])
-
-  const fetchDoctors = useCallback(async () => {
+const fetchDoctors = useCallback(async () => {
     setLoading(true)
     try {
       const res = await axios.get(
@@ -59,7 +54,11 @@ const DoctorManagement = () => {
     }
   }, [token, user])
 
-  const handleChange = (e) => {
+  useEffect(() => {
+    fetchDoctors()
+  }, [fetchDoctors])
+
+    const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
