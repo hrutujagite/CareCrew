@@ -18,7 +18,7 @@ router.get('/public', async (req, res) => {
 
     // Active cases today
     const todayReports = await DiseaseReport.find({
-      reportDate: { $gte: today, $lt: tomorrow }
+      createdAt: { $gte: today, $lt: tomorrow }
     });
     const activeCasesToday = todayReports.reduce(
       (sum, r) => sum + r.newConfirmed, 0
@@ -80,7 +80,7 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
           // Today's cases for this ward
           const todayReports = await DiseaseReport.find({
             wardName: ward.wardName,
-            reportDate: { $gte: today, $lt: tomorrow }
+            createdAt: { $gte: today, $lt: tomorrow }
           });
           const todayCases = todayReports.reduce(
             (sum, r) => sum + r.newConfirmed, 0
@@ -220,7 +220,7 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
       nextDate.setDate(nextDate.getDate() + 1);
 
       const reports = await DiseaseReport.find({
-        reportDate: { $gte: date, $lt: nextDate }
+        createdAt: { $gte: date, $lt: nextDate }
       });
 
       // One object per day with each disease as its own key
@@ -236,7 +236,7 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekReports = await DiseaseReport.find({
-      reportDate: { $gte: weekAgo }
+      createdAt: { $gte: weekAgo }
     });
 
     const diseaseTotals = {};
@@ -272,7 +272,7 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
     // Today's disease reports for this hospital
     const todayReports = await DiseaseReport.find({
       hospitalName: req.user.hospitalName,
-      reportDate: { $gte: today, $lt: tomorrow }
+      createdAt: { $gte: today, $lt: tomorrow }
     });
     const todayCases = todayReports.reduce((sum, r) => sum + r.newConfirmed, 0);
 
