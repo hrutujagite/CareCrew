@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import Navbar from '../../components/shared/Navbar'
 import { useAuth } from '../../context/AuthContext'
 
 const API = 'https://carecrew-1.onrender.com/api/healthcamps'
@@ -306,7 +305,6 @@ const HealthCampsDashboard = () => {
         @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
         @keyframes spin { to { transform: rotate(360deg) } }
       `}</style>
-      <Navbar />
       <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
 
         {/* Header */}
