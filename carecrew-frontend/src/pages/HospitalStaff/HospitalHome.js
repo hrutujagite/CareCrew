@@ -164,17 +164,17 @@ const HospitalHome = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-     <div className="bg-slate-50 relative z-0">
+     <div className="h-screen bg-slate-50 relative z-0 overflow-hidden flex flex-col">
       {/* Decorative Premium Background */}
       <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary-200/30 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <Navbar />
 
-      <div className="flex w-full" style={{ height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+      <div className="flex w-full flex-1 overflow-hidden">
         {/* ╔═══════════════════════════════════╗ */}
         {/* ║          LEFT SIDEBAR             ║ */}
         {/* ╚═══════════════════════════════════╝ */}
-        <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} glass-panel border-r border-white/50 flex-shrink-0 sticky top-14 flex flex-col transition-all duration-300 z-20`} style={{ height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+        <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} glass-panel border-r border-white/50 flex-shrink-0 flex flex-col transition-all duration-300 z-20 overflow-y-auto`}>
           {/* Small fixed header for sidebar */}
           <div className="px-3 py-5 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
             {isSidebarOpen && (
