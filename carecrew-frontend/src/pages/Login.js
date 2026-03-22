@@ -63,7 +63,7 @@ const Login = () => {
                        hover:text-primary-600 transition-colors tracking-wide w-fit
                        hover:-translate-x-1 duration-300'
           >
-            ← Back to Portal
+            ← Back to Homepage
           </a>
         </div>
 

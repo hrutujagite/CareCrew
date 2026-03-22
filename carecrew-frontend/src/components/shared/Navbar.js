@@ -119,7 +119,7 @@ const Navbar = ({ onMenuClick }) => {
 
         {/* Back to Homepage */}
         <a
-          href='http://localhost:3001'
+          href='https://carecrew-homepage.vercel.app'
           className='text-sm px-3 py-1 rounded-full border border-gray-200
                      text-gray-600 hover:bg-gray-50 hover:border-blue-300
                      hover:text-blue-600 transition-colors flex items-center
