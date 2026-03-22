@@ -7,7 +7,7 @@ import Button from '../../components/shared/Button'
 import Input from '../../components/shared/Input'
 import { InlineLoader } from '../../components/shared/Loader'
 
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
 const AppointmentBooking = () => {
   const { user, token } = useAuth()

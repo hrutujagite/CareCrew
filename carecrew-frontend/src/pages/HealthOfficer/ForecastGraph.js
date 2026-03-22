@@ -31,7 +31,7 @@ const ForecastGraph = () => {
       setLoading(true)
       setError('')
       const res = await axios.get(
-        `http://localhost:5000/api/forecast/${encodeURIComponent(selectedWard)}`,
+        `https://carecrew-1.onrender.com/api/forecast/${encodeURIComponent(selectedWard)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
 

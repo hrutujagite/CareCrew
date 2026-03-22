@@ -35,7 +35,7 @@ const CapacityForm = () => {
     const fetchPrevious = async () => {
       try {
         const res = await axios.get(
-          'http://localhost:5000/api/capacity/history',
+          'https://carecrew-1.onrender.com/api/capacity/history',
           { headers: { Authorization: `Bearer ${token}` } }
         )
         const history = res.data?.history || []
@@ -113,7 +113,7 @@ const CapacityForm = () => {
 
     try {
       await axios.post(
-        'http://localhost:5000/api/capacity/submit',
+        'https://carecrew-1.onrender.com/api/capacity/submit',
         { ...form, ward: user?.ward, hospitalName: user?.hospitalName },
         { headers: { Authorization: `Bearer ${token}` } }
       )

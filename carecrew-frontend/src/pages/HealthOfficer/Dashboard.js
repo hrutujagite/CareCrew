@@ -550,9 +550,9 @@ export default function Dashboard() {
     try {
       setError(null)
       const [wardsRes, alertsRes, chartsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/dashboard/wards', { headers: authHeaders }),
-        axios.get('http://localhost:5000/api/dashboard/alerts', { headers: authHeaders }),
-        axios.get('http://localhost:5000/api/dashboard/charts', { headers: authHeaders }),
+        axios.get('https://carecrew-1.onrender.com/api/dashboard/wards', { headers: authHeaders }),
+        axios.get('https://carecrew-1.onrender.com/api/dashboard/alerts', { headers: authHeaders }),
+        axios.get('https://carecrew-1.onrender.com/api/dashboard/charts', { headers: authHeaders }),
       ])
       setWards(toArray(wardsRes.data, 'wards'))
       setAlerts(toArray(alertsRes.data, 'alerts'))

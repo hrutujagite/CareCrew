@@ -6,7 +6,7 @@ import Card from '../../components/shared/Card'
 import Button from '../../components/shared/Button'
 import { InlineLoader } from '../../components/shared/Loader'
 
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
 // ── Emergency Hospital Finder ─────────────────────────────────────────────────
 const EmergencyFinder = () => {

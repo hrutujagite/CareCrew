@@ -7,8 +7,7 @@ import Button from '../../components/shared/Button'
 import Badge from '../../components/shared/Badge'
 import { InlineLoader } from '../../components/shared/Loader'
 
-const BASE_URL = 'http://localhost:5000/api'
-
+const BASE_URL = 'https://carecrew-1.onrender.com/api'
 // ── Star Rating Component ─────────────────────────────────────────────────────
 const StarRating = ({ appointmentId, existingRating, onRated }) => {
   const { token } = useAuth()

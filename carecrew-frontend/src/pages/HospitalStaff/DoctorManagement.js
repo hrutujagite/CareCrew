@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import axios from 'axios'
 
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
 const SPECIALTIES = [
   'General', 'Cardiology', 'Paediatrics', 'Orthopaedics',

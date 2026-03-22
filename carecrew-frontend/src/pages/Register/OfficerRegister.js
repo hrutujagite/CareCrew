@@ -37,7 +37,7 @@ const OfficerRegister = () => {
     setLoading(true)
     try {
       const res = await fetch(
-        'http://localhost:5000/api/auth/register/officer',
+        'https://carecrew-1.onrender.com/api/auth/register/officer',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

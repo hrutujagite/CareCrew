@@ -74,7 +74,7 @@ const Heatmap = () => {
   const fetchWardData = async () => {
     try {
       const res = await axios.get(
-        'http://localhost:5000/api/dashboard/wards',
+        'https://carecrew-1.onrender.com/api/dashboard/wards',
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const dataMap = {}

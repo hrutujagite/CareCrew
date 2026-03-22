@@ -144,7 +144,7 @@ const HospitalRegister = () => {
     setError('')
     try {
       const res = await fetch(
-        'http://localhost:5000/api/auth/register/hospital',
+        'https://carecrew-1.onrender.com/api/auth/register/hospital',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

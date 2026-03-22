@@ -117,7 +117,7 @@ const DiseaseForm = () => {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/disease/submit',
+        'https://carecrew-1.onrender.com/api/disease/submit',
         {
           wardName: user?.ward,
           hospitalName: user?.hospitalName,

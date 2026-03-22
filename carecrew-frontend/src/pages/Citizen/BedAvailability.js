@@ -3,7 +3,7 @@ import CitizenLayout from './CitizenLayout'
 import Card from '../../components/shared/Card'
 import { InlineLoader } from '../../components/shared/Loader'
 
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
 const BedAvailability = () => {
   const [hospitals, setHospitals] = useState([])

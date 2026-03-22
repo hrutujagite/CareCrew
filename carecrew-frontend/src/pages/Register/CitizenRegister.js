@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import axios from 'axios'
 import { useAuth } from '../../context/AuthContext'
 
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
 const CitizenRegister = () => {
   const [form, setForm] = useState({

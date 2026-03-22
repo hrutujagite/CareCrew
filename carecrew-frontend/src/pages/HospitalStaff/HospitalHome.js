@@ -62,10 +62,10 @@ const HospitalHome = () => {
       setLoading(true)
       const headers = { Authorization: `Bearer ${token}` }
       const [dashRes, diseaseRes, apptRes, campsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/dashboard/hospital', { headers }),
-        axios.get('http://localhost:5000/api/disease/history', { headers }),
-        axios.get('http://localhost:5000/api/appointments/hospital', { headers }).catch(() => ({ data: { appointments: [] } })),
-        axios.get('http://localhost:5000/api/healthcamps/all', { headers }).catch(() => ({ data: { camps: [] } })),
+        axios.get('https://carecrew-1.onrender.com/api/dashboard/hospital', { headers }),
+        axios.get('https://carecrew-1.onrender.com/api/disease/history', { headers }),
+        axios.get('https://carecrew-1.onrender.com/api/appointments/hospital', { headers }).catch(() => ({ data: { appointments: [] } })),
+        axios.get('https://carecrew-1.onrender.com/api/healthcamps/all', { headers }).catch(() => ({ data: { camps: [] } })),
       ])
       if (dashRes.data?.latestCapacity) setLatestCapacity(dashRes.data.latestCapacity)
       if (diseaseRes.data?.reports) {
@@ -106,7 +106,7 @@ const HospitalHome = () => {
   const handleConfirmAppointment = async (apptId) => {
     try {
       const headers = { Authorization: `Bearer ${token}` }
-      await axios.put(`http://localhost:5000/api/appointments/${apptId}/confirm`, {}, { headers })
+      await axios.put(`https://carecrew-1.onrender.com/api/appointments/${apptId}/confirm`, {}, { headers })
       setAppointments(prev => prev.map(a => a._id === apptId ? { ...a, status: 'Confirmed' } : a))
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to confirm appointment')
@@ -117,7 +117,7 @@ const HospitalHome = () => {
     try {
       if (!window.confirm('Are you sure you want to cancel this appointment?')) return
       const headers = { Authorization: `Bearer ${token}` }
-      await axios.put(`http://localhost:5000/api/appointments/${apptId}/cancel`, {}, { headers })
+      await axios.put(`https://carecrew-1.onrender.com/api/appointments/${apptId}/cancel`, {}, { headers })
       setAppointments(prev => prev.map(a => a._id === apptId ? { ...a, status: 'Cancelled' } : a))
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to cancel appointment')

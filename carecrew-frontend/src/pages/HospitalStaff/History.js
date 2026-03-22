@@ -31,8 +31,8 @@ const History = () => {
       const headers = { Authorization: `Bearer ${token}` }
 
       const [diseaseRes, capacityRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/disease/history', { headers }),
-        axios.get('http://localhost:5000/api/capacity/history', { headers })
+        axios.get('https://carecrew-1.onrender.com/api/disease/history', { headers }),
+        axios.get('https://carecrew-1.onrender.com/api/capacity/history', { headers })
       ])
 
       if (diseaseRes.data?.reports) setDiseaseHistory(diseaseRes.data.reports)
