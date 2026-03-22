@@ -25,7 +25,7 @@ RULES:
 - Be warm and helpful — citizens may be stressed or unwell`;
 
 // @route  POST /api/chat
-// @desc   Proxy chat messages to Gemini API with live hospital context
+// @desc   Proxy chat messages to Groq API with live hospital context
 // @access Public
 router.post('/', async (req, res) => {
   try {
@@ -88,39 +88,35 @@ router.post('/', async (req, res) => {
       console.error('ChatBot DB context error:', dbErr.message);
     }
 
-    // Build Gemini conversation history
-    // Gemini uses 'user' and 'model' roles (not 'assistant')
-    // First message must be from user — skip leading assistant messages
-    const geminiMessages = messages
-      .map(m => ({
-        role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }]
-      }))
-      // Gemini requires conversation to start with user turn
-      .filter((m, i) => !(i === 0 && m.role === 'model'))
+    // Build messages for Groq (OpenAI-compatible format)
+    const groqMessages = [
+      { role: 'system', content: SYSTEM_PROMPT + hospitalContext },
+      ...messages
+        .filter((m, i) => !(i === 0 && m.role === 'assistant'))
+        .map(m => ({ role: m.role, content: m.content }))
+    ]
 
-    // Call Gemini API
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    // Call Groq API
+    const groqRes = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        },
         body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT + hospitalContext }]
-          },
-          contents: geminiMessages,
-          generationConfig: {
-            maxOutputTokens: 1000,
-            temperature: 0.7
-          }
+          model: 'llama-3.3-70b-versatile',
+          messages: groqMessages,
+          max_tokens: 1000,
+          temperature: 0.7
         })
       }
     );
 
-    if (!geminiRes.ok) {
-      const errData = await geminiRes.json();
-      console.error('Gemini API error:', errData);
+    if (!groqRes.ok) {
+      const errData = await groqRes.json();
+      console.error('Groq API error:', errData);
       return res.status(500).json({
         success: false,
         message: 'AI service error',
@@ -128,8 +124,8 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const data = await geminiRes.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ||
+    const data = await groqRes.json();
+    const reply = data.choices?.[0]?.message?.content ||
       'Sorry, I could not generate a response.';
 
     res.json({ success: true, reply });
