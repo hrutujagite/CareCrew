@@ -21,7 +21,6 @@ const ForecastGraph = () => {
   const [forecastData, setForecastData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
   const fetchForecast = useCallback(async () => {
     try {
       setLoading(true)

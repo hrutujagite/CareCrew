@@ -21,7 +21,7 @@ router.get('/:ward', protect, async (req, res) => {
 
       const reports = await DiseaseReport.find({
         wardName: ward,
-        reportDate: { $gte: date, $lt: nextDate }
+        createdAt: { $gte: date, $lt: nextDate }
       })
       // ── ONLY CHANGE: r.caseCount → r.newConfirmed (matches seed field name)
       const totalCases = reports.reduce((sum, r) => sum + r.newConfirmed, 0);
