@@ -11,7 +11,7 @@ import { InlineLoader } from '../../components/shared/Loader'
 import { useAuth } from '../../context/AuthContext'
 
 import Heatmap from '../HealthOfficer/Heatmap'
-import ForecastGraph from './ForecastGraph'
+import ForecastGraph from '../HealthOfficer/ForecastGraph'
 
 // ─── Print styles ─────────────────────────────────────────────────────────────
 const printStyles = `
