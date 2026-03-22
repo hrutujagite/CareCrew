@@ -15,6 +15,7 @@ import CitizenHome from './pages/Citizen/Home'
 import OfficerDashboard from './pages/HealthOfficer/Dashboard'
 import HospitalRegister from './pages/Register/HospitalRegister'
 import OfficerRegister from './pages/Register/OfficerRegister'
+import HealthCampsDashboard from './pages/HospitalStaff/HealthCampsDashboard'
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -33,6 +34,7 @@ const HospitalDashboard = () => (
     <Route path='capacity-form' element={<CapacityForm />} />
     <Route path='history' element={<History />} />
     <Route path='create-camp' element={<HealthCampForm />} />
+    <Route path='health-camps' element={<HealthCampsDashboard />} />
     <Route path='*' element={<Navigate to='dashboard' replace />} />
   </Routes>
 )
