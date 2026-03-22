@@ -1,11 +1,9 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
 import Navbar from '../../components/shared/Navbar'
 import ChatBot from './ChatBot'
 
 const CitizenLayout = ({ children }) => {
-  const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 

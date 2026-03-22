@@ -10,7 +10,7 @@ import { InlineLoader } from '../../components/shared/Loader'
 const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
 const AppointmentBooking = () => {
-  const { user, token } = useAuth()
+  const { token } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 

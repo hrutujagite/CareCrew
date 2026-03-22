@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import axios from 'axios'
 import Navbar from '../../components/shared/Navbar'
@@ -6,7 +6,6 @@ import Card, { StatCard } from '../../components/shared/Card'
 import Button from '../../components/shared/Button'
 import Loader from '../../components/shared/Loader'
 import Alert from '../../components/shared/Alert'
-import Badge from '../../components/shared/Badge'
 import AnalyticsChart from './AnalyticsChart'
 import DiseaseAnalytics from './DiseaseAnalytics'
 import InfrastructureDashboard from './InfrastructureDashboard'
@@ -55,9 +54,7 @@ const HospitalHome = () => {
   const [error, setError] = useState('')
   const [timeframe, setTimeframe] = useState('month')
 
-  useEffect(() => { fetchData() }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       const headers = { Authorization: `Bearer ${token}` }
@@ -101,7 +98,9 @@ const HospitalHome = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   const handleConfirmAppointment = async (apptId) => {
     try {
@@ -225,7 +224,6 @@ const HospitalHome = () => {
               </button>
             </div>
           </div>
-
 
         </aside>
 

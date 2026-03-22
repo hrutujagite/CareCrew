@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
@@ -22,11 +22,7 @@ const ForecastGraph = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchForecast()
-  }, [selectedWard])
-
-  const fetchForecast = async () => {
+  const fetchForecast = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
@@ -59,7 +55,11 @@ const ForecastGraph = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, selectedWard])
+
+  useEffect(() => {
+    fetchForecast()
+  }, [fetchForecast])
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr)

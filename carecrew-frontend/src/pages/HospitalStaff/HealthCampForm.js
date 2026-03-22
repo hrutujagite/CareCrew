@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import Navbar from '../../components/shared/Navbar'
-import Card from '../../components/shared/Card'
 import Button from '../../components/shared/Button'
 import Input from '../../components/shared/Input'
 import Alert from '../../components/shared/Alert'
 import { useAuth } from '../../context/AuthContext'
-import { useLanguage } from '../../context/LanguageContext'
 
 const CAMP_TYPES = ['Free Checkup', 'Vaccination', 'Blood Donation', 'Eye Checkup', 'Dental Checkup', 'Awareness Drive', 'Other']
 
@@ -28,8 +26,7 @@ const to24hMinutes = (h, m, ampm) => {
 }
 
 const HealthCampForm = () => {
-  const { token, user } = useAuth()
-  const { t } = useLanguage()
+  const { token } = useAuth()
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(false)

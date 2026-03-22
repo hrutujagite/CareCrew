@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import axios from 'axios'
 
@@ -41,9 +41,9 @@ const DoctorManagement = () => {
 
   useEffect(() => {
     fetchDoctors()
-  }, [])
+  }, [fetchDoctors])
 
-  const fetchDoctors = async () => {
+  const fetchDoctors = useCallback(async () => {
     setLoading(true)
     try {
       const res = await axios.get(
@@ -57,7 +57,7 @@ const DoctorManagement = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, user])
 
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))

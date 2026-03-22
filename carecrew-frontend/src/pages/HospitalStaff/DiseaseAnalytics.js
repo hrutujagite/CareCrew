@@ -458,7 +458,6 @@ const DiseaseAnalytics = ({ diseaseHistory, latestCapacity }) => {
   }
 
   const diseaseData = buildDiseaseMap(diseaseHistory)
-  const totalBeds = latestCapacity?.totalBeds || 0
 
   const totalConfirmed = diseaseData.reduce((s, d) => s + d.confirmed, 0)
   const totalRecovered = diseaseData.reduce((s, d) => s + d.recovered, 0)

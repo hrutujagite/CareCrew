@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import Navbar from '../../components/shared/Navbar'
@@ -21,11 +21,7 @@ const History = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       const headers = { Authorization: `Bearer ${token}` }
@@ -42,7 +38,11 @@ const History = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   // Format date helper
   const formatDate = (dateStr) => {

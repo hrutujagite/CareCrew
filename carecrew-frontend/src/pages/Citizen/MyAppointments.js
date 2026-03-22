@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import CitizenLayout from './CitizenLayout'
@@ -82,7 +82,7 @@ const MyAppointments = () => {
   const [cancelling, setCancelling] = useState(null)
   const [error, setError] = useState('')
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const res = await fetch(`${BASE_URL}/appointments/my`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -94,11 +94,11 @@ const MyAppointments = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
 
   useEffect(() => {
     fetchAppointments()
-  }, [])
+  }, [fetchAppointments])
 
   const handleCancel = async (id) => {
     if (!window.confirm('Are you sure you want to cancel this appointment?'))

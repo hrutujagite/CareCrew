@@ -1,22 +1,10 @@
-import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip, useMap } from 'react-leaflet'
+import React, { useEffect, useState, useCallback } from 'react'
+import { MapContainer, TileLayer, CircleMarker, Popup, Tooltip } from 'react-leaflet'
 import axios from 'axios'
 import { useAuth } from '../../context/AuthContext'
 import { InlineLoader } from '../../components/shared/Loader'
 import 'leaflet/dist/leaflet.css'
 
-const BoundsEnforcer = () => {
-  const map = useMap()   // ← only works INSIDE MapContainer
-  useEffect(() => {
-    map.setMaxBounds(SOLAPUR_BOUNDS)
-    map.setMinZoom(12)
-    map.options.maxBoundsViscosity = 1.0
-    map.on('drag', () => {
-      map.panInsideBounds(SOLAPUR_BOUNDS, { animate: false })
-    })
-  }, [map])
-  return null
-}
 // Real Solapur SMC ward locations with accurate coordinates
 const SOLAPUR_WARDS = [
   { wardName: 'Bhavani Peth',   zone: 'BP01',  lat: 17.6868, lng: 75.9064 },
@@ -65,13 +53,7 @@ const Heatmap = () => {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
 
-  useEffect(() => {
-    fetchWardData()
-    const interval = setInterval(fetchWardData, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const fetchWardData = async () => {
+  const fetchWardData = useCallback(async () => {
     try {
       const res = await axios.get(
         'https://carecrew-1.onrender.com/api/dashboard/wards',
@@ -89,7 +71,13 @@ const Heatmap = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    fetchWardData()
+    const interval = setInterval(fetchWardData, 30000)
+    return () => clearInterval(interval)
+  }, [fetchWardData])
 
   const getWardCases = (wardName) => {
     return wardData[wardName]?.activeCases || 0
@@ -188,10 +176,6 @@ const Heatmap = () => {
                         <tr>
                           <td style={{ color: '#64748B', paddingBottom: '3px' }}>Cases Today</td>
                           <td style={{ fontWeight: 600, color: '#2563EB', textAlign: 'right' }}>{info.todayCases ?? 0}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ color: '#64748B', paddingBottom: '3px' }}>Top Disease</td>
-                          <td style={{ fontWeight: 600, color: '#1E293B', textAlign: 'right' }}>{info.topDisease || '—'}</td>
                         </tr>
                         <tr>
                           <td style={{ color: '#64748B', paddingBottom: '3px' }}>Risk Level</td>
