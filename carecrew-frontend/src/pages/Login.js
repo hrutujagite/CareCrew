@@ -140,7 +140,7 @@ const Login = () => {
           <p className='text-sm font-medium text-slate-500'>
             Don't have an account?{' '}
             <a
-              href='https://carecrew-homepage.vercel.app'
+              href='https://carecrew-homepage.vercel.app/#portals'
               className='text-primary-600 font-bold hover:text-brand transition-colors hover:underline underline-offset-4'
             >
               Register →
