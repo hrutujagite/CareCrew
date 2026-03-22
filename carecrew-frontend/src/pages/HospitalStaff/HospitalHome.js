@@ -278,7 +278,7 @@ const HospitalHome = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button onClick={() => navigate('/hospital/disease-form')} className="flex items-center justify-center gap-2 p-5 bg-gradient-to-r from-primary-600 to-brand text-white rounded-2xl shadow-soft hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all group">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
-                  <span className="font-bold tracking-wide">Submit Disease Report</span>
+                  <span className="font-bold tracking-wide">Disease Report</span>
                 </button>
                 <button onClick={() => navigate('/hospital/capacity-form')} className="flex items-center justify-center gap-2 p-5 glass-card border border-primary-200 text-primary-700 rounded-2xl shadow-soft hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all group">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
