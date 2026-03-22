@@ -30,9 +30,9 @@ const printStyles = `
 
 // ─── Disease colours ──────────────────────────────────────────────────────────
 const DISEASE_COLORS = {
-  Dengue:  '#EF4444',
+  Dengue: '#EF4444',
   Malaria: '#F59E0B',
-  TB:      '#8B5CF6',
+  TB: '#8B5CF6',
   Typhoid: '#10B981',
   Cholera: '#3B82F6',
 }
@@ -53,9 +53,9 @@ const getCases = (ward) => ward.todayCases ?? ward.activeCases ?? 0
 // ─── HAI Score ────────────────────────────────────────────────────────────────
 const calcHAI = (ward) => {
   const availableBeds = ward.availableBeds || 0
-  const population    = ward.population || 1
-  const hospitals     = ward.hospitals || 0
-  const activeCases   = ward.activeCases || ward.todayCases || 0
+  const population = ward.population || 1
+  const hospitals = ward.hospitals || 0
+  const activeCases = ward.activeCases || ward.todayCases || 0
   const score =
     (availableBeds / population) * 100000
     + hospitals * 5
@@ -75,16 +75,16 @@ const pillBase = {
   padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap',
 }
 const pillStyles = {
-  green:  { ...pillBase, background: '#D1FAE5', color: '#065F46' },
+  green: { ...pillBase, background: '#D1FAE5', color: '#065F46' },
   yellow: { ...pillBase, background: '#FEF3C7', color: '#92400E' },
-  red:    { ...pillBase, background: '#FEE2E2', color: '#991B1B' },
-  gray:   { ...pillBase, background: '#F3F4F6', color: '#6B7280' },
+  red: { ...pillBase, background: '#FEE2E2', color: '#991B1B' },
+  gray: { ...pillBase, background: '#F3F4F6', color: '#6B7280' },
 }
 
 const RiskPill = ({ value }) => {
   if (!value) return <span style={pillStyles.gray}>—</span>
   const v = value.toLowerCase()
-  if (v === 'green')  return <span style={pillStyles.green}>{value}</span>
+  if (v === 'green') return <span style={pillStyles.green}>{value}</span>
   if (v === 'yellow') return <span style={pillStyles.yellow}>{value}</span>
   return <span style={pillStyles.red}>{value}</span>
 }
@@ -97,9 +97,9 @@ const MedicinePill = ({ ward }) => {
     if (pct >= 25) return <span style={pillStyles.yellow}>Barely Sufficient</span>
     return <span style={pillStyles.red}>Insufficient</span>
   }
-  if (str === 'full')     return <span style={pillStyles.green}>Sufficient</span>
-  if (str === 'medium')   return <span style={pillStyles.yellow}>Barely Sufficient</span>
-  if (str === 'low')      return <span style={pillStyles.yellow}>Barely Sufficient</span>
+  if (str === 'full') return <span style={pillStyles.green}>Sufficient</span>
+  if (str === 'medium') return <span style={pillStyles.yellow}>Barely Sufficient</span>
+  if (str === 'low') return <span style={pillStyles.yellow}>Barely Sufficient</span>
   if (str === 'critical') return <span style={pillStyles.red}>Insufficient</span>
   return <span style={pillStyles.gray}>—</span>
 }
@@ -112,7 +112,7 @@ const exportCSV = (wards) => {
     const med = typeof pct === 'number'
       ? pct >= 60 ? 'Sufficient' : pct >= 25 ? 'Barely Sufficient' : 'Insufficient' : '—'
     return [w.wardName, w.wardCode || '', getCases(w), w.topDisease || '',
-      w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med]
+    w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med]
   })
   const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -137,8 +137,8 @@ const exportAlertZonesCSV = (wards, alerts) => {
     const med = typeof pct === 'number'
       ? pct >= 60 ? 'Sufficient' : pct >= 25 ? 'Barely Sufficient' : 'Insufficient' : '—'
     return [w.wardName, w.wardCode || '', getCases(w), w.topDisease || '',
-      w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med,
-      matched?.alertType || '—', matched?.severity || '—']
+    w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med,
+    matched?.alertType || '—', matched?.severity || '—']
   })
   const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -150,11 +150,11 @@ const exportAlertZonesCSV = (wards, alerts) => {
 
 // ─── Ward Table ───────────────────────────────────────────────────────────────
 const thStyle = {
-  padding: '10px 14px', textAlign: 'left', fontSize: '12px',
-  fontWeight: 600, color: '#64748B', borderBottom: '1px solid #E2E8F0',
-  whiteSpace: 'nowrap', background: '#F8FAFC',
+  padding: '12px 16px', textAlign: 'left', fontSize: '12px',
+  fontWeight: 700, color: '#475569', borderBottom: '1px solid rgba(255,255,255,0.4)',
+  whiteSpace: 'nowrap', background: 'rgba(255, 255, 255, 0.5)', textTransform: 'uppercase', letterSpacing: '0.05em'
 }
-const td = { padding: '11px 14px', color: '#1E293B', verticalAlign: 'middle' }
+const td = { padding: '14px 16px', color: '#1E293B', verticalAlign: 'middle', borderBottom: '1px solid rgba(0,0,0,0.03)' }
 
 // ✅ WardTable defined OUTSIDE Dashboard to prevent DataCloneError
 const WardTable = ({ wards, onReport }) => {
@@ -169,11 +169,11 @@ const WardTable = ({ wards, onReport }) => {
   const sorted = [...wards].sort((a, b) => {
     let aVal, bVal
     switch (sortKey) {
-      case 'wardName':      aVal = a.wardName || '';               bVal = b.wardName || '';               break
-      case 'todayCases':    aVal = getCases(a);                    bVal = getCases(b);                    break
-      case 'topDisease':    aVal = a.topDisease || '';             bVal = b.topDisease || '';             break
-      case 'availableBeds': aVal = a.availableBeds ?? 0;           bVal = b.availableBeds ?? 0;           break
-      case 'icuAvailable':  aVal = a.icuAvailable ?? 0;            bVal = b.icuAvailable ?? 0;            break
+      case 'wardName': aVal = a.wardName || ''; bVal = b.wardName || ''; break
+      case 'todayCases': aVal = getCases(a); bVal = getCases(b); break
+      case 'topDisease': aVal = a.topDisease || ''; bVal = b.topDisease || ''; break
+      case 'availableBeds': aVal = a.availableBeds ?? 0; bVal = b.availableBeds ?? 0; break
+      case 'icuAvailable': aVal = a.icuAvailable ?? 0; bVal = b.icuAvailable ?? 0; break
       case 'riskLevel': {
         const order = { red: 0, yellow: 1, green: 2 }
         aVal = order[(a.riskLevel || '').toLowerCase()] ?? 3
@@ -210,13 +210,13 @@ const WardTable = ({ wards, onReport }) => {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
         <thead>
           <tr>
-            <SortableTh col='wardName'      label='Ward Name' />
+            <SortableTh col='wardName' label='Ward Name' />
             <th style={thStyle}>Zone</th>
-            <SortableTh col='todayCases'    label='Cases Today' />
-            <SortableTh col='topDisease'    label='Top Disease' />
+            <SortableTh col='todayCases' label='Cases Today' />
+            <SortableTh col='topDisease' label='Top Disease' />
             <SortableTh col='availableBeds' label='Beds Available' />
-            <SortableTh col='icuAvailable'  label='ICU Available' />
-            <SortableTh col='riskLevel'     label='Risk Level' />
+            <SortableTh col='icuAvailable' label='ICU Available' />
+            <SortableTh col='riskLevel' label='Risk Level' />
             <SortableTh col='medicineStock' label='Medicine Stock' />
             <th style={thStyle}>Last Updated</th>
             <th style={thStyle}>Report</th>
@@ -226,9 +226,9 @@ const WardTable = ({ wards, onReport }) => {
           {sorted.map((ward, i) => (
             <tr
               key={ward.wardName || i}
-              style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.1s' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              style={{ transition: 'all 0.2s', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
             >
               <td style={td}><strong>{ward.wardName}</strong></td>
               <td style={td}>{ward.wardCode || '—'}</td>
@@ -269,13 +269,13 @@ const HAICard = ({ ward }) => {
 
   return (
     <div
+      className="glass-card border-white/50"
       style={{
-        background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px',
-        padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'box-shadow 0.2s',
+        padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px',
+        borderRadius: '16px', transition: 'all 0.3s ease',
       }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)'}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 40px -10px rgba(0,0,0,0.08)' }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '' }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <p style={{ fontSize: '12px', fontWeight: 600, color: '#1E293B', lineHeight: 1.3, maxWidth: '110px' }}>
@@ -485,12 +485,12 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
                 </div>
                 <div class="section">
                   <div class="section-title">🛏️ Capacity Status</div>
-                  <div class="bar-label"><span>Beds Available</span><span>${ward.availableBeds||0} / ${ward.totalBeds||0}</span></div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${ward.totalBeds ? Math.round(((ward.availableBeds||0)/(ward.totalBeds||1))*100) : 0}%;background:${(ward.availableBeds||0) < 10 ? '#DC2626' : '#16A34A'}"></div></div>
-                  <div class="bar-label"><span>ICU Available</span><span>${ward.icuAvailable||0} / ${ward.icuTotal||0}</span></div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${ward.icuTotal ? Math.round(((ward.icuAvailable||0)/(ward.icuTotal||1))*100) : 0}%;background:${(ward.icuAvailable||0) < 3 ? '#DC2626' : '#2563EB'}"></div></div>
-                  <div class="bar-label"><span>Medicine Stock</span><span>${ward.medicineStockPercentage||0}%</span></div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${ward.medicineStockPercentage||0}%;background:${(ward.medicineStockPercentage||0) >= 60 ? '#16A34A' : (ward.medicineStockPercentage||0) >= 25 ? '#D97706' : '#DC2626'}"></div></div>
+                  <div class="bar-label"><span>Beds Available</span><span>${ward.availableBeds || 0} / ${ward.totalBeds || 0}</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${ward.totalBeds ? Math.round(((ward.availableBeds || 0) / (ward.totalBeds || 1)) * 100) : 0}%;background:${(ward.availableBeds || 0) < 10 ? '#DC2626' : '#16A34A'}"></div></div>
+                  <div class="bar-label"><span>ICU Available</span><span>${ward.icuAvailable || 0} / ${ward.icuTotal || 0}</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${ward.icuTotal ? Math.round(((ward.icuAvailable || 0) / (ward.icuTotal || 1)) * 100) : 0}%;background:${(ward.icuAvailable || 0) < 3 ? '#DC2626' : '#2563EB'}"></div></div>
+                  <div class="bar-label"><span>Medicine Stock</span><span>${ward.medicineStockPercentage || 0}%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width:${ward.medicineStockPercentage || 0}%;background:${(ward.medicineStockPercentage || 0) >= 60 ? '#16A34A' : (ward.medicineStockPercentage || 0) >= 25 ? '#D97706' : '#DC2626'}"></div></div>
                 </div>
                 <div class="section">
                   <div class="section-title">📊 Key Metrics</div>
@@ -533,15 +533,15 @@ export default function Dashboard() {
   const { token } = useAuth()
   const { t } = useLanguage()
 
-  const [wards,          setWards]          = useState([])
-  const [alerts,         setAlerts]         = useState([])
-  const [charts,         setCharts]         = useState({ topDiseases: [], dailyCases: [] })
-  const [loading,        setLoading]        = useState(true)
-  const [error,          setError]          = useState(null)
-  const [dismissedIds,   setDismissedIds]   = useState(new Set())
-  const [countdown,      setCountdown]      = useState(30)
-  const [search,         setSearch]         = useState('')
-  const [selectedWard,   setSelectedWard]   = useState(null)
+  const [wards, setWards] = useState([])
+  const [alerts, setAlerts] = useState([])
+  const [charts, setCharts] = useState({ topDiseases: [], dailyCases: [] })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [dismissedIds, setDismissedIds] = useState(new Set())
+  const [countdown, setCountdown] = useState(30)
+  const [search, setSearch] = useState('')
+  const [selectedWard, setSelectedWard] = useState(null)
   const [activeDiseases, setActiveDiseases] = useState(new Set(DISEASES))
 
   const authHeaders = { Authorization: `Bearer ${token}` }
@@ -550,7 +550,7 @@ export default function Dashboard() {
     try {
       setError(null)
       const [wardsRes, alertsRes, chartsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/dashboard/wards',  { headers: authHeaders }),
+        axios.get('http://localhost:5000/api/dashboard/wards', { headers: authHeaders }),
         axios.get('http://localhost:5000/api/dashboard/alerts', { headers: authHeaders }),
         axios.get('http://localhost:5000/api/dashboard/charts', { headers: authHeaders }),
       ])
@@ -559,7 +559,7 @@ export default function Dashboard() {
       const cd = chartsRes.data || {}
       setCharts({
         topDiseases: toArray(cd.topDiseases, 'topDiseases'),
-        dailyCases:  toArray(cd.dailyCases,  'dailyCases'),
+        dailyCases: toArray(cd.dailyCases, 'dailyCases'),
       })
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.')
@@ -586,14 +586,14 @@ export default function Dashboard() {
   }
 
   // ── Derived stats ─────────────────────────────────────────────────────────
-  const totalCases         = wards.reduce((s, w) => s + getCases(w), 0)
-  const wardsOnAlert       = alerts.filter((a) => a.isActive).length
+  const totalCases = wards.reduce((s, w) => s + getCases(w), 0)
+  const wardsOnAlert = alerts.filter((a) => a.isActive).length
   const hospitalsReporting = [...new Set(wards.map((w) => w.hospitalName).filter(Boolean))].length
-  const alertZoneCount     = wards.filter(
+  const alertZoneCount = wards.filter(
     (w) => alerts.some((a) => a.isActive && a.wardName === w.wardName) ||
       ['red', 'yellow'].includes((w.riskLevel || '').toLowerCase())
   ).length
-  const activeAlerts  = alerts.filter((a) => a.isActive && !dismissedIds.has(a._id))
+  const activeAlerts = alerts.filter((a) => a.isActive && !dismissedIds.has(a._id))
   const filteredWards = wards.filter((w) =>
     w.wardName.toLowerCase().includes(search.toLowerCase())
   )
@@ -608,7 +608,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen bg-slate-50 relative overflow-hidden z-0'>
+      {/* Decorative Background Elements */}
+      <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-primary-200/30 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
+      <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <Navbar />
 
       <WardReportModal ward={selectedWard} alerts={alerts} onClose={() => setSelectedWard(null)} />
@@ -697,8 +700,8 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '4px' }}>
               {stats.map(({ icon, label, value, sub, valueColor, bg, border }) => (
                 <div key={label} style={{
-                  background: bg, border: `1px solid ${border}`, borderRadius: '12px',
-                  padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px',
+                  background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: `1px solid rgba(255,255,255,0.4)`, borderRadius: '16px',
+                  padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)'
                 }}>
                   <span style={{ fontSize: '26px', lineHeight: 1 }}>{icon}</span>
                   <div>
@@ -717,8 +720,9 @@ export default function Dashboard() {
         {/* Page Header */}
         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
           <div>
-            <h1 className='text-2xl font-bold text-gray-900'>Health Officer Dashboard</h1>
-            <p className='text-sm text-gray-500 mt-0.5'>
+            <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>Health Officer Dashboard</h1>
+            <p className='text-sm font-medium text-slate-500 flex items-center gap-2 mt-1.5'>
+              <span className='w-2 h-2 rounded-full bg-primary-500 animate-pulse'></span>
               Next refresh in &nbsp;
               <strong style={{ color: countdown <= 10 ? '#EF4444' : '#2563EB' }}>{countdown}s</strong>
               &nbsp;·&nbsp; Last updated: {new Date().toLocaleTimeString()}
@@ -726,11 +730,15 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button onClick={() => exportCSV(wards)} disabled={wards.length === 0}
-              style={{ backgroundColor: wards.length === 0 ? '#93C5FD' : '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 600, cursor: wards.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ backgroundColor: wards.length === 0 ? '#BFDBFE' : '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: wards.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(37,99,235,0.3)', transition: 'all 0.2s', transform: 'translateY(0)' }}
+              onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(-2px)')}
+              onMouseLeave={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(0)')}>
               ⬇ Export All Wards
             </button>
             <button onClick={() => exportAlertZonesCSV(wards, alerts)} disabled={alertZoneCount === 0}
-              style={{ backgroundColor: alertZoneCount === 0 ? '#FCA5A5' : '#DC2626', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 600, cursor: alertZoneCount === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ backgroundColor: alertZoneCount === 0 ? '#FCA5A5' : '#EF4444', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: alertZoneCount === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(239,68,68,0.3)', transition: 'all 0.2s', transform: 'translateY(0)' }}
+              onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(-2px)')}
+              onMouseLeave={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(0)')}>
               🚨 Export Alert Zones ({alertZoneCount})
             </button>
           </div>
@@ -744,19 +752,19 @@ export default function Dashboard() {
 
         {/* 3 Stat Cards */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-          <StatCard title='Active Cases Today'  value={totalCases}         icon='🦠' />
-          <StatCard title='Wards on Alert'       value={wardsOnAlert}       icon='⚠️' />
-          <StatCard title='Hospitals Reporting'  value={hospitalsReporting} icon='🏥' />
+          <StatCard title='Active Cases Today' value={totalCases} icon='🦠' />
+          <StatCard title='Wards on Alert' value={wardsOnAlert} icon='⚠️' />
+          <StatCard title='Hospitals Reporting' value={hospitalsReporting} icon='🏥' />
         </div>
 
         {/* Ward Table */}
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#1E293B' }}>Ward-wise Overview</h2>
+        <div className="glass-panel border border-white/60 shadow-soft rounded-2xl overflow-hidden mb-6">
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>Ward-wise Overview</h2>
             <input
               type='text' placeholder='Search ward...' value={search}
+              style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '10px', outline: 'none', width: '220px', color: '#1E293B', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)', boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.02)' }}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ padding: '7px 12px', fontSize: '13px', border: '1px solid #E2E8F0', borderRadius: '8px', outline: 'none', width: '200px', color: '#1E293B' }}
             />
           </div>
           {filteredWards.length === 0 ? (
@@ -854,7 +862,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
               {[
                 { color: '#16A34A', bg: '#D1FAE5', ring: '#6EE7B7', label: '🟢 Above 70', desc: 'Good — Adequate facilities, low disease pressure' },
-                { color: '#92400E', bg: '#FEF3C7', ring: '#FDE68A', label: '🟡 40 – 70',  desc: 'Moderate — Some strain, monitor closely' },
+                { color: '#92400E', bg: '#FEF3C7', ring: '#FDE68A', label: '🟡 40 – 70', desc: 'Moderate — Some strain, monitor closely' },
                 { color: '#991B1B', bg: '#FEE2E2', ring: '#FCA5A5', label: '🔴 Below 40', desc: 'Critical — Overburdened, immediate action needed' },
               ].map(({ color, bg, ring, label, desc }) => (
                 <div key={label} style={{

@@ -93,8 +93,10 @@ const EmergencyFinder = () => {
   }
 
   return (
-    <div className='bg-red-50 border border-red-200 rounded-xl p-5 h-full
-                    flex flex-col'>
+    <div className='bg-red-50/50 border border-red-100 rounded-3xl p-6 h-full
+                    flex flex-col shadow-soft relative overflow-hidden'>
+      {/* Subtle background glow */}
+      <div className='absolute -top-10 -right-10 w-40 h-40 bg-red-200 rounded-full mix-blend-multiply opacity-20 filter blur-2xl'></div>
       {/* Header */}
       <div className='flex items-start justify-between mb-4'>
         <div>
@@ -124,12 +126,12 @@ const EmergencyFinder = () => {
       {status === 'idle' && (
         <button
           onClick={handleFindNow}
-          className='w-full bg-red-600 hover:bg-red-700 active:bg-red-800
-                     text-white font-semibold py-3 px-4 rounded-lg
-                     transition-colors text-sm flex items-center
-                     justify-center gap-2'
+          className='w-full bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700
+                     text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-red-500/30
+                     transition-all transform hover:-translate-y-0.5 active:scale-[0.98]
+                     text-sm flex items-center justify-center gap-2 animate-pulse-soft'
         >
-          <span>📍</span>
+          <span className='text-lg'>📍</span>
           Find Nearest Available Hospital →
         </button>
       )}
@@ -225,10 +227,9 @@ const EmergencyFinder = () => {
               {/* Directions */}
               <button
                 onClick={() => openGoogleMaps(h)}
-                className='w-full flex items-center justify-center gap-1.5
-                           bg-blue-600 hover:bg-blue-700 text-white text-xs
-                           font-semibold px-3 py-2 rounded-lg
-                           transition-colors'
+                className='w-full flex items-center justify-center gap-2
+                           bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs
+                           font-bold px-3 py-2.5 rounded-xl transition-all hover:shadow-sm active:scale-[0.98]'
               >
                 <span>🗺️</span>
                 Get Directions
@@ -285,37 +286,43 @@ const Home = () => {
   return (
     <CitizenLayout>
       {/* Greeting */}
-      <div className='mb-6'>
-        <h1 className='text-2xl font-bold text-gray-800'>
-          Hello, {user?.name?.split(' ')[0] || 'there'}.
+      <div className='mb-8 relative z-10'>
+        <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>
+          Hello, <span className='text-gradient'>{user?.name?.split(' ')[0] || 'there'}</span>.
         </h1>
-        <p className='text-sm text-gray-500 mt-1'>{todayStr}</p>
+        <p className='text-sm font-medium text-slate-500 mt-1.5 flex items-center gap-2'>
+          <span className='w-2 h-2 rounded-full bg-emerald-400 animate-pulse'></span>
+          {todayStr}
+        </p>
       </div>
 
       {loading ? (
         <InlineLoader message='Loading health data...' />
       ) : (
         <>
-          {/* Quick Connect — unchanged */}
-          <div className='bg-blue-50 rounded-xl border border-blue-100 p-6
-                          mb-6'>
-            <span className='text-xs font-semibold text-blue-600 bg-blue-100
-                             px-3 py-1 rounded-full uppercase tracking-wide'>
-              Quick Connect
-            </span>
-            <h2 className='text-xl font-bold text-gray-800 mt-3'>
-              Book a Specialist Appointment
-            </h2>
-            <p className='text-sm text-gray-500 mt-1 max-w-sm'>
-              Schedule a visit with top-rated medical professionals across
-              multiple departments.
-            </p>
-            <div className='mt-4'>
-              <Button
-                label='Book Now →'
-                variant='primary'
-                onClick={() => navigate('/citizen/appointments/book')}
-              />
+          {/* Quick Connect */}
+          <div className='bg-gradient-to-br from-primary-50 to-indigo-50 border border-white/60 shadow-soft
+                          rounded-3xl p-8 mb-8 relative overflow-hidden'>
+            <div className='absolute right-0 bottom-0 w-64 h-64 bg-primary-200 rounded-full mix-blend-multiply opacity-20 blur-3xl'></div>
+            <div className='relative z-10'>
+              <span className='text-[11px] font-bold text-primary-700 bg-white
+                               shadow-sm px-3 py-1 rounded-full uppercase tracking-widest'>
+                Quick Connect
+              </span>
+              <h2 className='text-2xl font-extrabold text-slate-800 mt-4 tracking-tight'>
+                Book a Specialist Appointment
+              </h2>
+              <p className='text-sm font-medium text-slate-500 mt-2 max-w-md leading-relaxed'>
+                Schedule a visit with top-rated medical professionals across
+                multiple departments for seamless care.
+              </p>
+              <div className='mt-6'>
+                <Button
+                  label='Book Now →'
+                  variant='primary'
+                  onClick={() => navigate('/citizen/appointments/book')}
+                />
+              </div>
             </div>
           </div>
 
@@ -340,12 +347,11 @@ const Home = () => {
                     hospitals.map((h, i) => (
                       <div
                         key={i}
-                        className='border border-gray-100 rounded-lg p-3
-                                   bg-gray-50'
+                        className='glass-card border-white/40 p-4 relative hover:shadow-glow transition-all duration-300 flex-shrink-0'
                       >
                         <div className='flex items-start justify-between
                                         gap-2 mb-2'>
-                          <p className='text-xs font-semibold text-gray-800
+                          <p className='text-sm font-bold text-slate-800
                                         leading-snug'>
                             {h.hospitalName}
                           </p>
@@ -360,26 +366,22 @@ const Home = () => {
                             {getBedStatusLabel(h.bedStatus)}
                           </span>
                         </div>
-                        <div className='grid grid-cols-2 gap-2'>
-                          <div>
-                            <p className='text-xs text-gray-400 uppercase
-                                          tracking-wide'>ICU</p>
-                            <p className='text-sm font-bold text-blue-600'>
-                              {String(h.icuAvailable).padStart(2, '0')}
-                              <span className='text-xs text-gray-400
-                                               font-normal'>
-                                /{h.icuTotal}
+                        <div className='grid grid-cols-2 gap-4 mt-2'>
+                          <div className="bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                            <p className='text-xs font-bold text-slate-500 uppercase tracking-widest mb-1'>ICU BEDS</p>
+                            <p className='text-xl font-extrabold text-blue-600 flex items-baseline gap-1'>
+                              {h.icuAvailable ?? 0}
+                              <span className='text-sm text-slate-400 font-medium'>
+                                / {h.icuTotal ?? 0}
                               </span>
                             </p>
                           </div>
-                          <div>
-                            <p className='text-xs text-gray-400 uppercase
-                                          tracking-wide'>GENERAL</p>
-                            <p className='text-sm font-bold text-gray-800'>
-                              {String(h.availableBeds).padStart(2, '0')}
-                              <span className='text-xs text-gray-400
-                                               font-normal'>
-                                /{h.totalBeds}
+                          <div className="bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                            <p className='text-xs font-bold text-slate-500 uppercase tracking-widest mb-1'>GENERAL BEDS</p>
+                            <p className='text-xl font-extrabold text-slate-800 flex items-baseline gap-1'>
+                              {h.availableBeds ?? 0}
+                              <span className='text-sm text-slate-400 font-medium'>
+                                / {h.totalBeds ?? 0}
                               </span>
                             </p>
                           </div>

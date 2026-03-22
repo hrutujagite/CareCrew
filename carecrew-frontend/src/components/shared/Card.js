@@ -2,11 +2,10 @@ import React from 'react'
 
 const Card = ({ title, children, className = '' }) => {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 
-                     shadow-sm p-5 ${className}`}>
+    <div className={`glass-card rounded-2xl p-6 ${className}`}>
       {title && (
-        <h3 className='text-sm font-semibold text-gray-500 
-                       uppercase tracking-wide mb-4'>
+        <h3 className='text-xs font-bold text-slate-500 
+                       uppercase tracking-wider mb-5'>
           {title}
         </h3>
       )}
@@ -25,17 +24,17 @@ export const StatCard = ({ title, value, subtitle, color = 'blue' }) => {
   }
 
   return (
-    <div className='bg-white rounded-xl border border-gray-200 shadow-sm p-5'>
-      <div className='flex items-center justify-between mb-3'>
-        <p className='text-sm font-medium text-gray-500'>{title}</p>
+    <div className='glass-card rounded-2xl p-6 relative overflow-hidden'>
+      <div className='flex items-center justify-between mb-4 relative z-10'>
+        <p className='text-sm font-semibold text-slate-500'>{title}</p>
         <span className={`text-xs px-2 py-1 rounded-full font-medium 
                          ${colors[color]}`}>
           Live
         </span>
       </div>
-      <p className='text-3xl font-bold text-gray-800'>{value}</p>
+      <p className='text-4xl font-extrabold text-slate-800 relative z-10'>{value}</p>
       {subtitle && (
-        <p className='text-xs text-gray-400 mt-1'>{subtitle}</p>
+        <p className='text-xs font-medium text-slate-400 mt-2 relative z-10'>{subtitle}</p>
       )}
     </div>
   )

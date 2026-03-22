@@ -165,7 +165,10 @@ const HospitalHome = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden z-0">
+      {/* Decorative Premium Background */}
+      <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary-200/30 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
+      <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <Navbar />
 
       <div className="flex w-full min-h-[calc(100vh-56px)]">
@@ -173,7 +176,7 @@ const HospitalHome = () => {
         {/* ╔═══════════════════════════════════╗ */}
         {/* ║          LEFT SIDEBAR             ║ */}
         {/* ╚═══════════════════════════════════╝ */}
-        <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} bg-white border-r border-gray-200 flex-shrink-0 sticky top-14 self-start flex flex-col transition-all duration-300 z-20`} style={{ height: 'calc(100vh - 56px)' }}>
+        <aside className={`${isSidebarOpen ? 'w-72' : 'w-20'} glass-panel border-r border-white/50 flex-shrink-0 sticky top-14 self-start flex flex-col transition-all duration-300 z-20`} style={{ height: 'calc(100vh - 56px)' }}>
           {/* Small fixed header for sidebar */}
           <div className="px-3 py-5 border-b border-gray-100 flex-shrink-0 flex items-center justify-between">
             {isSidebarOpen && (
@@ -196,9 +199,9 @@ const HospitalHome = () => {
           <nav className="py-3 px-3 flex flex-col gap-1 overflow-x-hidden">
             {NAV_ITEMS.map(item => (
               <button key={item.key} onClick={() => setActiveSection(item.key)} title={!isSidebarOpen ? item.label : ''}
-                className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-2.5 rounded-lg text-sm font-medium transition-all text-left ${activeSection === item.key
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:bg-gray-50'
+                className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-3 rounded-xl text-sm font-semibold transition-all duration-300 text-left ${activeSection === item.key
+                  ? 'bg-gradient-to-r from-primary-500 to-brand text-white shadow-md translate-x-1'
+                  : 'text-slate-500 hover:bg-white/60 hover:text-primary-600 hover:shadow-sm'
                   }`}>
                 <span className="text-xl flex-shrink-0">{item.icon}</span>
                 {isSidebarOpen && <span className="flex-1 whitespace-nowrap">{item.label}</span>}
@@ -223,7 +226,7 @@ const HospitalHome = () => {
             </div>
           </div>
 
-          
+
         </aside>
 
         {/* ╔═══════════════════════════════════╗ */}
@@ -236,11 +239,11 @@ const HospitalHome = () => {
             <div>
               {/* Homepage specific hospital title block */}
               {activeSection === 'overview' && (
-                <div className="mb-4">
-                  <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{user?.hospitalName}</h2>
-                  <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 block"></span>
-                    Ward: <span className="font-medium text-gray-700">{user?.ward}</span>
+                <div className="mb-6 relative">
+                  <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">{user?.hospitalName}</h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 block animate-pulse"></span>
+                    Ward: <span className="text-slate-700 font-bold">{user?.ward}</span>
                   </p>
                 </div>
               )}
@@ -276,13 +279,13 @@ const HospitalHome = () => {
 
               {/* Quick Action Tabs for Home Page */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onClick={() => navigate('/hospital/disease-form')} className="flex items-center justify-center gap-2 p-4 bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-700 transition-colors group">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
-                  <span className="font-semibold tracking-wide">Submit Disease Report</span>
+                <button onClick={() => navigate('/hospital/disease-form')} className="flex items-center justify-center gap-2 p-5 bg-gradient-to-r from-primary-600 to-brand text-white rounded-2xl shadow-soft hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all group">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
+                  <span className="font-bold tracking-wide">Submit Disease Report</span>
                 </button>
-                <button onClick={() => navigate('/hospital/capacity-form')} className="flex items-center justify-center gap-2 p-4 bg-white border-2 border-blue-600 text-blue-700 rounded-xl shadow-sm hover:bg-blue-50 transition-colors group">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
-                  <span className="font-semibold tracking-wide">Update Capacity Data</span>
+                <button onClick={() => navigate('/hospital/capacity-form')} className="flex items-center justify-center gap-2 p-5 glass-card border border-primary-200 text-primary-700 rounded-2xl shadow-soft hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all group">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
+                  <span className="font-bold tracking-wide">Update Capacity Data</span>
                 </button>
               </div>
 
@@ -352,15 +355,15 @@ const HospitalHome = () => {
                   ) : (
                     <div className="flex flex-col">
                       {diseaseHistory.slice(0, 5).map((r, i) => (
-                        <div key={i} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                        <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100/50 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
                           <div>
-                            <p className="text-sm font-medium text-gray-700">{r.diseaseName}</p>
-                            <p className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                            <p className="text-sm font-bold text-slate-800">{r.diseaseName}</p>
+                            <p className="text-xs text-slate-500 font-medium">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                           </div>
                           <div className="flex flex-col items-end gap-0.5 text-xs text-right mt-1">
-                            <span className="text-gray-700 font-semibold">{r.newConfirmed} new {r.newConfirmed === 1 ? 'case' : 'cases'}</span>
-                            {r.newRecovered > 0 && <span className="text-green-600">+{r.newRecovered} recovered</span>}
-                            {r.newDeaths > 0 && <span className="text-red-500">+{r.newDeaths} {r.newDeaths === 1 ? 'death' : 'deaths'}</span>}
+                            <span className="text-slate-800 font-bold">{r.newConfirmed} new {r.newConfirmed === 1 ? 'case' : 'cases'}</span>
+                            {r.newRecovered > 0 && <span className="text-emerald-600 font-semibold">+{r.newRecovered} recovered</span>}
+                            {r.newDeaths > 0 && <span className="text-rose-500 font-semibold">+{r.newDeaths} {r.newDeaths === 1 ? 'death' : 'deaths'}</span>}
                           </div>
                         </div>
                       ))}
@@ -372,7 +375,7 @@ const HospitalHome = () => {
 
               {/* Chart — full width */}
               {analyticsData.length > 0 && (
-                <div className="relative border border-gray-100 bg-white rounded-xl shadow-sm p-5 mt-2">
+                <div className="relative glass-panel border border-white/60 shadow-soft rounded-2xl p-6 mt-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Daily Outbreak Trends</h3>
                     <select className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium bg-white text-gray-700 outline-none cursor-pointer hover:bg-gray-50"
@@ -402,9 +405,9 @@ const HospitalHome = () => {
 
           {/* ═══════════════════ APPOINTMENTS ═══════════════════ */}
           {activeSection === 'appointments' && (
-            <AppointmentsDashboard 
-              appointments={appointments} 
-              todayAppts={todayAppts} 
+            <AppointmentsDashboard
+              appointments={appointments}
+              todayAppts={todayAppts}
               onConfirm={handleConfirmAppointment}
               onCancel={handleCancelAppointment}
             />

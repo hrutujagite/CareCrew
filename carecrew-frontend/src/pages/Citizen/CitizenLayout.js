@@ -18,11 +18,14 @@ const CitizenLayout = ({ children }) => {
   const isActive = (path) => location.pathname === path
 
   return (
-    <div className='flex min-h-screen bg-gray-50'>
+    <div className='flex min-h-screen bg-slate-50 relative overflow-hidden z-0'>
+      {/* Decorative Background Elements */}
+      <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary-200/30 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
+      <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
 
       {/* Sidebar — always visible */}
-      <div className='w-64 bg-white border-r border-gray-200 flex flex-col
-                      fixed top-0 left-0 h-full z-40'>
+      <div className='w-64 glass-panel border-r border-white/50 flex flex-col
+                      fixed top-0 left-0 h-full z-40 shadow-soft'>
 
         {/* Nav Items */}
         <nav className='flex-1 p-3 flex flex-col gap-1 overflow-y-auto'>
@@ -34,8 +37,8 @@ const CitizenLayout = ({ children }) => {
                          rounded-lg text-sm font-medium transition-colors
                          text-left
                          ${isActive(item.path)
-                           ? 'bg-blue-600 text-white'
-                           : 'text-gray-600 hover:bg-gray-50'}`}
+                  ? 'bg-gradient-to-r from-primary-500 to-brand text-white shadow-md translate-x-1'
+                  : 'text-slate-500 hover:bg-white/60 hover:text-primary-600 hover:shadow-sm'}`}
             >
               <span>{item.icon}</span>
               {item.label}

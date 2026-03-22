@@ -47,29 +47,34 @@ const Login = () => {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-50 to-blue-100
-                    flex items-center justify-center p-4'>
-      <div className='bg-white rounded-2xl shadow-lg p-8 w-full max-w-md'>
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-primary-50 to-indigo-100
+                    flex items-center justify-center p-6 relative overflow-hidden'>
+      {/* Decorative blurred circles behind the card */}
+      <div className='absolute top-1/4 left-1/4 w-96 h-96 bg-primary-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float'></div>
+      <div className='absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float animate-delay-200'></div>
+
+      <div className='glass-panel rounded-3xl p-10 w-full max-w-[420px] relative z-10'>
 
         {/* Back to Homepage */}
         <div className='mb-4'>
           <a
             href='http://localhost:3001'
-            className='flex items-center gap-1 text-sm text-gray-400
-                       hover:text-blue-600 transition-colors w-fit'
+            className='flex items-center gap-2 text-sm text-slate-400 font-medium
+                       hover:text-primary-600 transition-colors tracking-wide w-fit
+                       hover:-translate-x-1 duration-300'
           >
-            ← Back to Homepage
+            ← Back to Portal
           </a>
         </div>
 
         {/* Logo */}
-        <div className='flex flex-col items-center mb-8'>
-          <div className='w-14 h-14 bg-blue-600 rounded-2xl flex items-center
-                          justify-center mb-3'>
-            <span className='text-white text-2xl font-bold'>+</span>
+        <div className='flex flex-col items-center mb-10'>
+          <div className='w-16 h-16 bg-gradient-to-br from-primary-500 to-brand rounded-2xl flex items-center
+                          justify-center mb-4 shadow-xl transform transition hover:rotate-12 duration-300'>
+            <span className='text-white text-3xl font-extrabold'>+</span>
           </div>
-          <h1 className='text-2xl font-bold text-gray-800'>SwasthSolapur</h1>
-          <p className='text-sm text-gray-500 mt-1'>
+          <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>SwasthSolapur</h1>
+          <p className='text-sm font-medium text-slate-500 mt-2 tracking-wide'>
             Solapur Municipal Corporation
           </p>
         </div>
@@ -84,8 +89,8 @@ const Login = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-          <div className='flex flex-col gap-1'>
-            <label className='text-sm font-medium text-gray-700'>
+          <div className='flex flex-col gap-1.5'>
+            <label className='text-sm font-semibold text-slate-700'>
               Email Address
             </label>
             <input
@@ -94,14 +99,15 @@ const Login = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder='Enter your email'
               required
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg
-                         text-sm focus:outline-none focus:ring-2
-                         focus:ring-blue-500 focus:border-transparent'
+              className='w-full px-4 py-3 border border-slate-200 rounded-xl
+                         text-sm text-slate-800 bg-white/50 focus:bg-white transition-all
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         shadow-sm placeholder-slate-400'
             />
           </div>
 
-          <div className='flex flex-col gap-1'>
-            <label className='text-sm font-medium text-gray-700'>
+          <div className='flex flex-col gap-1.5'>
+            <label className='text-sm font-semibold text-slate-700'>
               Password
             </label>
             <input
@@ -110,42 +116,44 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder='Enter your password'
               required
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg
-                         text-sm focus:outline-none focus:ring-2
-                         focus:ring-blue-500 focus:border-transparent'
+              className='w-full px-4 py-3 border border-slate-200 rounded-xl
+                         text-sm text-slate-800 bg-white/50 focus:bg-white transition-all
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         shadow-sm placeholder-slate-400'
             />
           </div>
 
           <button
             type='submit'
             disabled={loading}
-            className='w-full bg-blue-600 text-white py-2 rounded-lg
-                       font-medium text-sm hover:bg-blue-700
-                       transition-colors disabled:opacity-50
-                       disabled:cursor-not-allowed mt-2'
+            className='w-full bg-primary-600 text-white py-3 rounded-xl
+                       font-bold text-sm tracking-wide shadow-lg shadow-primary-500/30
+                       hover:bg-primary-700 hover:-translate-y-0.5 active:scale-[0.98]
+                       transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4'
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        {/* Register link — goes to homepage portal cards */}
-        <div className='mt-4 text-center'>
-          <p className='text-sm text-gray-500'>
+        {/* Register link */}
+        <div className='mt-6 text-center'>
+          <p className='text-sm font-medium text-slate-500'>
             Don't have an account?{' '}
             <a
               href='http://localhost:3001/#portals'
-              className='text-blue-600 font-semibold hover:underline'
+              className='text-primary-600 font-bold hover:text-brand transition-colors hover:underline underline-offset-4'
             >
               Register →
             </a>
           </p>
         </div>
 
-        {/* Demo credentials */}
-        <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
-          <p className='text-xs font-semibold text-gray-500 mb-3 uppercase
-                        tracking-wide'>
-            Demo Credentials — Click to Fill
+        {/* Demo credentials perfectly kept, functionally and aesthetically */}
+        <div className='mt-8 pt-6 border-t border-slate-100'>
+          <p className='text-[11px] font-bold text-slate-400 mb-4 uppercase
+                        tracking-widest flex items-center gap-2'>
+            <span>Demo Credentials</span>
+            <span className='h-px flex-1 bg-slate-100'></span>
           </p>
           <div className='flex flex-col gap-2'>
             {[
@@ -153,31 +161,35 @@ const Login = () => {
                 role: 'Health Officer',
                 email: 'officer@smc.gov.in',
                 password: 'officer123',
-                color: 'text-amber-600 bg-amber-50 border-amber-200'
+                color: 'text-amber-700 bg-amber-50/50 hover:bg-amber-50 border-amber-200 hover:border-amber-300'
               },
               {
                 role: 'Hospital Staff',
                 email: 'staff.bhavani@hospital.com',
                 password: 'hospital123',
-                color: 'text-teal-600 bg-teal-50 border-teal-200'
+                color: 'text-teal-700 bg-teal-50/50 hover:bg-teal-50 border-teal-200 hover:border-teal-300'
               },
               {
                 role: 'Citizen',
                 email: 'rahul@citizen.com',
                 password: 'citizen123',
-                color: 'text-purple-600 bg-purple-50 border-purple-200'
+                color: 'text-primary-700 bg-primary-50/50 hover:bg-primary-50 border-primary-200 hover:border-primary-300'
               },
             ].map((cred, i) => (
               <button
                 key={i}
                 type='button'
                 onClick={() => fillCredentials(cred.email, cred.password)}
-                className={`w-full text-left px-3 py-2 rounded-lg border
-                            text-xs transition-colors hover:opacity-80
+                className={`w-full text-left px-4 py-3 rounded-xl border
+                            text-xs font-medium transition-all duration-300 shadow-sm
+                            hover:shadow-md hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-1 focus:ring-slate-300
                             ${cred.color}`}
               >
-                <span className='font-semibold'>{cred.role}:</span>{' '}
-                {cred.email}
+                <div className='flex justify-between items-center'>
+                  <span className='font-bold'>{cred.role}</span>
+                  <span className='opacity-70 text-[10px] tracking-wider uppercase'>Click</span>
+                </div>
+                <div className='mt-1 opacity-80'>{cred.email}</div>
               </button>
             ))}
           </div>

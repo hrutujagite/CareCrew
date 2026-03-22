@@ -73,14 +73,12 @@ const PlaceholderNav = () => {
   }
 
   return (
-    <div className='bg-white border-b border-gray-200 px-6 py-3
-                    flex items-center justify-between sticky top-0 z-50'>
-      <div className='flex items-center gap-3'>
-        <div className='w-8 h-8 bg-blue-600 rounded-lg flex items-center
-                        justify-center'>
-          <span className='text-white text-sm font-bold'>+</span>
+    <div className='glass-panel px-8 py-4 flex items-center justify-between sticky top-0 z-50'>
+      <div className='flex items-center gap-4'>
+        <div className='w-10 h-10 bg-gradient-to-br from-primary-500 to-brand rounded-xl flex items-center justify-center shadow-lg transform transition hover:rotate-12'>
+          <span className='text-white text-lg font-bold'>+</span>
         </div>
-        <span className='text-blue-600 font-bold text-lg'>SwasthSolapur</span>
+        <span className='text-gradient font-extrabold text-2xl tracking-tight'>SwasthSolapur</span>
         <span className='text-gray-300'>|</span>
         <span className='text-xs text-gray-500'>
           Solapur Municipal Corporation
@@ -89,26 +87,27 @@ const PlaceholderNav = () => {
       <div className='flex items-center gap-4'>
         <button
           onClick={handleTranslate}
-          className='text-sm px-3 py-1 rounded-full border border-blue-200
-                     text-blue-600 hover:bg-blue-50 transition-colors
-                     font-medium'
+          className='text-sm px-4 py-2 rounded-full border border-primary-200 bg-white/50
+                     text-primary-700 hover:bg-primary-50 hover:shadow-sm transition-all
+                     font-medium backdrop-blur-sm'
         >
           🌐 {isMarathi ? 'English' : 'मराठी'}
         </button>
         {user && (
-          <span className={`text-xs px-2 py-1 rounded-full font-medium
+          <span className={`text-xs px-3 py-1.5 rounded-full font-bold shadow-sm border border-white/50
                            ${roleColors[user.role]}`}>
             {roleLabels[user.role]}
           </span>
         )}
         {user && (
-          <span className='text-sm text-gray-600 font-medium'>
+          <span className='text-sm text-slate-700 font-semibold px-2'>
             {user.name}
           </span>
         )}
         <button
           onClick={() => { logout(); navigate('/login') }}
-          className='text-sm text-red-500 hover:text-red-700 font-medium'
+          className='text-sm text-slate-500 hover:text-red-500 font-semibold transition-colors
+                     px-3 py-2 rounded-lg hover:bg-red-50'
         >
           Logout
         </button>
@@ -163,25 +162,25 @@ const AppRoutes = () => {
             : <CitizenRegister />
         }
       />
-        {/* Hospital Registration — public */}
-<Route
-  path='/register/hospital'
-  element={
-    user
-      ? <Navigate to='/hospital/dashboard' replace />
-      : <HospitalRegister />
-  }
-/>
+      {/* Hospital Registration — public */}
+      <Route
+        path='/register/hospital'
+        element={
+          user
+            ? <Navigate to='/hospital/dashboard' replace />
+            : <HospitalRegister />
+        }
+      />
 
-{/* Health Officer Registration — public */}
-<Route
-  path='/register/officer'
-  element={
-    user
-      ? <Navigate to='/officer/dashboard' replace />
-      : <OfficerRegister />
-  }
-/>
+      {/* Health Officer Registration — public */}
+      <Route
+        path='/register/officer'
+        element={
+          user
+            ? <Navigate to='/officer/dashboard' replace />
+            : <OfficerRegister />
+        }
+      />
 
       {/* Health Officer */}
       <Route
