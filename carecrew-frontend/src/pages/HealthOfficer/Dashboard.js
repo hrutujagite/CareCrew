@@ -566,14 +566,8 @@ export default function Dashboard() {
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetchAll()
-    const interval = setInterval(() => { setCountdown(30); fetchAll() }, 30000)
-    const countdownTimer = setInterval(() => {
-      setCountdown((c) => (c <= 1 ? 30 : c - 1))
-    }, 1000)
-    return () => { clearInterval(interval); clearInterval(countdownTimer) }
-  }, [fetchAll])
-
+  fetchData()
+}, [fetchData])
   const toggleDisease = (disease) => {
     setActiveDiseases(prev => {
       const next = new Set(prev)

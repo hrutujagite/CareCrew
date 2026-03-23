@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 const express = require('express');
 const router = express.Router();
 const DiseaseReport = require('../models/DiseaseReport');
