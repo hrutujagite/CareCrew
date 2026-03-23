@@ -713,11 +713,9 @@ export default function Dashboard() {
           <div>
             <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>Health Officer Dashboard</h1>
             <p className='text-sm font-medium text-slate-500 flex items-center gap-2 mt-1.5'>
-              <span className='w-2 h-2 rounded-full bg-primary-500 animate-pulse'></span>
-              Next refresh in &nbsp;
-              <strong style={{ color: countdown <= 10 ? '#EF4444' : '#2563EB' }}>{countdown}s</strong>
-              &nbsp;·&nbsp; Last updated: {new Date().toLocaleTimeString()}
-            </p>
+  <span className='w-2 h-2 rounded-full bg-primary-500'></span>
+  Last updated: {new Date().toLocaleTimeString()}
+</p>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button onClick={() => exportCSV(wards)} disabled={wards.length === 0}
