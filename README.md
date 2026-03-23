@@ -1,4 +1,12 @@
-# 💻 Run Locally
+# 🏥 SwasthSolapur
+
+## 🔗 Live Demo
+**👉 [swasthsolapur.vercel.app](https://swasthsolapur.vercel.app)**
+> No setup needed — just open the link and use the demo credentials on the login page to explore all three portals.
+
+---
+
+## 💻 Run Locally
 
 > **You only need to set up the frontend!**  
 > It automatically connects to our live backend and database. No backend setup needed.
