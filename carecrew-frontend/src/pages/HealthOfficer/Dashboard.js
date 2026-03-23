@@ -565,9 +565,9 @@ export default function Dashboard() {
     }
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-  fetchData()
-}, [fetchData])
+ useEffect(() => {
+  fetchAll()
+}, [fetchAll])
   const toggleDisease = (disease) => {
     setActiveDiseases(prev => {
       const next = new Set(prev)
