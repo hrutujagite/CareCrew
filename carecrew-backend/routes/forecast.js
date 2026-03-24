@@ -1,6 +1,7 @@
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 const express = require('express');
 const router = express.Router();
 const DiseaseReport = require('../models/DiseaseReport');
@@ -25,9 +26,11 @@ router.get('/:ward', protect, async (req, res) => {
       const reports = await DiseaseReport.find({
         wardName: ward,
         createdAt: { $gte: date, $lt: nextDate }
-      })
-      // ── ONLY CHANGE: r.caseCount → r.newConfirmed (matches seed field name)
-      const totalCases = reports.reduce((sum, r) => sum + r.newConfirmed, 0);
+      });
+
+      const totalCases = reports.reduce(
+        (sum, r) => sum + (r.newConfirmed || 0), 0
+      );
 
       last14Days.push({
         date: date.toISOString().split('T')[0],
@@ -35,42 +38,40 @@ router.get('/:ward', protect, async (req, res) => {
       });
     }
 
-    // Calculate 3-day moving average for prediction
-    const movingAverages = [];
-    for (let i = 2; i < last14Days.length; i++) {
-      const avg = (
-        last14Days[i].cases +
-        last14Days[i - 1].cases +
-        last14Days[i - 2].cases
-      ) / 3;
-      movingAverages.push(avg);
-    }
-
-    // Calculate trend (slope of last 5 days)
-    const recentDays = last14Days.slice(-5);
-    const avgRecent = recentDays.reduce(
-      (sum, d) => sum + d.cases, 0
-    ) / recentDays.length;
-
-    const trend = recentDays[recentDays.length - 1].cases -
-      recentDays[0].cases;
-    const dailyTrend = trend / 4;
-
-    // Project next 7 days
+    // ✅ FIXED: Proper 3-day moving average forecast
+    let allData = last14Days.map(d => d.cases);
     const predicted = [];
-    let lastValue = last14Days[last14Days.length - 1].cases;
+
+    // Safety check
+    if (allData.length < 3) {
+      return res.json({
+        success: true,
+        ward,
+        actual: last14Days,
+        predicted: []
+      });
+    }
 
     for (let i = 1; i <= 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
 
-      // Moving average projection
-      lastValue = Math.max(0, lastValue + dailyTrend * 0.5);
+      const n = allData.length;
+
+      let avg = (
+        allData[n - 1] +
+        allData[n - 2] +
+        allData[n - 3]
+      ) / 3;
+
+      avg = Math.max(0, Math.round(avg));
 
       predicted.push({
         date: date.toISOString().split('T')[0],
-        cases: Math.round(lastValue)
+        cases: avg
       });
+
+      allData.push(avg); // ⭐ KEY FIX
     }
 
     res.json({
@@ -79,7 +80,9 @@ router.get('/:ward', protect, async (req, res) => {
       actual: last14Days,
       predicted
     });
+
   } catch (error) {
+    console.error('Forecast error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
