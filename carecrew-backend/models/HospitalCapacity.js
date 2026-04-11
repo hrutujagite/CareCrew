@@ -29,7 +29,18 @@ const hospitalCapacitySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  // Ventilators — was missing before
+
+  // ✅ NEW — Emergency Beds
+  emergencyBedsTotal: {
+    type: Number,
+    default: 0
+  },
+  emergencyBedsAvailable: {
+    type: Number,
+    default: 0
+  },
+
+  // Ventilators
   ventilatorsTotal: {
     type: Number,
     default: 0
@@ -38,8 +49,7 @@ const hospitalCapacitySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  // Oxygen — now numeric not string enum
-  // This allows real threshold alerts e.g. oxygenAvailable < 20
+  // Oxygen
   oxygenTotal: {
     type: Number,
     default: 0
@@ -48,7 +58,7 @@ const hospitalCapacitySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  // Medicine — now 0-100 percentage as per Hospital Dashboard doc
+  // Medicine
   medicineStockPercentage: {
     type: Number,
     default: 100,

@@ -7,8 +7,8 @@ const alertSchema = new mongoose.Schema({
   },
   alertType: {
     type: String,
-    // Capitalized to match Health Officer dashboard doc exactly
-    enum: ['Outbreak', 'Shortage'],
+    // ✅ expanded enum — added new alert types
+    enum: ['Outbreak', 'Shortage', 'BedShortage', 'ICUFull', 'OxygenCritical', 'MedicineLow', 'General'],
     required: true
   },
   severity: {
@@ -39,7 +39,24 @@ const alertSchema = new mongoose.Schema({
   resolvedDate: {
     type: Date,
     default: null
+  },
+
+  // ✅ NEW — which hospital triggered this alert
+  hospitalName: {
+    type: String,
+    default: null
+  },
+  // ✅ NEW — who dismissed this alert and when
+  dismissedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  dismissedAt: {
+    type: Date,
+    default: null
   }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Alert', alertSchema);

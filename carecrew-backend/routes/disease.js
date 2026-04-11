@@ -15,38 +15,46 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       newConfirmed,
       newRecovered,
       newDeaths,
-      date
+      customDiseaseName, // ✅ NEW
     } = req.body;
+
+    // ✅ NEW — if Other selected, customDiseaseName is required
+    if (diseaseName === 'Other' && !customDiseaseName) {
+      return res.status(400).json({ 
+        message: 'Custom disease name is required when selecting Other' 
+      });
+    }
 
     // Create disease report
     const report = await DiseaseReport.create({
       hospitalName: req.user.hospitalName,
       wardName,
       diseaseName,
+      customDiseaseName: diseaseName === 'Other' ? customDiseaseName : null, // ✅ NEW
       newConfirmed: newConfirmed || 0,
       newRecovered: newRecovered || 0,
       newDeaths: newDeaths || 0,
-      submittedBy: req.user._id,
-      date: date || Date.now()
+      submittedBy: req.user._id
     });
 
     // Update ward
     const ward = await Ward.findOne({ wardName });
     if (ward) {
-      // Fix: properly update active cases
-      // confirmed adds to active, recovered and deaths reduce active
       ward.activeCaseCount = Math.max(
         0,
         (ward.activeCaseCount || 0) + Number(newConfirmed || 0) - Number(newRecovered || 0) - Number(newDeaths || 0)
       );
-      ward.topDisease = diseaseName;
       ward.lastUpdated = Date.now();
 
       // topDisease = disease with highest total confirmed cases for this ward
       const allReports = await DiseaseReport.find({ wardName });
       const diseaseMap = {};
       allReports.forEach(r => {
-        diseaseMap[r.diseaseName] = (diseaseMap[r.diseaseName] || 0) + r.newConfirmed;
+        // ✅ NEW — use customDiseaseName if Other, else use diseaseName
+        const name = r.diseaseName === 'Other' && r.customDiseaseName 
+          ? r.customDiseaseName 
+          : r.diseaseName;
+        diseaseMap[name] = (diseaseMap[name] || 0) + r.newConfirmed;
       });
       ward.topDisease = Object.keys(diseaseMap).sort(
         (a, b) => diseaseMap[b] - diseaseMap[a]
@@ -73,7 +81,6 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
 
       // Create alert if Yellow or Red
       if (severity !== 'Green') {
-        // Deactivate old outbreak alerts for this ward
         await Alert.updateMany(
           { wardName, alertType: 'Outbreak', isActive: true },
           { isActive: false, resolvedDate: Date.now() }
@@ -86,10 +93,10 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
           message: `${severity === 'Red' ? 'Critical' : 'Warning'}: ${ward.activeCaseCount} active ${ward.topDisease} cases detected in ${wardName}`,
           diseaseName: ward.topDisease,
           caseCount: ward.activeCaseCount,
-          isActive: true
+          isActive: true,
+          hospitalName: req.user.hospitalName // ✅ BUG FIX 3 — added hospitalName
         });
       } else {
-        // If back to green, resolve any active outbreak alerts
         await Alert.updateMany(
           { wardName, alertType: 'Outbreak', isActive: true },
           { isActive: false, resolvedDate: Date.now() }
@@ -115,7 +122,7 @@ router.get('/history', protect, authorizeRoles('hospitalStaff'), async (req, res
   try {
     const reports = await DiseaseReport.find({
       hospitalName: req.user.hospitalName
-    }).sort({ reportDate: -1 });
+    }).sort({ createdAt: -1 }); // ✅ BUG FIX 2 — reportDate → createdAt
 
     res.json({ success: true, reports });
   } catch (error) {
@@ -139,12 +146,16 @@ router.get('/analytics', protect, authorizeRoles('hospitalStaff'), async (req, r
     // Disease-wise breakdown
     const diseaseMap = {};
     reports.forEach(r => {
-      if (!diseaseMap[r.diseaseName]) {
-        diseaseMap[r.diseaseName] = { confirmed: 0, recovered: 0, deaths: 0 };
+      // ✅ NEW — show customDiseaseName in breakdown instead of "Other"
+      const name = r.diseaseName === 'Other' && r.customDiseaseName
+        ? r.customDiseaseName
+        : r.diseaseName;
+      if (!diseaseMap[name]) {
+        diseaseMap[name] = { confirmed: 0, recovered: 0, deaths: 0 };
       }
-      diseaseMap[r.diseaseName].confirmed += r.newConfirmed;
-      diseaseMap[r.diseaseName].recovered += r.newRecovered;
-      diseaseMap[r.diseaseName].deaths += r.newDeaths;
+      diseaseMap[name].confirmed += r.newConfirmed;
+      diseaseMap[name].recovered += r.newRecovered;
+      diseaseMap[name].deaths += r.newDeaths;
     });
 
     // Daily trend - last 30 days
@@ -157,7 +168,7 @@ router.get('/analytics', protect, authorizeRoles('hospitalStaff'), async (req, r
       nextDate.setDate(nextDate.getDate() + 1);
 
       const dayReports = reports.filter(r => {
-        const rd = new Date(r.reportDate);
+        const rd = new Date(r.createdAt); // ✅ BUG FIX 1 — reportDate → createdAt
         return rd >= date && rd < nextDate;
       });
 

@@ -14,6 +14,8 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       availableBeds,
       icuTotal,
       icuAvailable,
+      emergencyBedsTotal,    // ✅ NEW
+      emergencyBedsAvailable, // ✅ NEW
       ventilatorsTotal,
       ventilatorsAvailable,
       oxygenTotal,
@@ -28,6 +30,8 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       availableBeds,
       icuTotal: icuTotal || 0,
       icuAvailable: icuAvailable || 0,
+      emergencyBedsTotal: emergencyBedsTotal || 0,       // ✅ NEW
+      emergencyBedsAvailable: emergencyBedsAvailable || 0, // ✅ NEW
       ventilatorsTotal: ventilatorsTotal || 0,
       ventilatorsAvailable: ventilatorsAvailable || 0,
       oxygenTotal: oxygenTotal || 0,
@@ -37,7 +41,7 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       lastUpdated: Date.now()
     });
 
-    // Sync bed data back to Ward collection so hospitals.js stays accurate
+    // Sync bed data back to Ward collection
     const ward = await Ward.findOne({ wardName: req.user.ward });
     if (ward) {
       const hospitalIndex = ward.hospitals.findIndex(
@@ -65,15 +69,30 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       shortages.push('Medicine');
     }
 
-    // Beds critical if available < 10% of total
+    // General beds critical if available < 10% of total
     if (totalBeds > 0 && (availableBeds / totalBeds) < 0.1) {
       shortages.push('Beds');
     }
 
+    // ✅ NEW — Emergency beds critical if available < 10% of total
+    if (emergencyBedsTotal > 0 && (emergencyBedsAvailable / emergencyBedsTotal) < 0.1) {
+      shortages.push('Emergency Beds');
+    }
+
+    // ✅ NEW — ICU critical if available = 0
+    if (icuTotal > 0 && icuAvailable === 0) {
+      shortages.push('ICU');
+    }
+
     if (shortages.length > 0) {
-      // Deactivate old shortage alerts for this ward
+      // ✅ BUG FIX 4 — scoped to this hospital only, not all hospitals in ward
       await Alert.updateMany(
-        { wardName: req.user.ward, alertType: 'Shortage', isActive: true },
+        { 
+          wardName: req.user.ward, 
+          alertType: 'Shortage', 
+          isActive: true,
+          hospitalName: req.user.hospitalName // ✅ added
+        },
         { isActive: false, resolvedDate: Date.now() }
       );
 
@@ -82,12 +101,18 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
         alertType: 'Shortage',
         severity: 'Red',
         message: `Critical shortage at ${req.user.hospitalName} in ${req.user.ward}: ${shortages.join(', ')} stock is critically low`,
-        isActive: true
+        isActive: true,
+        hospitalName: req.user.hospitalName // ✅ BUG FIX 2 — added hospitalName
       });
     } else {
-      // Resolve any existing shortage alerts if all back to normal
+      // ✅ BUG FIX 4 — scoped to this hospital only when resolving
       await Alert.updateMany(
-        { wardName: req.user.ward, alertType: 'Shortage', isActive: true },
+        { 
+          wardName: req.user.ward, 
+          alertType: 'Shortage', 
+          isActive: true,
+          hospitalName: req.user.hospitalName // ✅ added
+        },
         { isActive: false, resolvedDate: Date.now() }
       );
     }

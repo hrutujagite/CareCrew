@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Appointment = require('../models/Appointment');
 const { protect, authorizeRoles } = require('../middleware/auth');
- 
+const Ward = require('../models/Ward'); // ✅ ADD THIS at the top
 // @route  POST /api/appointments/book
 // @desc   Book an appointment (citizen only)
 router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
@@ -17,20 +17,62 @@ router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
       chiefComplaint
     } = req.body;
  
-    const appointment = await Appointment.create({
-      citizenName: req.user.name,
-      contact: req.user.contact || '',
-      hospitalName,
-      ward,
-      specialty,
-      doctorName,
-      preferredDate,
-      timeSlot,
-      chiefComplaint: chiefComplaint || '',
-      bookedBy: req.user._id,
-      status: 'Pending',
-      bookingReference: 'CC' + Math.floor(100000 + Math.random() * 900000)
-    });
+    // ✅ NEW — check doctor availability on preferred date
+const wardDoc = await Ward.findOne({ 'hospitals.hospitalName': hospitalName });
+if (wardDoc) {
+  const hospital = wardDoc.hospitals.find(h => h.hospitalName === hospitalName);
+  if (hospital) {
+    const doctor = hospital.doctors.find(d => d.name === doctorName);
+    if (doctor && doctor.schedule && doctor.schedule.length > 0) {
+
+      // Get day of week from preferredDate
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const preferredDay = dayNames[new Date(preferredDate).getDay()];
+
+      // Check if doctor has schedule on that day
+      const availableOnDay = doctor.schedule.find(s => s.day === preferredDay);
+      if (!availableOnDay) {
+        return res.status(400).json({
+          success: false,
+          message: `Dr. ${doctorName} is not available on ${preferredDay}. Available days: ${doctor.schedule.map(s => s.day).join(', ')}`
+        });
+      }
+
+      // ✅ Check max appointments not exceeded for that day
+      const existingCount = await Appointment.countDocuments({
+        hospitalName,
+        doctorName,
+        preferredDate: {
+          $gte: new Date(new Date(preferredDate).setHours(0, 0, 0, 0)),
+          $lt: new Date(new Date(preferredDate).setHours(23, 59, 59, 999))
+        },
+        status: { $ne: 'Cancelled' }
+      });
+
+      if (existingCount >= availableOnDay.maxAppointments) {
+        return res.status(400).json({
+          success: false,
+          message: `Dr. ${doctorName} is fully booked on this date. Maximum ${availableOnDay.maxAppointments} appointments reached.`
+        });
+      }
+    }
+  }
+}
+
+const appointment = await Appointment.create({
+  citizenName: req.user.name,
+  contact: req.user.contact || '',
+  hospitalName,
+  ward,
+  specialty,
+  doctorName,
+  preferredDate,
+  timeSlot,
+  chiefComplaint: chiefComplaint || '',
+  bookedBy: req.user._id,
+  status: 'Pending',
+  bookingReference: 'CC' + Math.floor(100000 + Math.random() * 900000)
+});
  
     res.status(201).json({
       success: true,

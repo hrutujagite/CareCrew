@@ -74,6 +74,7 @@ appointmentSchema.pre('save', function(next) {
     this.bookingReference = 'CC' + Date.now().toString().slice(-6) +
       Math.floor(Math.random() * 1000)
   }
+  next()
 })
 
 module.exports = mongoose.model('Appointment', appointmentSchema);

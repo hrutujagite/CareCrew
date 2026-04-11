@@ -294,6 +294,9 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
       isActive: true
     });
 
+    // Get Ward Risk Level
+    const wardDoc = await Ward.findOne({ wardName: req.user.ward });
+
     res.json({
       success: true,
       summary: {
@@ -303,7 +306,8 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
         activeAlerts: activeAlerts.length
       },
       latestCapacity,
-      activeAlerts
+      activeAlerts,
+      riskLevel: wardDoc ? wardDoc.riskLevel : 'Green'
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

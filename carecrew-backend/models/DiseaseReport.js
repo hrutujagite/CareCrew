@@ -14,6 +14,13 @@ const diseaseReportSchema = new mongoose.Schema({
     required: true,
     enum: ['Dengue', 'Malaria', 'TB', 'COVID-19', 'Cholera', 'Typhoid', 'Other']
   },
+
+  // ✅ NEW — only used when diseaseName = 'Other'
+  customDiseaseName: {
+    type: String,
+    default: null
+  },
+
   newConfirmed: {
     type: Number,
     required: true,

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const healthCampSchema = new mongoose.Schema({
-  // Matches Hospital Dashboard doc exactly
   hospitalName: {
     type: String,
     required: true
@@ -23,15 +22,34 @@ const healthCampSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      'Free Checkup',
-      'Vaccination',
-      'Blood Donation',
-      'Eye Checkup',
-      'Dental Checkup',
-      'Awareness Drive',
+      // General Camps
+      'Free General Checkup',
+      'Medical & Dental Camp',
+      'Eye Checkup Camp',
+      'Blood Donation Drive',
+      // Government NHM Programs
+      'Routine Immunization Drive',
+      'RBSK Screening',
+      'NCD Screening Camp',
+      'Maternal Health Camp',
+      'TB Awareness & DOTS Camp',
+      'Vector Disease Control Camp',
+      // Awareness
+      'Nutrition & Anaemia Awareness',
+      'Mental Health Awareness',
+      'Sanitation & Hygiene Drive',
+      'Adolescent Health Session',
+      // Other
       'Other'
     ]
   },
+
+  // ✅ NEW — only used when campType = 'Other'
+  customCampType: {
+    type: String,
+    default: null
+  },
+
   startDate: {
     type: Date,
     required: true
@@ -41,11 +59,11 @@ const healthCampSchema = new mongoose.Schema({
     required: true
   },
   timing: {
-    type: String,  // e.g. "9:00 AM - 4:00 PM"
+    type: String,
     required: true
   },
   location: {
-    type: String,  // e.g. "Bhavani Peth Community Hall"
+    type: String,
     required: true
   },
   contactInfo: {

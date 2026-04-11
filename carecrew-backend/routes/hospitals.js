@@ -274,10 +274,28 @@ router.post('/add', protect, async (req, res) => {
 // @desc   Add a doctor to hospital staff's hospital (hospitalStaff only)
 router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
-    const { name, specialty, experience, rating, slots } = req.body;
+    const { 
+      name, 
+      specialty, 
+      experience, 
+      isVisiting,  // ✅ NEW
+      schedule     // ✅ NEW — array of { day, startTime, endTime, maxAppointments }
+    } = req.body;
 
     if (!name || !specialty) {
       return res.status(400).json({ success: false, message: 'Name and specialty are required' });
+    }
+
+    // ✅ NEW — validate schedule if provided
+    if (schedule && schedule.length > 0) {
+      for (const slot of schedule) {
+        if (!slot.day || !slot.startTime || !slot.endTime) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Each schedule slot must have day, startTime and endTime' 
+          });
+        }
+      }
     }
 
     const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
@@ -286,7 +304,13 @@ router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, re
     const hospitalIndex = ward.hospitals.findIndex(h => h.hospitalName === req.user.hospitalName);
     if (hospitalIndex === -1) return res.status(404).json({ success: false, message: 'Hospital not found' });
 
-    ward.hospitals[hospitalIndex].doctors.push({ name, specialty, experience: experience || 0, slots: slots || [] });
+    ward.hospitals[hospitalIndex].doctors.push({ 
+      name, 
+      specialty, 
+      experience: experience || 0,
+      isVisiting: isVisiting || false, // ✅ NEW
+      schedule: schedule || []          // ✅ NEW
+    });
     await ward.save();
 
     const newDoctor = ward.hospitals[hospitalIndex].doctors[ward.hospitals[hospitalIndex].doctors.length - 1];
@@ -300,7 +324,13 @@ router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, re
 // @desc   Edit a doctor (hospitalStaff only)
 router.put('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
-    const { name, specialty, experience, rating, slots } = req.body;
+    const { 
+      name, 
+      specialty, 
+      experience, 
+      isVisiting,  // ✅ NEW
+      schedule     // ✅ NEW
+    } = req.body;
 
     const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
     if (!ward) return res.status(404).json({ success: false, message: 'Hospital not found' });
@@ -314,7 +344,20 @@ router.put('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async
     if (name) doctor.name = name;
     if (specialty) doctor.specialty = specialty;
     if (experience !== undefined) doctor.experience = experience;
-    if (slots) doctor.slots = slots;
+    if (isVisiting !== undefined) doctor.isVisiting = isVisiting; // ✅ NEW
+
+    // ✅ NEW — validate and update schedule
+    if (schedule) {
+      for (const slot of schedule) {
+        if (!slot.day || !slot.startTime || !slot.endTime) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Each schedule slot must have day, startTime and endTime' 
+          });
+        }
+      }
+      doctor.schedule = schedule;
+    }
 
     await ward.save();
     res.json({ success: true, message: 'Doctor updated successfully', doctor });
@@ -322,7 +365,6 @@ router.put('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
-
 // @route  DELETE /api/hospitals/doctors/:doctorId
 // @desc   Remove a doctor (hospitalStaff only)
 router.delete('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async (req, res) => {

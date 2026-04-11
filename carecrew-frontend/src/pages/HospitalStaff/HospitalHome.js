@@ -53,6 +53,7 @@ const HospitalHome = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [timeframe, setTimeframe] = useState('month')
+  const [wardRiskLevel, setWardRiskLevel] = useState('Green')
 
   const fetchData = useCallback(async () => {
     try {
@@ -72,6 +73,7 @@ const HospitalHome = () => {
       }
       if (apptRes.data?.appointments) setAppointments(apptRes.data.appointments)
       if (campsRes.data?.camps) setHealthCamps(campsRes.data.camps)
+      if (dashRes.data?.riskLevel) setWardRiskLevel(dashRes.data.riskLevel)
 
       // Build alerts from capacity + disease data
       const cap = dashRes.data?.latestCapacity
