@@ -159,6 +159,73 @@ const toArray = (data, key) => {
   return []
 }
 
+// ─── Derive hospital view from already-fetched ward data ──────────────────────
+const deriveHospitalsFromWards = (wards, allAlerts) => {
+  const map = {}
+  wards.forEach((ward) => {
+    const name = ward.hospitalName
+    if (!name) return
+    if (!map[name]) {
+      map[name] = {
+        hospitalName: name,
+        wardNames: [],
+        type: name.toLowerCase().includes('uphc') ? 'UPHC' : 'General Hospital',
+        totalBeds: 0,
+        availableBeds: 0,
+        icuTotal: 0,
+        icuAvailable: 0,
+        medicineStockPercentage: null,
+        todayCases: 0,
+        activeCases: 0,
+        topDisease: ward.topDisease || 'None',
+        appointmentsToday: 0,
+        lastUpdated: ward.lastUpdated,
+        alerts: [],
+        activeAlerts: 0,
+        riskLevel: 'Green',
+        wardBreakdown: [],
+        diseaseCounts: {},
+        bedOccupancy: 0,
+        icuOccupancy: 0,
+      }
+    }
+    const h = map[name]
+    if (!h.wardNames.includes(ward.wardName)) h.wardNames.push(ward.wardName)
+    h.totalBeds += ward.totalBeds || 0
+    h.availableBeds += ward.availableBeds || 0
+    h.icuTotal += ward.icuTotal || 0
+    h.icuAvailable += ward.icuAvailable || 0
+    h.todayCases += ward.todayCases || 0
+    h.activeCases += ward.activeCases || 0
+    h.appointmentsToday += ward.appointmentsToday || 0
+    const riskOrder = { Red: 0, Yellow: 1, Green: 2 }
+    if ((riskOrder[ward.riskLevel] ?? 3) < (riskOrder[h.riskLevel] ?? 3)) h.riskLevel = ward.riskLevel
+    if (ward.medicineStockPercentage != null) {
+      if (h.medicineStockPercentage == null || ward.medicineStockPercentage < h.medicineStockPercentage) {
+        h.medicineStockPercentage = ward.medicineStockPercentage
+      }
+    }
+    h.wardBreakdown.push({
+      wardName: ward.wardName,
+      wardCode: ward.wardCode || '',
+      riskLevel: ward.riskLevel || 'Green',
+      activeCases: ward.activeCases || 0,
+      population: ward.population || 0,
+    })
+  })
+
+  return Object.values(map).map((h) => {
+    const wardAlerts = allAlerts.filter(
+      (a) => a.isActive && h.wardNames.includes(a.wardName) && a.status !== 'resolved'
+    )
+    h.alerts = wardAlerts
+    h.activeAlerts = wardAlerts.length
+    h.bedOccupancy = h.totalBeds ? Math.round(((h.totalBeds - h.availableBeds) / h.totalBeds) * 100) : 0
+    h.icuOccupancy = h.icuTotal ? Math.round(((h.icuTotal - h.icuAvailable) / h.icuTotal) * 100) : 0
+    return h
+  })
+}
+
 const getCases = (ward) => ward.todayCases ?? ward.activeCases ?? 0
 
 const calcHAI = (ward) => {
@@ -184,6 +251,7 @@ const pillStyles = {
   orange: { ...pillBase, background: '#FFF7ED', color: '#9A3412' },
   purple: { ...pillBase, background: '#F3E8FF', color: '#6B21A8' },
   blue: { ...pillBase, background: '#EFF6FF', color: '#1D4ED8' },
+  teal: { ...pillBase, background: '#ECFDF5', color: '#065F46' },
 }
 
 const RiskPill = ({ value }) => {
@@ -222,6 +290,21 @@ const MedicinePill = ({ ward }) => {
   if (str === 'medium' || str === 'low') return <span style={pillStyles.yellow}>Barely Sufficient</span>
   if (str === 'critical') return <span style={pillStyles.red}>Insufficient</span>
   return <span style={pillStyles.gray}>—</span>
+}
+
+// ─── Broadcast pill helpers ────────────────────────────────────────────────────
+const BROADCAST_TYPE_STYLES = {
+  'General Info':      { bg: '#EFF6FF', color: '#1D4ED8', icon: 'ℹ️' },
+  'Health Advisory':   { bg: '#F0FDF4', color: '#16A34A', icon: '🩺' },
+  'Disease Alert':     { bg: '#FEF3C7', color: '#92400E', icon: '🦠' },
+  'Vaccination Drive': { bg: '#F3E8FF', color: '#6B21A8', icon: '💉' },
+  'Emergency':         { bg: '#FEE2E2', color: '#991B1B', icon: '🚨' },
+}
+const BROADCAST_PRIORITY_STYLES = {
+  Low:    { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
+  Medium: { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
+  High:   { bg: '#FFF7ED', color: '#9A3412', border: '#FED7AA' },
+  Urgent: { bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
 }
 
 // ─── CSV Export helpers ───────────────────────────────────────────────────────
@@ -488,7 +571,6 @@ const HospitalPerformanceCards = ({ hospitals }) => {
   const totalCases = hospitals.reduce((s, h) => s + (h.todayCases || 0), 0)
   const totalAlerts = hospitals.reduce((s, h) => s + (h.activeAlerts || 0), 0)
   const avgBedOcc = hospitals.length ? Math.round(hospitals.reduce((s, h) => s + (h.bedOccupancy || 0), 0) / hospitals.length) : 0
-  const criticalHospitals = hospitals.filter(h => (h.riskLevel || '').toLowerCase() === 'red').length
 
   const metrics = [
     { icon: '🏥', label: 'Total Hospitals', value: hospitals.length, color: '#7C3AED' },
@@ -527,7 +609,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
   const bedPct = hospital.totalBeds ? Math.round(((hospital.totalBeds - (hospital.availableBeds || 0)) / hospital.totalBeds) * 100) : 0
   const icuPct = hospital.icuTotal ? Math.round(((hospital.icuTotal - (hospital.icuAvailable || 0)) / hospital.icuTotal) * 100) : 0
 
-  // Pie data for bed breakdown
   const bedPieData = [
     { name: 'Available', value: hospital.availableBeds || 0 },
     { name: 'Occupied', value: (hospital.totalBeds || 0) - (hospital.availableBeds || 0) },
@@ -537,7 +618,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
     { name: 'Occupied', value: (hospital.icuTotal || 0) - (hospital.icuAvailable || 0) },
   ]
 
-  // Disease pie from diseaseCounts
   const diseasePieData = Object.entries(hospital.diseaseCounts || {})
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
@@ -568,8 +648,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ background: '#fff', borderRadius: '18px', width: '100%', maxWidth: '740px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
-
-        {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
@@ -585,8 +663,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
         </div>
 
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-
-          {/* Risk + quick stats row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
             {[
               { label: 'RISK LEVEL', value: hospital.riskLevel || 'Green', color: riskColor, bg: riskBg },
@@ -601,17 +677,14 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             ))}
           </div>
 
-          {/* Capacity with mini pie charts */}
           <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px' }}>
             <p style={{ fontSize: '13px', fontWeight: 700, color: '#1E293B', marginBottom: '14px' }}>🛏️ Capacity Breakdown</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'center' }}>
-              {/* Progress bars */}
               <div>
                 <ProgressBar label='General Beds Available' value={hospital.availableBeds ?? 0} max={hospital.totalBeds ?? 0} color={bedPct > 80 ? '#DC2626' : '#16A34A'} />
                 <ProgressBar label='ICU Beds Available' value={hospital.icuAvailable ?? 0} max={hospital.icuTotal ?? 0} color={icuPct > 80 ? '#DC2626' : '#2563EB'} />
                 <ProgressBar label='Medicine Stock' value={medPct} max={100} color={medColor} />
               </div>
-              {/* Pie charts */}
               <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <div style={{ textAlign: 'center' }}>
                   <ResponsiveContainer width={90} height={90}>
@@ -641,7 +714,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             </div>
           </div>
 
-          {/* Key Metrics */}
           <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px' }}>
             <p style={{ fontSize: '13px', fontWeight: 700, color: '#1E293B', marginBottom: '8px' }}>📊 Key Metrics</p>
             <MetricRow label='Hospital Type' value={hospital.type || '—'} />
@@ -658,7 +730,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             <MetricRow label='Appointments Today' value={hospital.appointmentsToday ?? 0} color='#2563EB' />
           </div>
 
-          {/* Disease breakdown pie */}
           {diseasePieData.length > 0 && (
             <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px' }}>
               <p style={{ fontSize: '13px', fontWeight: 700, color: '#1E293B', marginBottom: '12px' }}>🔬 Disease Distribution Today</p>
@@ -684,7 +755,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             </div>
           )}
 
-          {/* Ward breakdown */}
           {(hospital.wardBreakdown || []).length > 0 && (
             <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px' }}>
               <p style={{ fontSize: '13px', fontWeight: 700, color: '#1E293B', marginBottom: '10px' }}>🗺️ Wards Served</p>
@@ -710,7 +780,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             </div>
           )}
 
-          {/* Active Alerts for this hospital's wards */}
           {(hospital.alerts || []).length > 0 && (
             <div style={{ background: '#FEF2F2', borderRadius: '10px', padding: '14px 16px' }}>
               <p style={{ fontSize: '12px', fontWeight: 700, color: '#991B1B', marginBottom: '8px' }}>⚠️ ACTIVE ALERTS ({hospital.alerts.length})</p>
@@ -726,7 +795,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             </div>
           )}
 
-          {/* Print button */}
           <button
             onClick={() => {
               const printWindow = window.open('', '_blank')
@@ -789,7 +857,7 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
   )
 }
 
-// ─── Ward Report Modal (unchanged) ───────────────────────────────────────────
+// ─── Ward Report Modal ────────────────────────────────────────────────────────
 const WardReportModal = ({ ward, alerts, onClose }) => {
   if (!ward) return null
   const wardAlerts = alerts.filter((a) => a.wardName === ward.wardName && a.isActive)
@@ -947,7 +1015,7 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
   )
 }
 
-// ─── Alert Command Center Modal (unchanged) ───────────────────────────────────
+// ─── Alert Command Center Modal ───────────────────────────────────────────────
 const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, onClose, token, onAlertStatusChange }) => {
   const [filterSeverity, setFilterSeverity] = useState('All')
   const [filterType, setFilterType] = useState('All')
@@ -1174,6 +1242,408 @@ const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, 
   )
 }
 
+// ─── Broadcast Composer Modal ─────────────────────────────────────────────────
+const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
+  const wardNames = wards.map(w => w.wardName)
+
+  const [form, setForm] = useState({
+    title: '',
+    message: '',
+    type: 'General Info',
+    priority: 'Medium',
+    targetWards: [],   // empty = all wards
+    expiresAt: '',
+  })
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
+
+  const TYPES = ['General Info', 'Health Advisory', 'Disease Alert', 'Vaccination Drive', 'Emergency']
+  const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent']
+  const PRIORITY_COLORS = { Low: '#16A34A', Medium: '#D97706', High: '#EA580C', Urgent: '#DC2626' }
+  const PRIORITY_BG = { Low: '#F0FDF4', Medium: '#FEF3C7', High: '#FFF7ED', Urgent: '#FEE2E2' }
+
+  const toggleWard = (ward) => {
+    setForm(f => {
+      const next = f.targetWards.includes(ward)
+        ? f.targetWards.filter(w => w !== ward)
+        : [...f.targetWards, ward]
+      return { ...f, targetWards: next }
+    })
+  }
+
+  const selectAllWards = () => setForm(f => ({ ...f, targetWards: [] }))
+  const selectNoWards = () => setForm(f => ({ ...f, targetWards: [] }))
+
+  const handleSend = async () => {
+    if (!form.title.trim()) { setError('Title is required.'); return }
+    if (!form.message.trim()) { setError('Message is required.'); return }
+    setSending(true); setError(null)
+    try {
+      const res = await axios.post(
+        'https://carecrew-1.onrender.com/api/broadcasts',
+        {
+          title: form.title.trim(),
+          message: form.message.trim(),
+          type: form.type,
+          priority: form.priority,
+          targetWards: form.targetWards,
+          expiresAt: form.expiresAt || null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setSuccess(true)
+      onSent(res.data.broadcast)
+      setTimeout(() => onClose(), 2000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send broadcast. Please try again.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const typeStyle = BROADCAST_TYPE_STYLES[form.type] || BROADCAST_TYPE_STYLES['General Info']
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '660px', maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📢 Broadcast to Citizens</h2>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
+              Message will be visible on the Citizen Dashboard immediately after sending
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B', flexShrink: 0 }}>✕</button>
+        </div>
+
+        {/* Success state */}
+        {success ? (
+          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+            <p style={{ fontSize: '52px', marginBottom: '14px' }}>📡</p>
+            <p style={{ fontSize: '20px', fontWeight: 700, color: '#16A34A', marginBottom: '6px' }}>Broadcast Sent!</p>
+            <p style={{ fontSize: '13px', color: '#94A3B8' }}>
+              Citizens {form.targetWards.length > 0 ? `in ${form.targetWards.join(', ')}` : 'across all wards'} will see this message on their dashboard.
+            </p>
+          </div>
+        ) : (
+          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+            {/* Error banner */}
+            {error && (
+              <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#991B1B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>⚠️ {error}</span>
+                <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B', fontSize: '14px', fontWeight: 700 }}>✕</button>
+              </div>
+            )}
+
+            {/* Title */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
+                Broadcast Title <span style={{ color: '#DC2626' }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Dengue Alert — Ward 7 & 8"
+                maxLength={120}
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                style={{ width: '100%', padding: '10px 14px', fontSize: '14px', border: `1.5px solid ${form.title ? '#2563EB40' : '#E2E8F0'}`, borderRadius: '10px', outline: 'none', color: '#1E293B', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
+              />
+              <p style={{ fontSize: '11px', color: form.title.length > 100 ? '#EA580C' : '#CBD5E1', marginTop: '4px', textAlign: 'right' }}>{form.title.length}/120</p>
+            </div>
+
+            {/* Type + Priority row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Message Type</label>
+                <select
+                  value={form.type}
+                  onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: `1.5px solid ${typeStyle.bg}`, borderRadius: '10px', outline: 'none', color: typeStyle.color, background: typeStyle.bg, cursor: 'pointer', fontWeight: 600 }}
+                >
+                  {TYPES.map(t => <option key={t} value={t}>{BROADCAST_TYPE_STYLES[t]?.icon} {t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Priority</label>
+                <select
+                  value={form.priority}
+                  onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: `1.5px solid ${PRIORITY_COLORS[form.priority]}50`, borderRadius: '10px', outline: 'none', color: PRIORITY_COLORS[form.priority], background: PRIORITY_BG[form.priority], cursor: 'pointer', fontWeight: 700 }}
+                >
+                  {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Message body */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
+                Message <span style={{ color: '#DC2626' }}>*</span>
+              </label>
+              <textarea
+                placeholder="Write a clear, actionable message for citizens. Include what precautions to take, where to go for help, and any emergency contact numbers if relevant."
+                maxLength={2000}
+                rows={5}
+                value={form.message}
+                onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                style={{ width: '100%', padding: '10px 14px', fontSize: '14px', border: `1.5px solid ${form.message ? '#2563EB40' : '#E2E8F0'}`, borderRadius: '10px', outline: 'none', color: '#1E293B', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.6, transition: 'border-color 0.2s' }}
+              />
+              <p style={{ fontSize: '11px', color: form.message.length > 1800 ? '#EA580C' : '#CBD5E1', marginTop: '4px', textAlign: 'right' }}>{form.message.length}/2000</p>
+            </div>
+
+            {/* Target Wards */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Target Wards
+                </label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                    {form.targetWards.length === 0 ? '📣 Broadcasting to all wards' : `${form.targetWards.length} ward(s) selected`}
+                  </span>
+                  {form.targetWards.length > 0 && (
+                    <button onClick={selectAllWards} style={{ fontSize: '11px', color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: '0' }}>
+                      Clear (all wards)
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                <button
+                  onClick={selectAllWards}
+                  style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${form.targetWards.length === 0 ? '#2563EB' : '#E2E8F0'}`, background: form.targetWards.length === 0 ? '#EFF6FF' : '#fff', color: form.targetWards.length === 0 ? '#2563EB' : '#64748B', transition: 'all 0.15s' }}
+                >
+                  🌐 All Wards
+                </button>
+                {wardNames.map(ward => {
+                  const isSelected = form.targetWards.includes(ward)
+                  return (
+                    <button
+                      key={ward}
+                      onClick={() => toggleWard(ward)}
+                      style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${isSelected ? '#059669' : '#E2E8F0'}`, background: isSelected ? '#ECFDF5' : '#fff', color: isSelected ? '#065F46' : '#64748B', transition: 'all 0.15s' }}
+                    >
+                      {isSelected ? '✓ ' : ''}{ward}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Optional expiry */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
+                Expires At &nbsp;<span style={{ fontWeight: 400, textTransform: 'none', color: '#94A3B8', fontSize: '11px' }}>optional — leave blank to keep active indefinitely</span>
+              </label>
+              <input
+                type="datetime-local"
+                value={form.expiresAt}
+                onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
+                style={{ padding: '10px 14px', fontSize: '13px', border: '1.5px solid #E2E8F0', borderRadius: '10px', outline: 'none', color: '#1E293B' }}
+              />
+            </div>
+
+            {/* Live preview */}
+            {(form.title || form.message) && (
+              <div>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Preview — as citizens will see it</p>
+                <div style={{
+                  background: form.priority === 'Urgent' ? '#FEF2F2' : form.priority === 'High' ? '#FFF7ED' : '#F8FAFC',
+                  border: `1.5px solid ${PRIORITY_COLORS[form.priority]}30`,
+                  borderLeft: `4px solid ${PRIORITY_COLORS[form.priority]}`,
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ ...pillBase, background: typeStyle.bg, color: typeStyle.color }}>{typeStyle.icon} {form.type}</span>
+                    <span style={{ ...pillBase, background: PRIORITY_BG[form.priority], color: PRIORITY_COLORS[form.priority], border: `1px solid ${PRIORITY_COLORS[form.priority]}40` }}>{form.priority} Priority</span>
+                    {form.targetWards.length === 0
+                      ? <span style={{ ...pillBase, background: '#F1F5F9', color: '#475569' }}>🌐 All Wards</span>
+                      : form.targetWards.slice(0, 3).map(w => <span key={w} style={{ ...pillBase, background: '#ECFDF5', color: '#065F46' }}>{w}</span>)
+                    }
+                    {form.targetWards.length > 3 && <span style={{ ...pillBase, background: '#F1F5F9', color: '#94A3B8' }}>+{form.targetWards.length - 3} more</span>}
+                  </div>
+                  {form.title && <p style={{ fontSize: '15px', fontWeight: 700, color: '#1E293B', marginBottom: '6px' }}>{form.title}</p>}
+                  {form.message && <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{form.message}</p>}
+                  <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '8px' }}>
+                    Sent by Solapur Municipal Corporation · {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Send button */}
+            <button
+              onClick={handleSend}
+              disabled={sending || !form.title.trim() || !form.message.trim()}
+              style={{
+                background: sending
+                  ? '#93C5FD'
+                  : !form.title.trim() || !form.message.trim()
+                    ? '#E2E8F0'
+                    : form.priority === 'Urgent'
+                      ? '#DC2626'
+                      : '#059669',
+                color: !form.title.trim() || !form.message.trim() ? '#94A3B8' : '#fff',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '14px',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: sending || !form.title.trim() || !form.message.trim() ? 'not-allowed' : 'pointer',
+                width: '100%',
+                boxShadow: sending || !form.title.trim() || !form.message.trim()
+                  ? 'none'
+                  : '0 4px 14px rgba(5,150,105,0.35)',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              {sending ? (
+                <>📡 Sending broadcast...</>
+              ) : (
+                <>📢 Send Broadcast to Citizens{form.targetWards.length > 0 ? ` (${form.targetWards.length} ward${form.targetWards.length > 1 ? 's' : ''})` : ' (All Wards)'}</>
+              )}
+            </button>
+
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Broadcast History Panel ──────────────────────────────────────────────────
+const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => {
+  const [deactivatingId, setDeactivatingId] = useState(null)
+
+  const handleDeactivate = async (id) => {
+    setDeactivatingId(id)
+    try {
+      await axios.patch(
+        `https://carecrew-1.onrender.com/api/broadcasts/${id}/deactivate`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      onDeactivate(id)
+    } catch (err) {
+      console.error('Deactivate failed:', err)
+    } finally {
+      setDeactivatingId(null)
+    }
+  }
+
+  const active = broadcasts.filter(b => b.isActive)
+  const inactive = broadcasts.filter(b => !b.isActive)
+
+  const BroadcastCard = ({ b }) => {
+    const typeStyle = BROADCAST_TYPE_STYLES[b.type] || BROADCAST_TYPE_STYLES['General Info']
+    const prioStyle = BROADCAST_PRIORITY_STYLES[b.priority] || BROADCAST_PRIORITY_STYLES['Medium']
+    return (
+      <div style={{
+        background: b.isActive ? '#FAFFFE' : '#F8FAFC',
+        border: `1.5px solid ${b.isActive ? '#059669' + '30' : '#E2E8F0'}`,
+        borderLeft: `4px solid ${b.isActive ? '#059669' : '#CBD5E1'}`,
+        borderRadius: '10px',
+        padding: '14px 16px',
+        opacity: b.isActive ? 1 : 0.65,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <span style={{ ...pillBase, background: typeStyle.bg, color: typeStyle.color, fontSize: '10px' }}>{typeStyle.icon} {b.type}</span>
+              <span style={{ ...pillBase, background: prioStyle.bg, color: prioStyle.color, border: `1px solid ${prioStyle.border}`, fontSize: '10px' }}>{b.priority}</span>
+              {b.isActive
+                ? <span style={{ ...pillBase, background: '#ECFDF5', color: '#065F46', fontSize: '10px' }}>● Active</span>
+                : <span style={{ ...pillBase, background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Deactivated</span>
+              }
+              {b.targetWards && b.targetWards.length > 0
+                ? b.targetWards.slice(0, 2).map(w => <span key={w} style={{ ...pillBase, background: '#F1F5F9', color: '#475569', fontSize: '10px', padding: '2px 6px' }}>{w}</span>)
+                : <span style={{ ...pillBase, background: '#EFF6FF', color: '#1D4ED8', fontSize: '10px' }}>All Wards</span>
+              }
+              {b.targetWards && b.targetWards.length > 2 && (
+                <span style={{ ...pillBase, background: '#F1F5F9', color: '#94A3B8', fontSize: '10px', padding: '2px 6px' }}>+{b.targetWards.length - 2}</span>
+              )}
+            </div>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B', marginBottom: '4px' }}>{b.title}</p>
+            <p style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5, marginBottom: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.message}</p>
+            <p style={{ fontSize: '11px', color: '#94A3B8' }}>
+              Sent {new Date(b.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {b.createdBy?.name ? ` · by ${b.createdBy.name}` : ''}
+              {b.expiresAt ? ` · Expires ${new Date(b.expiresAt).toLocaleDateString()}` : ''}
+            </p>
+          </div>
+          {b.isActive && (
+            <button
+              onClick={() => handleDeactivate(b._id)}
+              disabled={deactivatingId === b._id}
+              style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '7px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, color: '#991B1B', cursor: deactivatingId === b._id ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, opacity: deactivatingId === b._id ? 0.6 : 1 }}
+            >
+              {deactivatingId === b._id ? '...' : '🔕 Deactivate'}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '680px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📋 Broadcast History</h2>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
+              {active.length} active · {inactive.length} deactivated · {broadcasts.length} total
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B' }}>✕</button>
+        </div>
+
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {broadcasts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+              <p style={{ fontSize: '40px', marginBottom: '12px' }}>📭</p>
+              <p style={{ fontSize: '16px', fontWeight: 600, color: '#1E293B', marginBottom: '4px' }}>No broadcasts yet</p>
+              <p style={{ fontSize: '13px', color: '#94A3B8' }}>Broadcasts you send will appear here.</p>
+            </div>
+          ) : (
+            <>
+              {active.length > 0 && (
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                    ● Active Broadcasts ({active.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {active.map(b => <BroadcastCard key={b._id} b={b} />)}
+                  </div>
+                </div>
+              )}
+              {inactive.length > 0 && (
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                    Deactivated ({inactive.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {inactive.map(b => <BroadcastCard key={b._id} b={b} />)}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { token } = useAuth()
@@ -1183,7 +1653,6 @@ export default function Dashboard() {
   const [apiAlerts, setApiAlerts] = useState([])
   const [charts, setCharts] = useState({ topDiseases: [], dailyCases: [] })
   const [loading, setLoading] = useState(true)
-  const [hospitalsLoading, setHospitalsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [dismissedIds, setDismissedIds] = useState(() => loadDismissedIds())
   const [search, setSearch] = useState('')
@@ -1195,15 +1664,21 @@ export default function Dashboard() {
   const [thresholdAlerts, setThresholdAlerts] = useState([])
   const [alertStatusOverrides, setAlertStatusOverrides] = useState({})
 
+  // ── Broadcast state ──────────────────────────────────────────────────────────
+  const [broadcasts, setBroadcasts] = useState([])
+  const [showBroadcastComposer, setShowBroadcastComposer] = useState(false)
+  const [showBroadcastHistory, setShowBroadcastHistory] = useState(false)
+
   const authHeaders = { Authorization: `Bearer ${token}` }
 
   const fetchAll = useCallback(async () => {
     try {
       setError(null)
-      const [wardsRes, alertsRes, chartsRes] = await Promise.all([
+      const [wardsRes, alertsRes, chartsRes, broadcastsRes] = await Promise.all([
         axios.get('https://carecrew-1.onrender.com/api/dashboard/wards', { headers: authHeaders }),
         axios.get('https://carecrew-1.onrender.com/api/dashboard/alerts', { headers: authHeaders }),
         axios.get('https://carecrew-1.onrender.com/api/dashboard/charts', { headers: authHeaders }),
+        axios.get('https://carecrew-1.onrender.com/api/broadcasts', { headers: authHeaders }).catch(() => ({ data: { broadcasts: [] } })),
       ])
       const fetchedWards = toArray(wardsRes.data, 'wards')
       setWards(fetchedWards)
@@ -1211,6 +1686,7 @@ export default function Dashboard() {
       const cd = chartsRes.data || {}
       setCharts({ topDiseases: toArray(cd.topDiseases, 'topDiseases'), dailyCases: toArray(cd.dailyCases, 'dailyCases') })
       setThresholdAlerts(computeThresholdAlerts(fetchedWards))
+      setBroadcasts(toArray(broadcastsRes.data, 'broadcasts'))
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.')
     } finally {
@@ -1218,38 +1694,23 @@ export default function Dashboard() {
     }
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Use a ref to track whether hospitals have been fetched so we avoid
-  // stale-closure issues with useCallback depending on hospitals.length
-  const hospitalsFetchedRef = useRef(false)
-
-  const fetchHospitals = useCallback(async () => {
-    if (hospitalsFetchedRef.current) return
-    hospitalsFetchedRef.current = true
-    setHospitalsLoading(true)
-    try {
-      const res = await axios.get('https://carecrew-1.onrender.com/api/dashboard/hospitals', { headers: { Authorization: `Bearer ${token}` } })
-      const data = toArray(res.data, 'hospitals')
-      setHospitals(data)
-      if (data.length === 0) {
-        // Allow retry if server returned empty
-        hospitalsFetchedRef.current = false
-      }
-    } catch (err) {
-      hospitalsFetchedRef.current = false // allow retry on error
-      setError('Failed to load hospital data. Please try again.')
-    } finally {
-      setHospitalsLoading(false)
-    }
-  }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
+  const allAlerts = React.useMemo(() => {
+    const merged = [...apiAlerts, ...thresholdAlerts]
+    const seen = new Set()
+    return merged
+      .filter((a) => { if (seen.has(a._id)) return false; seen.add(a._id); return true })
+      .map((a) => ({ ...a, status: alertStatusOverrides[a._id] || a.status || 'pending' }))
+  }, [apiAlerts, thresholdAlerts, alertStatusOverrides])
 
   useEffect(() => { fetchAll() }, [fetchAll])
   useEffect(() => { if (wards.length > 0) setThresholdAlerts(computeThresholdAlerts(wards)) }, [wards])
   useEffect(() => { saveDismissedIds(dismissedIds) }, [dismissedIds])
 
-  // Lazy-load hospitals when tab switches
   useEffect(() => {
-    if (activeTab === 'hospitals') fetchHospitals()
-  }, [activeTab, fetchHospitals])
+    if (wards.length > 0) {
+      setHospitals(deriveHospitalsFromWards(wards, allAlerts))
+    }
+  }, [wards, allAlerts]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDisease = (disease) => {
     setActiveDiseases(prev => { const next = new Set(prev); next.has(disease) ? next.delete(disease) : next.add(disease); return next })
@@ -1259,13 +1720,13 @@ export default function Dashboard() {
     setAlertStatusOverrides(prev => ({ ...prev, [alertId]: newStatus }))
   }
 
-  const allAlerts = React.useMemo(() => {
-    const merged = [...apiAlerts, ...thresholdAlerts]
-    const seen = new Set()
-    return merged
-      .filter((a) => { if (seen.has(a._id)) return false; seen.add(a._id); return true })
-      .map((a) => ({ ...a, status: alertStatusOverrides[a._id] || a.status || 'pending' }))
-  }, [apiAlerts, thresholdAlerts, alertStatusOverrides])
+  // Broadcast handlers
+  const handleBroadcastSent = (newBroadcast) => {
+    setBroadcasts(prev => [newBroadcast, ...prev])
+  }
+  const handleBroadcastDeactivated = (id) => {
+    setBroadcasts(prev => prev.map(b => b._id === id ? { ...b, isActive: false } : b))
+  }
 
   const totalCases = wards.reduce((s, w) => s + getCases(w), 0)
   const wardsOnAlert = allAlerts.filter((a) => a.isActive && a.status !== 'resolved').length
@@ -1278,6 +1739,7 @@ export default function Dashboard() {
   const criticalCount = activeAlerts.filter((a) => a.severity === 'Critical').length
   const filteredWards = wards.filter((w) => w.wardName.toLowerCase().includes(search.toLowerCase()))
   const filteredHospitals = hospitals.filter((h) => h.hospitalName.toLowerCase().includes(hospitalSearch.toLowerCase()))
+  const activeBroadcastCount = broadcasts.filter(b => b.isActive).length
 
   const handleDismiss = (id) => setDismissedIds((prev) => new Set([...prev, id]))
   const handleDismissAll = () => setDismissedIds(new Set(activeAlerts.map((a) => a._id)))
@@ -1297,6 +1759,7 @@ export default function Dashboard() {
       <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <Navbar />
 
+      {/* ── Modals ── */}
       <WardReportModal ward={selectedWard} alerts={allAlerts} onClose={() => setSelectedWard(null)} />
       <HospitalDetailModal hospital={selectedHospital} onClose={() => setSelectedHospital(null)} />
 
@@ -1309,6 +1772,24 @@ export default function Dashboard() {
           onClose={() => setShowAlertCenter(false)}
           token={token}
           onAlertStatusChange={handleAlertStatusChange}
+        />
+      )}
+
+      {showBroadcastComposer && (
+        <BroadcastComposer
+          wards={wards}
+          token={token}
+          onClose={() => setShowBroadcastComposer(false)}
+          onSent={handleBroadcastSent}
+        />
+      )}
+
+      {showBroadcastHistory && (
+        <BroadcastHistoryPanel
+          broadcasts={broadcasts}
+          token={token}
+          onDeactivate={handleBroadcastDeactivated}
+          onClose={() => setShowBroadcastHistory(false)}
         />
       )}
 
@@ -1395,10 +1876,37 @@ export default function Dashboard() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+
+            {/* Alert Center button */}
             <button onClick={() => setShowAlertCenter(true)} style={{ background: criticalCount > 0 ? '#DC2626' : activeAlerts.length > 0 ? '#EA580C' : '#64748B', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: criticalCount > 0 ? '0 4px 14px 0 rgba(220,38,38,0.4)' : '0 4px 14px 0 rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               🚨 Alert Center
               {activeAlerts.length > 0 && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '20px', padding: '1px 7px', fontSize: '12px', fontWeight: 700 }}>{activeAlerts.length}</span>}
             </button>
+
+            {/* Broadcast to Citizens button */}
+            <button
+              onClick={() => setShowBroadcastComposer(true)}
+              style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(5,150,105,0.35)', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              📢 Broadcast to Citizens
+              {activeBroadcastCount > 0 && (
+                <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '20px', padding: '1px 7px', fontSize: '12px', fontWeight: 700 }}>
+                  {activeBroadcastCount} live
+                </span>
+              )}
+            </button>
+
+            {/* Broadcast History button — only shows if broadcasts exist */}
+            {broadcasts.length > 0 && (
+              <button
+                onClick={() => setShowBroadcastHistory(true)}
+                style={{ background: 'rgba(255,255,255,0.8)', color: '#059669', border: '1.5px solid #059669', borderRadius: '10px', padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                📋 History ({broadcasts.length})
+              </button>
+            )}
+
+            {/* CSV Export buttons */}
             {activeTab === 'wards' ? (
               <>
                 <button onClick={() => exportCSV(wards)} disabled={wards.length === 0} style={{ backgroundColor: wards.length === 0 ? '#BFDBFE' : '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: wards.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(37,99,235,0.3)' }}>
@@ -1424,6 +1932,29 @@ export default function Dashboard() {
           <StatCard title='Wards on Alert' value={wardsOnAlert} icon='⚠️' />
           <StatCard title='Hospitals Reporting' value={hospitalsReporting} icon='🏥' />
         </div>
+
+        {/* Active Broadcasts ribbon — shows when there are live broadcasts */}
+        {activeBroadcastCount > 0 && (
+          <div style={{ background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span style={{ background: '#059669', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
+                📢 {activeBroadcastCount} LIVE BROADCAST{activeBroadcastCount > 1 ? 'S' : ''}
+              </span>
+              <span style={{ fontSize: '13px', color: '#065F46' }}>Citizens can currently see {activeBroadcastCount} message{activeBroadcastCount > 1 ? 's' : ''} on their dashboard</span>
+              {broadcasts.filter(b => b.isActive).slice(0, 2).map(b => (
+                <span key={b._id} style={{ ...pillBase, background: '#D1FAE5', color: '#065F46', fontSize: '11px' }}>
+                  {BROADCAST_TYPE_STYLES[b.type]?.icon} {b.title.length > 30 ? b.title.slice(0, 30) + '…' : b.title}
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowBroadcastHistory(true)}
+              style={{ background: 'none', border: '1px solid #6EE7B7', borderRadius: '7px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, color: '#059669', cursor: 'pointer' }}
+            >
+              Manage →
+            </button>
+          </div>
+        )}
 
         {/* Smart Alert Summary Panel */}
         {activeAlerts.length > 0 && (
@@ -1481,18 +2012,11 @@ export default function Dashboard() {
 
         {/* ── Tab Toggle: View by Wards | View by Hospitals ── */}
         <div className="glass-panel border border-white/60 shadow-soft rounded-2xl overflow-hidden">
-          {/* Tab Header */}
           <div style={{ padding: '0 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}>
-            {/* Tabs */}
             <div style={{ display: 'flex', gap: '0' }}>
               <button
                 onClick={() => { setActiveTab('wards'); setSearch('') }}
-                style={{
-                  padding: '16px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                  border: 'none', borderBottom: activeTab === 'wards' ? '2.5px solid #2563EB' : '2.5px solid transparent',
-                  background: 'none', color: activeTab === 'wards' ? '#2563EB' : '#64748B',
-                  display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s', whiteSpace: 'nowrap'
-                }}
+                style={{ padding: '16px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', border: 'none', borderBottom: activeTab === 'wards' ? '2.5px solid #2563EB' : '2.5px solid transparent', background: 'none', color: activeTab === 'wards' ? '#2563EB' : '#64748B', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s', whiteSpace: 'nowrap' }}
               >
                 🗺️ View by Wards
                 <span style={{ background: activeTab === 'wards' ? '#EFF6FF' : '#F1F5F9', color: activeTab === 'wards' ? '#2563EB' : '#94A3B8', fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px' }}>
@@ -1501,12 +2025,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => { setActiveTab('hospitals'); setHospitalSearch('') }}
-                style={{
-                  padding: '16px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                  border: 'none', borderBottom: activeTab === 'hospitals' ? '2.5px solid #7C3AED' : '2.5px solid transparent',
-                  background: 'none', color: activeTab === 'hospitals' ? '#7C3AED' : '#64748B',
-                  display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s', whiteSpace: 'nowrap'
-                }}
+                style={{ padding: '16px 24px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', border: 'none', borderBottom: activeTab === 'hospitals' ? '2.5px solid #7C3AED' : '2.5px solid transparent', background: 'none', color: activeTab === 'hospitals' ? '#7C3AED' : '#64748B', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.15s', whiteSpace: 'nowrap' }}
               >
                 🏥 View by Hospitals
                 <span style={{ background: activeTab === 'hospitals' ? '#F3E8FF' : '#F1F5F9', color: activeTab === 'hospitals' ? '#7C3AED' : '#94A3B8', fontSize: '11px', fontWeight: 700, padding: '1px 7px', borderRadius: '20px' }}>
@@ -1514,8 +2033,6 @@ export default function Dashboard() {
                 </span>
               </button>
             </div>
-
-            {/* Search input (context-aware) */}
             {activeTab === 'wards' ? (
               <input type='text' placeholder='Search ward...' value={search}
                 style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '10px', outline: 'none', width: '220px', color: '#1E293B', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}
@@ -1527,7 +2044,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Tab Content */}
           {activeTab === 'wards' ? (
             filteredWards.length === 0 ? (
               <p style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>No ward data available.</p>
@@ -1535,11 +2051,10 @@ export default function Dashboard() {
               <WardTable wards={filteredWards} onReport={(ward) => setSelectedWard(ward)} />
             )
           ) : (
-            hospitalsLoading ? (
+            hospitals.length === 0 && wards.length === 0 ? (
               <div style={{ padding: '48px', display: 'flex', justifyContent: 'center' }}><InlineLoader /></div>
             ) : (
               <div>
-                {/* Hospital Performance Cards */}
                 {hospitals.length > 0 && (
                   <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.2)' }}>
                     <HospitalPerformanceCards hospitals={hospitals} />
@@ -1557,7 +2072,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Charts — only show in ward view */}
+        {/* Charts */}
         {activeTab === 'wards' && (
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             <Card>
