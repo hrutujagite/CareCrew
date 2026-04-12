@@ -25,6 +25,8 @@ const forecastRoutes = require('./routes/forecast');
 const wardRoutes = require('./routes/wards');
 const healthCampRoutes = require('./routes/healthcamps');
 const chatRoutes = require('./routes/chat');
+const indentRoutes = require('./routes/indent');
+const broadcastRoutes = require('./routes/broadcasts');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/disease', diseaseRoutes);
@@ -36,6 +38,8 @@ app.use('/api/forecast', forecastRoutes);
 app.use('/api/wards', wardRoutes);
 app.use('/api/healthcamps', healthCampRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/indent', indentRoutes);
+app.use('/api/broadcasts', broadcastRoutes);
 
 // Health check
 app.get('/', (req, res) => {

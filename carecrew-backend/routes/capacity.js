@@ -16,8 +16,6 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       icuAvailable,
       emergencyBedsTotal,    // ✅ NEW
       emergencyBedsAvailable, // ✅ NEW
-      ventilatorsTotal,
-      ventilatorsAvailable,
       oxygenTotal,
       oxygenAvailable,
       medicineStockPercentage
@@ -32,8 +30,6 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
       icuAvailable: icuAvailable || 0,
       emergencyBedsTotal: emergencyBedsTotal || 0,       // ✅ NEW
       emergencyBedsAvailable: emergencyBedsAvailable || 0, // ✅ NEW
-      ventilatorsTotal: ventilatorsTotal || 0,
-      ventilatorsAvailable: ventilatorsAvailable || 0,
       oxygenTotal: oxygenTotal || 0,
       oxygenAvailable: oxygenAvailable || 0,
       medicineStockPercentage: medicineStockPercentage || 100,
@@ -151,6 +147,60 @@ router.get('/history', protect, authorizeRoles('hospitalStaff'), async (req, res
     }).sort({ lastUpdated: -1 }).limit(30);
 
     res.json({ success: true, history });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  POST /api/capacity/shortage-flag
+// @desc   Manually raise a shortage flag (medicine/oxygen)
+router.post('/shortage-flag', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const { shortageType, severity, message } = req.body; // e.g., 'Medicine', 'Red', 'Critically low on Remdesivir'
+    const alert = await Alert.create({
+      wardName: req.user.ward,
+      hospitalName: req.user.hospitalName,
+      alertType: 'Shortage',
+      severity: severity || 'Red',
+      message: message || `Critical ${shortageType} shortage at ${req.user.hospitalName}`,
+      isActive: true
+    });
+    res.status(201).json({ success: true, alert });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  GET /api/capacity/shortage-flags
+// @desc   Get active shortage flags (Health Officer)
+router.get('/shortage-flags', protect, authorizeRoles('healthOfficer'), async (req, res) => {
+  try {
+    const alerts = await Alert.find({ alertType: 'Shortage', isActive: true }).sort({ createdAt: -1 });
+    res.json({ success: true, alerts });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route  PATCH /api/capacity/shortage-flag/:id/resolve
+// @desc   Resolve a shortage flag
+router.patch('/shortage-flag/:id/resolve', protect, async (req, res) => {
+  try {
+    const alert = await Alert.findById(req.params.id);
+    if (!alert) {
+      return res.status(404).json({ success: false, message: 'Alert not found' });
+    }
+    
+    // Allow either the officer or the hospital that created it to resolve it
+    if (req.user.role !== 'healthOfficer' && alert.hospitalName !== req.user.hospitalName) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    alert.isActive = false;
+    alert.resolvedDate = Date.now();
+    await alert.save();
+    
+    res.json({ success: true, message: 'Shortage resolved', alert });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

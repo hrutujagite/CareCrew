@@ -40,15 +40,6 @@ const hospitalCapacitySchema = new mongoose.Schema({
     default: 0
   },
 
-  // Ventilators
-  ventilatorsTotal: {
-    type: Number,
-    default: 0
-  },
-  ventilatorsAvailable: {
-    type: Number,
-    default: 0
-  },
   // Oxygen
   oxygenTotal: {
     type: Number,
