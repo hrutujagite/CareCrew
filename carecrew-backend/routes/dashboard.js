@@ -147,6 +147,13 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             icuTotal: latestCapacity
               ? latestCapacity.icuTotal
               : defaultIcuTotal,
+              emergencyBedsAvailable: latestCapacity
+  ? latestCapacity.emergencyBedsAvailable
+  : 0,
+emergencyBedsTotal: latestCapacity
+  ? latestCapacity.emergencyBedsTotal
+  
+  : 0,
             // hospitals = COUNT of hospitals in ward (used in HAI formula)
             hospitals: ward.hospitals.length,
             hospitalName: reportingHospital,
@@ -171,6 +178,8 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             totalBeds: 0,
             icuAvailable: 0,
             icuTotal: 0,
+            emergencyBedsAvailable: 0,
+emergencyBedsTotal: 0,
             hospitals: ward.hospitals.length,
             hospitalName: '',
             appointmentsToday: 0,

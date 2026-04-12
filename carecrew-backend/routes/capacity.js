@@ -48,6 +48,9 @@ router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res
         ward.hospitals[hospitalIndex].availableBeds = availableBeds;
         ward.hospitals[hospitalIndex].icuTotal = icuTotal || 0;
         ward.hospitals[hospitalIndex].icuAvailable = icuAvailable || 0;
+        ward.hospitals[hospitalIndex].emergencyBedsTotal = emergencyBedsTotal || 0;
+ward.hospitals[hospitalIndex].emergencyBedsAvailable = emergencyBedsAvailable || 0;
+
       }
       await ward.save();
     }
