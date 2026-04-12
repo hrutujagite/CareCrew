@@ -11,13 +11,13 @@ import DiseaseAnalytics from './DiseaseAnalytics'
 import InfrastructureDashboard from './InfrastructureDashboard'
 import AppointmentsDashboard from './AppointmentsDashboard'
 import HealthCampsDashboard from './HealthCampsDashboard'
+// eslint-disable-next-line no-unused-vars
 import AlertsDashboard from './AlertsDashboard'
 import DoctorManagement from './DoctorManagement'
 import IndentDashboard from './IndentDashboard'
 import BroadcastsDashboard from './BroadcastsDashboard'
 import ProfileDashboard from './ProfileDashboard'
 import { useAuth } from '../../context/AuthContext'
-import { useLanguage } from '../../context/LanguageContext'
 
 // ─── Facility type label map ─────────────────────────────────────────────────
 const FACILITY_TYPE_LABELS = {
@@ -62,7 +62,6 @@ const NAV_ITEMS = [
 
 const HospitalHome = () => {
   const { token, user } = useAuth()
-  const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
 
