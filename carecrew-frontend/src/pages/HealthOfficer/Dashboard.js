@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, LineChart, Line,
@@ -37,6 +37,155 @@ const DISEASE_COLORS = {
 }
 const DISEASES = Object.keys(DISEASE_COLORS)
 
+// ─── Alert thresholds & recommendations ──────────────────────────────────────
+const ALERT_THRESHOLDS = [
+  {
+    id: 'cases_critical',
+    type: 'Case Surge',
+    severity: 'Critical',
+    priority: 1,
+    check: (w) => (w.activeCases || w.todayCases || 0) > 100,
+    message: (w) => `Active cases exceed 100 (currently ${w.activeCases || w.todayCases || 0})`,
+    recommendation: 'Deploy mobile health units immediately. Coordinate with district health office for surge response team.',
+    icon: '🦠',
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    border: '#FCA5A5',
+  },
+  {
+    id: 'cases_warning',
+    type: 'Case Surge',
+    severity: 'High',
+    priority: 2,
+    check: (w) => {
+      const c = w.activeCases || w.todayCases || 0
+      return c > 50 && c <= 100
+    },
+    message: (w) => `Active cases rising (currently ${w.activeCases || w.todayCases || 0})`,
+    recommendation: 'Increase surveillance frequency. Alert local PHC staff. Prepare additional isolation capacity.',
+    icon: '📈',
+    color: '#D97706',
+    bg: '#FEF3C7',
+    border: '#FDE68A',
+  },
+  {
+    id: 'bed_critical',
+    type: 'Bed Capacity',
+    severity: 'Critical',
+    priority: 1,
+    check: (w) => {
+      if (!w.totalBeds || !w.availableBeds) return false
+      return ((w.totalBeds - w.availableBeds) / w.totalBeds) * 100 > 80
+    },
+    message: (w) => {
+      const occ = w.totalBeds ? Math.round(((w.totalBeds - w.availableBeds) / w.totalBeds) * 100) : 0
+      return `Bed occupancy at ${occ}% — only ${w.availableBeds} beds available`
+    },
+    recommendation: 'Activate overflow beds protocol. Contact neighbouring hospitals for patient transfer arrangements.',
+    icon: '🛏️',
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    border: '#FCA5A5',
+  },
+  {
+    id: 'icu_critical',
+    type: 'ICU Capacity',
+    severity: 'Critical',
+    priority: 1,
+    check: (w) => {
+      if (!w.icuTotal || w.icuAvailable == null) return false
+      return ((w.icuTotal - w.icuAvailable) / w.icuTotal) * 100 > 80
+    },
+    message: (w) => {
+      const occ = w.icuTotal ? Math.round(((w.icuTotal - w.icuAvailable) / w.icuTotal) * 100) : 0
+      return `ICU occupancy at ${occ}% — only ${w.icuAvailable} ICU beds available`
+    },
+    recommendation: 'Escalate to district medical officer. Evaluate critical patient transfers. Mobilise additional ventilators.',
+    icon: '🏥',
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    border: '#FCA5A5',
+  },
+  {
+    id: 'medicine_critical',
+    type: 'Medicine Stock',
+    severity: 'Critical',
+    priority: 1,
+    check: (w) => typeof w.medicineStockPercentage === 'number' && w.medicineStockPercentage < 25,
+    message: (w) => `Medicine stock critically low at ${w.medicineStockPercentage}%`,
+    recommendation: 'Issue emergency procurement request. Contact district supply chain. Prioritise essential medicines list.',
+    icon: '💊',
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    border: '#FCA5A5',
+  },
+  {
+    id: 'medicine_warning',
+    type: 'Medicine Stock',
+    severity: 'Medium',
+    priority: 3,
+    check: (w) => {
+      const p = w.medicineStockPercentage
+      return typeof p === 'number' && p >= 25 && p < 50
+    },
+    message: (w) => `Medicine stock below 50% (at ${w.medicineStockPercentage}%)`,
+    recommendation: 'Place restocking order within 48 hours. Review consumption patterns for top 5 medicines.',
+    icon: '💊',
+    color: '#D97706',
+    bg: '#FEF3C7',
+    border: '#FDE68A',
+  },
+  {
+    id: 'risk_red',
+    type: 'Risk Level',
+    severity: 'High',
+    priority: 2,
+    check: (w) => (w.riskLevel || '').toLowerCase() === 'red',
+    message: () => 'Ward is in Red risk zone',
+    recommendation: 'Schedule immediate field inspection. Brief ward medical officer. Activate community health workers.',
+    icon: '🚨',
+    color: '#DC2626',
+    bg: '#FEE2E2',
+    border: '#FCA5A5',
+  },
+]
+
+// ─── Compute threshold alerts from ward data ──────────────────────────────────
+const computeThresholdAlerts = (wards) => {
+  const alerts = []
+  wards.forEach((ward) => {
+    ALERT_THRESHOLDS.forEach((threshold) => {
+      if (threshold.check(ward)) {
+        alerts.push({
+          _id: `threshold_${ward.wardName}_${threshold.id}`,
+          wardName: ward.wardName,
+          alertType: threshold.type,
+          severity: threshold.severity,
+          priority: threshold.priority,
+          message: threshold.message(ward),
+          recommendation: threshold.recommendation,
+          icon: threshold.icon,
+          color: threshold.color,
+          bg: threshold.bg,
+          border: threshold.border,
+          isActive: true,
+          isThreshold: true,
+          status: 'pending',
+          triggeredAt: new Date().toISOString(),
+        })
+      }
+    })
+  })
+  const seen = new Map()
+  const deduped = []
+  alerts.sort((a, b) => a.priority - b.priority)
+  alerts.forEach((a) => {
+    const key = `${a.wardName}_${a.alertType}`
+    if (!seen.has(key)) { seen.set(key, true); deduped.push(a) }
+  })
+  return deduped
+}
+
 // ─── Safe array extractor ─────────────────────────────────────────────────────
 const toArray = (data, key) => {
   if (!data) return []
@@ -62,10 +211,27 @@ const calcHAI = (ward) => {
   return Math.round(Math.min(100, Math.max(0, score)))
 }
 
-const haiBg = (score) => {
-  if (score > 70) return { bg: '#D1FAE5', text: '#065F46', ring: '#6EE7B7', label: 'Good' }
-  if (score >= 40) return { bg: '#FEF3C7', text: '#92400E', ring: '#FDE68A', label: 'Moderate' }
-  return { bg: '#FEE2E2', text: '#991B1B', ring: '#FCA5A5', label: 'Critical' }
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+const STORAGE_KEY = 'carecrew_dismissed_alerts'
+
+const loadDismissedIds = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) return new Set(parsed)
+    return new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+const saveDismissedIds = (set) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]))
+  } catch {
+    // localStorage unavailable — silently ignore
+  }
 }
 
 // ─── Pill styles ──────────────────────────────────────────────────────────────
@@ -78,6 +244,9 @@ const pillStyles = {
   yellow: { ...pillBase, background: '#FEF3C7', color: '#92400E' },
   red: { ...pillBase, background: '#FEE2E2', color: '#991B1B' },
   gray: { ...pillBase, background: '#F3F4F6', color: '#6B7280' },
+  orange: { ...pillBase, background: '#FFF7ED', color: '#9A3412' },
+  purple: { ...pillBase, background: '#F3E8FF', color: '#6B21A8' },
+  blue: { ...pillBase, background: '#EFF6FF', color: '#1D4ED8' },
 }
 
 const RiskPill = ({ value }) => {
@@ -86,6 +255,22 @@ const RiskPill = ({ value }) => {
   if (v === 'green') return <span style={pillStyles.green}>{value}</span>
   if (v === 'yellow') return <span style={pillStyles.yellow}>{value}</span>
   return <span style={pillStyles.red}>{value}</span>
+}
+
+const SeverityPill = ({ severity }) => {
+  if (!severity) return null
+  const s = severity.toLowerCase()
+  if (s === 'critical') return <span style={pillStyles.red}>{severity}</span>
+  if (s === 'high') return <span style={pillStyles.orange}>{severity}</span>
+  if (s === 'medium') return <span style={pillStyles.yellow}>{severity}</span>
+  return <span style={pillStyles.gray}>{severity}</span>
+}
+
+const StatusPill = ({ status }) => {
+  if (!status || status === 'pending') return <span style={pillStyles.gray}>Pending</span>
+  if (status === 'acknowledged') return <span style={pillStyles.blue}>Acknowledged</span>
+  if (status === 'resolved') return <span style={pillStyles.green}>Resolved</span>
+  return null
 }
 
 const MedicinePill = ({ ward }) => {
@@ -111,7 +296,7 @@ const exportCSV = (wards) => {
     const med = typeof pct === 'number'
       ? pct >= 60 ? 'Sufficient' : pct >= 25 ? 'Barely Sufficient' : 'Insufficient' : '—'
     return [w.wardName, w.wardCode || '', getCases(w), w.topDisease || '',
-    w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med]
+      w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med]
   })
   const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -136,8 +321,8 @@ const exportAlertZonesCSV = (wards, alerts) => {
     const med = typeof pct === 'number'
       ? pct >= 60 ? 'Sufficient' : pct >= 25 ? 'Barely Sufficient' : 'Insufficient' : '—'
     return [w.wardName, w.wardCode || '', getCases(w), w.topDisease || '',
-    w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med,
-    matched?.alertType || '—', matched?.severity || '—']
+      w.availableBeds ?? 0, w.icuAvailable ?? 0, w.riskLevel || '', med,
+      matched?.alertType || '—', matched?.severity || '—']
   })
   const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -155,7 +340,6 @@ const thStyle = {
 }
 const td = { padding: '14px 16px', color: '#1E293B', verticalAlign: 'middle', borderBottom: '1px solid rgba(0,0,0,0.03)' }
 
-// ✅ WardTable defined OUTSIDE Dashboard to prevent DataCloneError
 const WardTable = ({ wards, onReport }) => {
   const [sortKey, setSortKey] = useState('wardName')
   const [sortDir, setSortDir] = useState('asc')
@@ -192,14 +376,7 @@ const WardTable = ({ wards, onReport }) => {
   }
 
   const SortableTh = ({ col, label }) => (
-    <th
-      onClick={() => handleSort(col)}
-      style={{
-        ...thStyle, cursor: 'pointer', userSelect: 'none',
-        background: sortKey === col ? '#EFF6FF' : '#F8FAFC',
-        color: sortKey === col ? '#2563EB' : '#64748B',
-      }}
-    >
+    <th onClick={() => handleSort(col)} style={{ ...thStyle, cursor: 'pointer', userSelect: 'none', background: sortKey === col ? '#EFF6FF' : '#F8FAFC', color: sortKey === col ? '#2563EB' : '#64748B' }}>
       {label}<SortIcon col={col} />
     </th>
   )
@@ -223,12 +400,9 @@ const WardTable = ({ wards, onReport }) => {
         </thead>
         <tbody>
           {sorted.map((ward, i) => (
-            <tr
-              key={ward.wardName || i}
-              style={{ transition: 'all 0.2s', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+            <tr key={ward.wardName || i} style={{ transition: 'all 0.2s', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
               onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
-            >
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}>
               <td style={td}><strong>{ward.wardName}</strong></td>
               <td style={td}>{ward.wardCode || '—'}</td>
               <td style={td}>{getCases(ward)}</td>
@@ -237,18 +411,9 @@ const WardTable = ({ wards, onReport }) => {
               <td style={td}>{ward.icuAvailable ?? '—'}</td>
               <td style={td}><RiskPill value={ward.riskLevel} /></td>
               <td style={td}><MedicinePill ward={ward} /></td>
-              <td style={{ ...td, color: '#94A3B8', fontSize: '12px' }}>
-                {ward.lastUpdated ? new Date(ward.lastUpdated).toLocaleTimeString() : '—'}
-              </td>
+              <td style={{ ...td, color: '#94A3B8', fontSize: '12px' }}>{ward.lastUpdated ? new Date(ward.lastUpdated).toLocaleTimeString() : '—'}</td>
               <td style={td}>
-                <button
-                  onClick={() => onReport(ward)}
-                  style={{
-                    background: '#2563EB', color: '#fff', border: 'none',
-                    borderRadius: '6px', padding: '5px 12px', fontSize: '11px',
-                    fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-                  }}
-                >
+                <button onClick={() => onReport(ward)} style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   📋 Report
                 </button>
               </td>
@@ -260,76 +425,22 @@ const WardTable = ({ wards, onReport }) => {
   )
 }
 
-// ─── HAI Card ─────────────────────────────────────────────────────────────────
-const HAICard = ({ ward }) => {
-  const score = calcHAI(ward)
-  const { bg, text, ring, label } = haiBg(score)
-  const barColor = score > 70 ? '#16A34A' : score >= 40 ? '#D97706' : '#DC2626'
-
-  return (
-    <div
-      className="glass-card border-white/50"
-      style={{
-        padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px',
-        borderRadius: '16px', transition: 'all 0.3s ease',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 40px -10px rgba(0,0,0,0.08)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <p style={{ fontSize: '12px', fontWeight: 600, color: '#1E293B', lineHeight: 1.3, maxWidth: '110px' }}>
-          {ward.wardName}
-        </p>
-        <span style={{
-          fontSize: '10px', fontWeight: 700, padding: '2px 8px',
-          borderRadius: '20px', whiteSpace: 'nowrap',
-          background: bg, color: text, border: `1px solid ${ring}`,
-        }}>
-          {label}
-        </span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-        <span style={{ fontSize: '32px', fontWeight: 800, color: barColor, lineHeight: 1 }}>{score}</span>
-        <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 500 }}>/100</span>
-      </div>
-      <div style={{ background: '#F1F5F9', borderRadius: '6px', height: '6px', overflow: 'hidden' }}>
-        <div style={{
-          width: `${score}%`, height: '6px', background: barColor,
-          borderRadius: '6px', transition: 'width 0.6s ease',
-        }} />
-      </div>
-      <p style={{ fontSize: '11px', color: '#94A3B8', margin: 0 }}>
-        <span style={{ color: '#64748B', fontWeight: 600 }}>
-          {ward.activeCases ?? ward.todayCases ?? 0}
-        </span> active cases
-      </p>
-    </div>
-  )
-}
-
 // ─── Ward Report Modal ────────────────────────────────────────────────────────
 const WardReportModal = ({ ward, alerts, onClose }) => {
   if (!ward) return null
-
   const wardAlerts = alerts.filter((a) => a.wardName === ward.wardName && a.isActive)
   const hai = calcHAI(ward)
   const haiColor = hai > 70 ? '#16A34A' : hai >= 40 ? '#D97706' : '#DC2626'
   const haiLabel = hai > 70 ? 'Good' : hai >= 40 ? 'Moderate' : 'Critical'
-  const bedOccupancy = ward.totalBeds
-    ? Math.round(((ward.totalBeds - ward.availableBeds) / ward.totalBeds) * 100) : 0
-  const icuOccupancy = ward.icuTotal
-    ? Math.round(((ward.icuTotal - ward.icuAvailable) / ward.icuTotal) * 100) : 0
+  const bedOccupancy = ward.totalBeds ? Math.round(((ward.totalBeds - ward.availableBeds) / ward.totalBeds) * 100) : 0
+  const icuOccupancy = ward.icuTotal ? Math.round(((ward.icuTotal - ward.icuAvailable) / ward.icuTotal) * 100) : 0
   const medPct = ward.medicineStockPercentage ?? 0
   const medColor = medPct >= 60 ? '#16A34A' : medPct >= 25 ? '#D97706' : '#DC2626'
   const medLabel = medPct >= 60 ? 'Sufficient' : medPct >= 25 ? 'Barely Sufficient' : 'Insufficient'
-  const riskColor = ward.riskLevel === 'Green' ? '#16A34A'
-    : ward.riskLevel === 'Yellow' ? '#D97706' : '#DC2626'
+  const riskColor = ward.riskLevel === 'Green' ? '#16A34A' : ward.riskLevel === 'Yellow' ? '#D97706' : '#DC2626'
 
   const MetricRow = ({ label, value, color }) => (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '10px 0', borderBottom: '1px solid #F1F5F9'
-    }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
       <span style={{ fontSize: '13px', color: '#64748B' }}>{label}</span>
       <span style={{ fontSize: '13px', fontWeight: 600, color: color || '#1E293B' }}>{value}</span>
     </div>
@@ -351,81 +462,57 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-      zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
-    }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <style>{printStyles}</style>
-      <div id='ward-report-modal' style={{
-        background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '680px',
-        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
-      }}>
-        <div style={{
-          padding: '20px 24px', borderBottom: '1px solid #F1F5F9',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          position: 'sticky', top: 0, background: '#fff', zIndex: 10
-        }}>
+      <div id='ward-report-modal' style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>{ward.wardName}</h2>
             <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>
-              Ward Code: {ward.wardCode} &nbsp;·&nbsp;
-              Population: {(ward.population || 0).toLocaleString()} &nbsp;·&nbsp;
-              Last updated: {ward.lastUpdated ? new Date(ward.lastUpdated).toLocaleTimeString() : '—'}
+              Ward Code: {ward.wardCode} &nbsp;·&nbsp; Population: {(ward.population || 0).toLocaleString()} &nbsp;·&nbsp; Last updated: {ward.lastUpdated ? new Date(ward.lastUpdated).toLocaleTimeString() : '—'}
             </p>
           </div>
-          <button onClick={onClose} style={{
-            background: '#F1F5F9', border: 'none', borderRadius: '8px',
-            width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B', flexShrink: 0
-          }}>✕</button>
+          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B', flexShrink: 0 }}>✕</button>
         </div>
-
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div style={{
-              background: ward.riskLevel === 'Green' ? '#F0FDF4' : ward.riskLevel === 'Yellow' ? '#FFFBEB' : '#FEF2F2',
-              border: `1.5px solid ${riskColor}`, borderRadius: '12px', padding: '16px', textAlign: 'center'
-            }}>
+            <div style={{ background: ward.riskLevel === 'Green' ? '#F0FDF4' : ward.riskLevel === 'Yellow' ? '#FFFBEB' : '#FEF2F2', border: `1.5px solid ${riskColor}`, borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
               <p style={{ fontSize: '11px', color: riskColor, fontWeight: 600, marginBottom: '4px' }}>RISK LEVEL</p>
               <p style={{ fontSize: '28px', fontWeight: 700, color: riskColor }}>{ward.riskLevel || '—'}</p>
-              <p style={{ fontSize: '12px', color: riskColor, marginTop: '2px' }}>
-                {ward.activeCases || ward.todayCases || 0} active cases
-              </p>
+              <p style={{ fontSize: '12px', color: riskColor, marginTop: '2px' }}>{ward.activeCases || ward.todayCases || 0} active cases</p>
             </div>
-            <div style={{
-              background: hai > 70 ? '#F0FDF4' : hai >= 40 ? '#FFFBEB' : '#FEF2F2',
-              border: `1.5px solid ${haiColor}`, borderRadius: '12px', padding: '16px', textAlign: 'center'
-            }}>
+            <div style={{ background: hai > 70 ? '#F0FDF4' : hai >= 40 ? '#FFFBEB' : '#FEF2F2', border: `1.5px solid ${haiColor}`, borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
               <p style={{ fontSize: '11px', color: haiColor, fontWeight: 600, marginBottom: '4px' }}>HAI SCORE</p>
-              <p style={{ fontSize: '28px', fontWeight: 700, color: haiColor }}>
-                {hai}<span style={{ fontSize: '14px' }}>/100</span>
-              </p>
+              <p style={{ fontSize: '28px', fontWeight: 700, color: haiColor }}>{hai}<span style={{ fontSize: '14px' }}>/100</span></p>
               <p style={{ fontSize: '12px', color: haiColor, marginTop: '2px' }}>{haiLabel}</p>
             </div>
           </div>
-
           {wardAlerts.length > 0 && (
             <div style={{ background: '#FEF2F2', borderRadius: '10px', padding: '14px 16px' }}>
-              <p style={{ fontSize: '12px', fontWeight: 600, color: '#991B1B', marginBottom: '8px' }}>
-                ⚠️ ACTIVE ALERTS ({wardAlerts.length})
-              </p>
+              <p style={{ fontSize: '12px', fontWeight: 600, color: '#991B1B', marginBottom: '8px' }}>⚠️ ACTIVE ALERTS ({wardAlerts.length})</p>
               {wardAlerts.map((a) => (
-                <div key={a._id} style={{ fontSize: '13px', color: '#7F1D1D', padding: '4px 0', borderBottom: '1px solid #FECACA' }}>
-                  <strong>{a.alertType}</strong> — Severity: {a.severity}
-                  {a.message ? ` — ${a.message}` : ''}
+                <div key={a._id} style={{ fontSize: '13px', color: '#7F1D1D', padding: '6px 0', borderBottom: '1px solid #FECACA' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                    <strong>{a.alertType}</strong>
+                    <SeverityPill severity={a.severity} />
+                    <StatusPill status={a.status} />
+                  </div>
+                  {a.message && <p style={{ fontSize: '12px', color: '#991B1B', margin: '2px 0' }}>{a.message}</p>}
+                  {a.recommendation && (
+                    <p style={{ fontSize: '12px', color: '#1E293B', background: '#FFF7ED', border: '1px solid #FDE68A', borderRadius: '6px', padding: '6px 10px', margin: '6px 0 0' }}>
+                      💡 <strong>Action:</strong> {a.recommendation}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
           )}
-
           <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px' }}>
             <p style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B', marginBottom: '14px' }}>🛏️ Capacity Status</p>
-            <ProgressBar label='Beds Available' value={ward.availableBeds ?? 0} max={ward.totalBeds ?? 0}
-              color={ward.availableBeds < 10 ? '#DC2626' : '#16A34A'} />
-            <ProgressBar label='ICU Available' value={ward.icuAvailable ?? 0} max={ward.icuTotal ?? 0}
-              color={ward.icuAvailable < 3 ? '#DC2626' : '#2563EB'} />
+            <ProgressBar label='Beds Available' value={ward.availableBeds ?? 0} max={ward.totalBeds ?? 0} color={ward.availableBeds < 10 ? '#DC2626' : '#16A34A'} />
+            <ProgressBar label='ICU Available' value={ward.icuAvailable ?? 0} max={ward.icuTotal ?? 0} color={ward.icuAvailable < 3 ? '#DC2626' : '#2563EB'} />
             <ProgressBar label='Medicine Stock' value={medPct} max={100} color={medColor} />
           </div>
-
           <div style={{ background: '#F8FAFC', borderRadius: '12px', padding: '16px' }}>
             <p style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B', marginBottom: '8px' }}>📊 Key Metrics</p>
             <MetricRow label='Top Disease' value={ward.topDisease || '—'} />
@@ -433,94 +520,309 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
             <MetricRow label='Active Cases (total)' value={ward.activeCases ?? 0} color={riskColor} />
             <MetricRow label='Hospitals in Ward' value={ward.hospitals ?? 0} />
             <MetricRow label='Total Beds' value={ward.totalBeds ?? 0} />
-            <MetricRow label='Available Beds' value={ward.availableBeds ?? 0}
-              color={ward.availableBeds < 10 ? '#DC2626' : '#16A34A'} />
+            <MetricRow label='Available Beds' value={ward.availableBeds ?? 0} color={ward.availableBeds < 10 ? '#DC2626' : '#16A34A'} />
             <MetricRow label='ICU Total' value={ward.icuTotal ?? 0} />
-            <MetricRow label='ICU Available' value={ward.icuAvailable ?? 0}
-              color={ward.icuAvailable < 3 ? '#DC2626' : '#16A34A'} />
+            <MetricRow label='ICU Available' value={ward.icuAvailable ?? 0} color={ward.icuAvailable < 3 ? '#DC2626' : '#16A34A'} />
             <MetricRow label='Medicine Stock' value={`${medPct}% — ${medLabel}`} color={medColor} />
             <MetricRow label='Population' value={(ward.population || 0).toLocaleString()} />
-            <MetricRow label='Bed Occupancy' value={`${bedOccupancy}%`}
-              color={bedOccupancy > 80 ? '#DC2626' : '#16A34A'} />
-            <MetricRow label='ICU Occupancy' value={`${icuOccupancy}%`}
-              color={icuOccupancy > 80 ? '#DC2626' : '#16A34A'} />
+            <MetricRow label='Bed Occupancy' value={`${bedOccupancy}%`} color={bedOccupancy > 80 ? '#DC2626' : '#16A34A'} />
+            <MetricRow label='ICU Occupancy' value={`${icuOccupancy}%`} color={icuOccupancy > 80 ? '#DC2626' : '#16A34A'} />
           </div>
-
           <button
             onClick={() => {
               const printWindow = window.open('', '_blank')
-              printWindow.document.write(`
-                <!DOCTYPE html><html><head><title>${ward.wardName} — Ward Report</title>
-                <style>
-                  * { margin:0;padding:0;box-sizing:border-box; }
-                  body { font-family:Arial,sans-serif;padding:20px;color:#1E293B;font-size:12px; }
-                  h1 { font-size:18px;font-weight:700;margin-bottom:2px; }
-                  .sub { font-size:11px;color:#94A3B8;margin-bottom:12px; }
-                  .grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px; }
-                  .card { border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;text-align:center; }
-                  .label { font-size:10px;font-weight:600;color:#64748B;margin-bottom:4px;text-transform:uppercase; }
-                  .big { font-size:24px;font-weight:700; }
-                  .section { background:#F8FAFC;border-radius:8px;padding:10px;margin-bottom:10px; }
-                  .section-title { font-size:12px;font-weight:600;margin-bottom:8px; }
-                  .bar-label { display:flex;justify-content:space-between;font-size:11px;color:#64748B;margin-bottom:3px; }
-                  .bar-track { background:#E2E8F0;border-radius:4px;height:6px;margin-bottom:8px; }
-                  .bar-fill { height:6px;border-radius:4px; }
-                  .row { display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:12px; }
-                  .row-label { color:#64748B; } .row-val { font-weight:600; }
-                  @media print { body { padding:12px; } @page { margin:10mm;size:A4; } }
-                </style></head><body>
-                <h1>${ward.wardName}</h1>
-                <p class="sub">Ward Code: ${ward.wardCode} · Population: ${(ward.population || 0).toLocaleString()} · Printed: ${new Date().toLocaleString()}</p>
-                <div class="grid">
-                  <div class="card" style="border-color:${ward.riskLevel === 'Green' ? '#6EE7B7' : ward.riskLevel === 'Yellow' ? '#FDE68A' : '#FCA5A5'}">
-                    <div class="label">Risk Level</div>
-                    <div class="big" style="color:${ward.riskLevel === 'Green' ? '#065F46' : ward.riskLevel === 'Yellow' ? '#92400E' : '#991B1B'}">${ward.riskLevel || '—'}</div>
-                    <div style="font-size:13px;color:#64748B;margin-top:4px">${ward.activeCases || 0} active cases</div>
-                  </div>
-                  <div class="card">
-                    <div class="label">HAI Score</div>
-                    <div class="big">${ward.accessibilityIndex || 0}/100</div>
-                  </div>
-                </div>
-                <div class="section">
-                  <div class="section-title">🛏️ Capacity Status</div>
-                  <div class="bar-label"><span>Beds Available</span><span>${ward.availableBeds || 0} / ${ward.totalBeds || 0}</span></div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${ward.totalBeds ? Math.round(((ward.availableBeds || 0) / (ward.totalBeds || 1)) * 100) : 0}%;background:${(ward.availableBeds || 0) < 10 ? '#DC2626' : '#16A34A'}"></div></div>
-                  <div class="bar-label"><span>ICU Available</span><span>${ward.icuAvailable || 0} / ${ward.icuTotal || 0}</span></div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${ward.icuTotal ? Math.round(((ward.icuAvailable || 0) / (ward.icuTotal || 1)) * 100) : 0}%;background:${(ward.icuAvailable || 0) < 3 ? '#DC2626' : '#2563EB'}"></div></div>
-                  <div class="bar-label"><span>Medicine Stock</span><span>${ward.medicineStockPercentage || 0}%</span></div>
-                  <div class="bar-track"><div class="bar-fill" style="width:${ward.medicineStockPercentage || 0}%;background:${(ward.medicineStockPercentage || 0) >= 60 ? '#16A34A' : (ward.medicineStockPercentage || 0) >= 25 ? '#D97706' : '#DC2626'}"></div></div>
-                </div>
-                <div class="section">
-                  <div class="section-title">📊 Key Metrics</div>
-                  <div class="row"><span class="row-label">Top Disease</span><span class="row-val">${ward.topDisease || '—'}</span></div>
-                  <div class="row"><span class="row-label">Cases Today</span><span class="row-val">${ward.todayCases || 0}</span></div>
-                  <div class="row"><span class="row-label">Active Cases</span><span class="row-val">${ward.activeCases || 0}</span></div>
-                  <div class="row"><span class="row-label">Total Beds</span><span class="row-val">${ward.totalBeds || 0}</span></div>
-                  <div class="row"><span class="row-label">Available Beds</span><span class="row-val">${ward.availableBeds || 0}</span></div>
-                  <div class="row"><span class="row-label">ICU Total</span><span class="row-val">${ward.icuTotal || 0}</span></div>
-                  <div class="row"><span class="row-label">ICU Available</span><span class="row-val">${ward.icuAvailable || 0}</span></div>
-                  <div class="row"><span class="row-label">Medicine Stock</span><span class="row-val">${ward.medicineStockPercentage || 0}%</span></div>
-                  <div class="row"><span class="row-label">Population</span><span class="row-val">${(ward.population || 0).toLocaleString()}</span></div>
-                  <div class="row"><span class="row-label">Bed Occupancy</span><span class="row-val">${ward.totalBeds ? Math.round(((ward.totalBeds - ward.availableBeds) / ward.totalBeds) * 100) : 0}%</span></div>
-                  <div class="row"><span class="row-label">ICU Occupancy</span><span class="row-val">${ward.icuTotal ? Math.round(((ward.icuTotal - ward.icuAvailable) / ward.icuTotal) * 100) : 0}%</span></div>
-                </div>
-                <p style="font-size:11px;color:#94A3B8;text-align:center;margin-top:24px">
-                  CareCrew — Solapur Municipal Corporation · Generated: ${new Date().toLocaleString()}
-                </p>
-                </body></html>
-              `)
+              printWindow.document.write(`<!DOCTYPE html><html><head><title>${ward.wardName} — Ward Report</title><style>* { margin:0;padding:0;box-sizing:border-box; } body { font-family:Arial,sans-serif;padding:20px;color:#1E293B;font-size:12px; } h1 { font-size:18px;font-weight:700;margin-bottom:2px; } .sub { font-size:11px;color:#94A3B8;margin-bottom:12px; } .grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px; } .card { border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;text-align:center; } .label { font-size:10px;font-weight:600;color:#64748B;margin-bottom:4px;text-transform:uppercase; } .big { font-size:24px;font-weight:700; } .section { background:#F8FAFC;border-radius:8px;padding:10px;margin-bottom:10px; } .section-title { font-size:12px;font-weight:600;margin-bottom:8px; } .bar-label { display:flex;justify-content:space-between;font-size:11px;color:#64748B;margin-bottom:3px; } .bar-track { background:#E2E8F0;border-radius:4px;height:6px;margin-bottom:8px; } .bar-fill { height:6px;border-radius:4px; } .row { display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:12px; } .row-label { color:#64748B; } .row-val { font-weight:600; } @media print { body { padding:12px; } @page { margin:10mm;size:A4; } }</style></head><body><h1>${ward.wardName}</h1><p class="sub">Ward Code: ${ward.wardCode} · Population: ${(ward.population || 0).toLocaleString()} · Printed: ${new Date().toLocaleString()}</p><div class="grid"><div class="card" style="border-color:${ward.riskLevel === 'Green' ? '#6EE7B7' : ward.riskLevel === 'Yellow' ? '#FDE68A' : '#FCA5A5'}"><div class="label">Risk Level</div><div class="big" style="color:${ward.riskLevel === 'Green' ? '#065F46' : ward.riskLevel === 'Yellow' ? '#92400E' : '#991B1B'}">${ward.riskLevel || '—'}</div><div style="font-size:13px;color:#64748B;margin-top:4px">${ward.activeCases || 0} active cases</div></div><div class="card"><div class="label">HAI Score</div><div class="big">${ward.accessibilityIndex || 0}/100</div></div></div><div class="section"><div class="section-title">🛏️ Capacity Status</div><div class="bar-label"><span>Beds Available</span><span>${ward.availableBeds || 0} / ${ward.totalBeds || 0}</span></div><div class="bar-track"><div class="bar-fill" style="width:${ward.totalBeds ? Math.round(((ward.availableBeds || 0) / (ward.totalBeds || 1)) * 100) : 0}%;background:${(ward.availableBeds || 0) < 10 ? '#DC2626' : '#16A34A'}"></div></div><div class="bar-label"><span>ICU Available</span><span>${ward.icuAvailable || 0} / ${ward.icuTotal || 0}</span></div><div class="bar-track"><div class="bar-fill" style="width:${ward.icuTotal ? Math.round(((ward.icuAvailable || 0) / (ward.icuTotal || 1)) * 100) : 0}%;background:${(ward.icuAvailable || 0) < 3 ? '#DC2626' : '#2563EB'}"></div></div><div class="bar-label"><span>Medicine Stock</span><span>${ward.medicineStockPercentage || 0}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${ward.medicineStockPercentage || 0}%;background:${(ward.medicineStockPercentage || 0) >= 60 ? '#16A34A' : (ward.medicineStockPercentage || 0) >= 25 ? '#D97706' : '#DC2626'}"></div></div></div><div class="section"><div class="section-title">📊 Key Metrics</div><div class="row"><span class="row-label">Top Disease</span><span class="row-val">${ward.topDisease || '—'}</span></div><div class="row"><span class="row-label">Cases Today</span><span class="row-val">${ward.todayCases || 0}</span></div><div class="row"><span class="row-label">Active Cases</span><span class="row-val">${ward.activeCases || 0}</span></div><div class="row"><span class="row-label">Total Beds</span><span class="row-val">${ward.totalBeds || 0}</span></div><div class="row"><span class="row-label">Available Beds</span><span class="row-val">${ward.availableBeds || 0}</span></div><div class="row"><span class="row-label">ICU Total</span><span class="row-val">${ward.icuTotal || 0}</span></div><div class="row"><span class="row-label">ICU Available</span><span class="row-val">${ward.icuAvailable || 0}</span></div><div class="row"><span class="row-label">Medicine Stock</span><span class="row-val">${ward.medicineStockPercentage || 0}%</span></div><div class="row"><span class="row-label">Population</span><span class="row-val">${(ward.population || 0).toLocaleString()}</span></div><div class="row"><span class="row-label">Bed Occupancy</span><span class="row-val">${ward.totalBeds ? Math.round(((ward.totalBeds - ward.availableBeds) / ward.totalBeds) * 100) : 0}%</span></div><div class="row"><span class="row-label">ICU Occupancy</span><span class="row-val">${ward.icuTotal ? Math.round(((ward.icuTotal - ward.icuAvailable) / ward.icuTotal) * 100) : 0}%</span></div></div><p style="font-size:11px;color:#94A3B8;text-align:center;margin-top:24px">CareCrew — Solapur Municipal Corporation · Generated: ${new Date().toLocaleString()}</p></body></html>`)
               printWindow.document.close()
               printWindow.focus()
               setTimeout(() => printWindow.print(), 500)
             }}
-            style={{
-              background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '8px',
-              padding: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', width: '100%'
-            }}
+            style={{ background: '#7C3AED', color: '#fff', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', width: '100%' }}
           >
             🖨️ Print / Save as PDF
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Alert Command Center Modal ───────────────────────────────────────────────
+const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, onClose, token, onAlertStatusChange }) => {
+  const [filterSeverity, setFilterSeverity] = useState('All')
+  const [filterType, setFilterType] = useState('All')
+  const [filterStatus, setFilterStatus] = useState('active')
+  const [expandedId, setExpandedId] = useState(null)
+  const [actionLoading, setActionLoading] = useState(null)
+  const [actionError, setActionError] = useState(null)
+
+  const PRIORITY_ORDER = { Critical: 1, High: 2, Medium: 3, Low: 4 }
+  const SEVERITY_COLORS = {
+    Critical: { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B', dot: '#DC2626' },
+    High: { bg: '#FFF7ED', border: '#FED7AA', text: '#9A3412', dot: '#EA580C' },
+    Medium: { bg: '#FEF3C7', border: '#FDE68A', text: '#92400E', dot: '#D97706' },
+    Low: { bg: '#F0FDF4', border: '#BBF7D0', text: '#065F46', dot: '#16A34A' },
+  }
+
+  const authHeaders = { Authorization: `Bearer ${token}` }
+
+  const handleAcknowledge = async (e, alert) => {
+    e.stopPropagation()
+    if (alert.isThreshold) {
+      onAlertStatusChange(alert._id, 'acknowledged')
+      return
+    }
+    setActionLoading(alert._id)
+    setActionError(null)
+    try {
+      await axios.patch(
+        `https://carecrew-1.onrender.com/api/alerts/${alert._id}/acknowledge`,
+        {},
+        { headers: authHeaders }
+      )
+      onAlertStatusChange(alert._id, 'acknowledged')
+    } catch (err) {
+      setActionError(`Failed to acknowledge: ${err.response?.data?.message || err.message}`)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleResolve = async (e, alert) => {
+    e.stopPropagation()
+    if (alert.isThreshold) {
+      onAlertStatusChange(alert._id, 'resolved')
+      onDismiss(alert._id)
+      return
+    }
+    setActionLoading(alert._id)
+    setActionError(null)
+    try {
+      await axios.patch(
+        `https://carecrew-1.onrender.com/api/alerts/${alert._id}/resolve`,
+        {},
+        { headers: authHeaders }
+      )
+      onAlertStatusChange(alert._id, 'resolved')
+      onDismiss(alert._id)
+    } catch (err) {
+      setActionError(`Failed to resolve: ${err.response?.data?.message || err.message}`)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const activeAlerts = allAlerts.filter((a) => a.isActive && !dismissedIds.has(a._id) && a.status !== 'resolved')
+  const acknowledgedCount = allAlerts.filter((a) => a.status === 'acknowledged').length
+  const resolvedCount = allAlerts.filter((a) => a.status === 'resolved' || dismissedIds.has(a._id)).length
+  const criticalCount = activeAlerts.filter((a) => a.severity === 'Critical').length
+  const highCount = activeAlerts.filter((a) => a.severity === 'High').length
+
+  const statusTabs = [
+    { key: 'active', label: 'Active', count: activeAlerts.length, color: '#DC2626', bg: '#FEE2E2' },
+    { key: 'acknowledged', label: 'Acknowledged', count: acknowledgedCount, color: '#1D4ED8', bg: '#EFF6FF' },
+    { key: 'resolved', label: 'Resolved', count: resolvedCount, color: '#16A34A', bg: '#F0FDF4' },
+    { key: 'all', label: 'All', count: allAlerts.length, color: '#475569', bg: '#F1F5F9' },
+  ]
+
+  const baseFiltered = allAlerts
+    .filter((a) => {
+      if (filterStatus === 'active') return a.isActive && !dismissedIds.has(a._id) && a.status !== 'resolved'
+      if (filterStatus === 'acknowledged') return a.status === 'acknowledged'
+      if (filterStatus === 'resolved') return a.status === 'resolved' || dismissedIds.has(a._id)
+      return true
+    })
+    .sort((a, b) => (PRIORITY_ORDER[a.severity] || 5) - (PRIORITY_ORDER[b.severity] || 5))
+
+  const alertTypes = ['All', ...new Set(allAlerts.map((a) => a.alertType))]
+  const severities = ['All', 'Critical', 'High', 'Medium', 'Low']
+
+  const filtered = baseFiltered.filter((a) => {
+    const matchSev = filterSeverity === 'All' || a.severity === filterSeverity
+    const matchType = filterType === 'All' || a.alertType === filterType
+    return matchSev && matchType
+  })
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '820px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 25px 80px rgba(0,0,0,0.25)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', position: 'sticky', top: 0, background: '#fff', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>🚨 Alert Command Center</h2>
+              {criticalCount > 0 && <span style={{ background: '#DC2626', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>{criticalCount} CRITICAL</span>}
+            </div>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
+              {activeAlerts.length} active · {criticalCount} critical · {highCount} high · {acknowledgedCount} acknowledged · {resolvedCount} resolved
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {activeAlerts.length > 0 && (
+              <button onClick={onDismissAll} style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', color: '#475569' }}>Dismiss All</button>
+            )}
+            <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '34px', height: '34px', fontSize: '16px', cursor: 'pointer', color: '#64748B' }}>✕</button>
+          </div>
+        </div>
+
+        {/* Summary counts */}
+        <div style={{ padding: '12px 24px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {['Critical', 'High', 'Medium'].map((sev) => {
+            const c = activeAlerts.filter((a) => a.severity === sev).length
+            const col = SEVERITY_COLORS[sev]
+            return (
+              <div key={sev} style={{ background: col.bg, border: `1px solid ${col.border}`, borderRadius: '10px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px', minWidth: '110px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.dot, display: 'inline-block', flexShrink: 0 }} />
+                <div>
+                  <p style={{ fontSize: '18px', fontWeight: 700, color: col.text, lineHeight: 1 }}>{c}</p>
+                  <p style={{ fontSize: '10px', color: col.text, fontWeight: 600 }}>{sev}</p>
+                </div>
+              </div>
+            )
+          })}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748B' }}>
+            <span>Last checked:</span>
+            <span style={{ fontWeight: 600, color: '#1E293B' }}>{new Date().toLocaleTimeString()}</span>
+          </div>
+        </div>
+
+        {/* Status tabs */}
+        <div style={{ padding: '0 24px', borderBottom: '1px solid #F1F5F9', display: 'flex' }}>
+          {statusTabs.map((tab) => (
+            <button key={tab.key} onClick={() => setFilterStatus(tab.key)} style={{
+              padding: '12px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+              border: 'none', borderBottom: filterStatus === tab.key ? `2px solid ${tab.color}` : '2px solid transparent',
+              background: 'none', color: filterStatus === tab.key ? tab.color : '#64748B',
+              display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s',
+            }}>
+              {tab.label}
+              <span style={{ background: filterStatus === tab.key ? tab.bg : '#F1F5F9', color: filterStatus === tab.key ? tab.color : '#94A3B8', fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px' }}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Severity + Type filters */}
+        <div style={{ padding: '10px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Filter:</span>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {severities.map((s) => (
+              <button key={s} onClick={() => setFilterSeverity(s)} style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, border: `1.5px solid ${filterSeverity === s ? '#2563EB' : '#E2E8F0'}`, background: filterSeverity === s ? '#EFF6FF' : '#fff', color: filterSeverity === s ? '#2563EB' : '#64748B', cursor: 'pointer' }}>{s}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginLeft: '8px' }}>
+            {alertTypes.map((t) => (
+              <button key={t} onClick={() => setFilterType(t)} style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, border: `1.5px solid ${filterType === t ? '#7C3AED' : '#E2E8F0'}`, background: filterType === t ? '#F3E8FF' : '#fff', color: filterType === t ? '#7C3AED' : '#64748B', cursor: 'pointer' }}>{t}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Error */}
+        {actionError && (
+          <div style={{ margin: '12px 24px 0', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#991B1B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{actionError}</span>
+            <button onClick={() => setActionError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B', fontSize: '14px', fontWeight: 700 }}>✕</button>
+          </div>
+        )}
+
+        {/* Alert list */}
+        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '14px' }}>
+              <p style={{ fontSize: '32px', marginBottom: '8px' }}>{filterStatus === 'resolved' ? '✅' : filterStatus === 'acknowledged' ? '👁️' : '🎉'}</p>
+              <p>{filterStatus === 'active' ? 'No active alerts.' : filterStatus === 'acknowledged' ? 'No acknowledged alerts.' : filterStatus === 'resolved' ? 'No resolved alerts.' : 'No alerts found.'}</p>
+            </div>
+          ) : (
+            filtered.map((alert) => {
+              const col = SEVERITY_COLORS[alert.severity] || SEVERITY_COLORS.Low
+              const isExpanded = expandedId === alert._id
+              const isLoading = actionLoading === alert._id
+              const isAcknowledged = alert.status === 'acknowledged'
+              const isResolved = alert.status === 'resolved'
+
+              return (
+                <div key={alert._id} style={{ background: isResolved ? '#F8FAFC' : col.bg, border: `1.5px solid ${isResolved ? '#E2E8F0' : col.border}`, borderRadius: '12px', overflow: 'hidden', opacity: isResolved ? 0.75 : 1 }}>
+                  <div style={{ padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '12px' }} onClick={() => setExpandedId(isExpanded ? null : alert._id)}>
+                    <span style={{ fontSize: '20px', lineHeight: 1, flexShrink: 0, marginTop: '1px' }}>{alert.icon || '⚠️'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: 700, color: isResolved ? '#64748B' : col.text }}>{alert.wardName}</span>
+                        <SeverityPill severity={alert.severity} />
+                        <StatusPill status={alert.status} />
+                        <span style={{ fontSize: '11px', background: 'rgba(0,0,0,0.07)', color: isResolved ? '#64748B' : col.text, padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>{alert.alertType}</span>
+                        {alert.isThreshold && <span style={{ fontSize: '10px', background: '#EFF6FF', color: '#2563EB', padding: '1px 6px', borderRadius: '20px', fontWeight: 600, border: '1px solid #BFDBFE' }}>AUTO-DETECTED</span>}
+                      </div>
+                      <p style={{ fontSize: '12px', color: isResolved ? '#94A3B8' : col.text }}>{alert.message}</p>
+                      {isAcknowledged && alert.acknowledgedBy && (
+                        <p style={{ fontSize: '11px', color: '#1D4ED8', marginTop: '4px' }}>
+                          👁️ Acknowledged by {alert.acknowledgedBy.name || alert.acknowledgedBy.email}
+                          {alert.acknowledgedAt ? ` · ${new Date(alert.acknowledgedAt).toLocaleString()}` : ''}
+                        </p>
+                      )}
+                      {isResolved && alert.resolvedBy && (
+                        <p style={{ fontSize: '11px', color: '#16A34A', marginTop: '4px' }}>
+                          ✅ Resolved by {alert.resolvedBy.name || alert.resolvedBy.email}
+                          {alert.resolvedAt ? ` · ${new Date(alert.resolvedAt).toLocaleString()}` : ''}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: '12px', color: col.text, opacity: 0.7 }}>{isExpanded ? '▲' : '▼'}</span>
+
+                      {!isAcknowledged && !isResolved && (
+                        <button
+                          onClick={(e) => handleAcknowledge(e, alert)}
+                          disabled={isLoading}
+                          style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, color: '#1D4ED8', cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                        >
+                          {isLoading ? '...' : '👁️ Acknowledge'}
+                        </button>
+                      )}
+
+                      {!isResolved && (
+                        <button
+                          onClick={(e) => handleResolve(e, alert)}
+                          disabled={isLoading}
+                          style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, color: '#16A34A', cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                        >
+                          {isLoading ? '...' : '✅ Resolve'}
+                        </button>
+                      )}
+
+                      {!isResolved && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDismiss(alert._id) }}
+                          style={{ background: 'rgba(255,255,255,0.7)', border: `1px solid ${col.border}`, borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, color: col.text, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Dismiss
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded panel */}
+                  {isExpanded && (
+                    <div style={{ padding: '12px 16px 14px', borderTop: `1px solid ${isResolved ? '#E2E8F0' : col.border}`, background: 'rgba(255,255,255,0.5)' }}>
+                      {alert.recommendation && (
+                        <>
+                          <p style={{ fontSize: '11px', fontWeight: 700, color: isResolved ? '#64748B' : col.text, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Recommended Action</p>
+                          <p style={{ fontSize: '13px', color: '#1E293B', lineHeight: 1.6, marginBottom: '8px' }}>{alert.recommendation}</p>
+                        </>
+                      )}
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '11px', color: '#94A3B8' }}>
+                        {alert.triggeredAt && <span>Triggered: {new Date(alert.triggeredAt).toLocaleString()}</span>}
+                        {alert.acknowledgedAt && <span>Acknowledged: {new Date(alert.acknowledgedAt).toLocaleString()}</span>}
+                        {alert.resolvedAt && <span>Resolved: {new Date(alert.resolvedAt).toLocaleString()}</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
     </div>
@@ -531,15 +833,20 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
 export default function Dashboard() {
   const { token } = useAuth()
   const [wards, setWards] = useState([])
-  const [alerts, setAlerts] = useState([])
+  const [apiAlerts, setApiAlerts] = useState([])
   const [charts, setCharts] = useState({ topDiseases: [], dailyCases: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [dismissedIds, setDismissedIds] = useState(new Set())
-  const [countdown, setCountdown] = useState(30)
+
+  // ── KEY CHANGE: initialise from localStorage so dismissals survive refresh ──
+  const [dismissedIds, setDismissedIds] = useState(() => loadDismissedIds())
+
   const [search, setSearch] = useState('')
   const [selectedWard, setSelectedWard] = useState(null)
   const [activeDiseases, setActiveDiseases] = useState(new Set(DISEASES))
+  const [showAlertCenter, setShowAlertCenter] = useState(false)
+  const [thresholdAlerts, setThresholdAlerts] = useState([])
+  const [alertStatusOverrides, setAlertStatusOverrides] = useState({})
 
   const authHeaders = { Authorization: `Bearer ${token}` }
 
@@ -551,13 +858,15 @@ export default function Dashboard() {
         axios.get('https://carecrew-1.onrender.com/api/dashboard/alerts', { headers: authHeaders }),
         axios.get('https://carecrew-1.onrender.com/api/dashboard/charts', { headers: authHeaders }),
       ])
-      setWards(toArray(wardsRes.data, 'wards'))
-      setAlerts(toArray(alertsRes.data, 'alerts'))
+      const fetchedWards = toArray(wardsRes.data, 'wards')
+      setWards(fetchedWards)
+      setApiAlerts(toArray(alertsRes.data, 'alerts'))
       const cd = chartsRes.data || {}
       setCharts({
         topDiseases: toArray(cd.topDiseases, 'topDiseases'),
         dailyCases: toArray(cd.dailyCases, 'dailyCases'),
       })
+      setThresholdAlerts(computeThresholdAlerts(fetchedWards))
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.')
     } finally {
@@ -565,9 +874,17 @@ export default function Dashboard() {
     }
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
 
- useEffect(() => {
-  fetchAll()
-}, [fetchAll])
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  useEffect(() => {
+    if (wards.length > 0) setThresholdAlerts(computeThresholdAlerts(wards))
+  }, [wards])
+
+  // ── KEY CHANGE: persist dismissedIds to localStorage whenever it changes ────
+  useEffect(() => {
+    saveDismissedIds(dismissedIds)
+  }, [dismissedIds])
+
   const toggleDisease = (disease) => {
     setActiveDiseases(prev => {
       const next = new Set(prev)
@@ -576,18 +893,50 @@ export default function Dashboard() {
     })
   }
 
+  const handleAlertStatusChange = (alertId, newStatus) => {
+    setAlertStatusOverrides(prev => ({ ...prev, [alertId]: newStatus }))
+  }
+
+  const allAlerts = React.useMemo(() => {
+    const merged = [...apiAlerts, ...thresholdAlerts]
+    const seen = new Set()
+    return merged
+      .filter((a) => {
+        if (seen.has(a._id)) return false
+        seen.add(a._id)
+        return true
+      })
+      .map((a) => ({
+        ...a,
+        status: alertStatusOverrides[a._id] || a.status || 'pending',
+      }))
+  }, [apiAlerts, thresholdAlerts, alertStatusOverrides])
+
   // ── Derived stats ─────────────────────────────────────────────────────────
   const totalCases = wards.reduce((s, w) => s + getCases(w), 0)
-  const wardsOnAlert = alerts.filter((a) => a.isActive).length
+  const wardsOnAlert = allAlerts.filter((a) => a.isActive && a.status !== 'resolved').length
   const hospitalsReporting = [...new Set(wards.map((w) => w.hospitalName).filter(Boolean))].length
   const alertZoneCount = wards.filter(
-    (w) => alerts.some((a) => a.isActive && a.wardName === w.wardName) ||
+    (w) => allAlerts.some((a) => a.isActive && a.wardName === w.wardName && a.status !== 'resolved') ||
       ['red', 'yellow'].includes((w.riskLevel || '').toLowerCase())
   ).length
-  const activeAlerts = alerts.filter((a) => a.isActive && !dismissedIds.has(a._id))
+  const activeAlerts = allAlerts.filter((a) => a.isActive && !dismissedIds.has(a._id) && a.status !== 'resolved')
+  const criticalCount = activeAlerts.filter((a) => a.severity === 'Critical').length
   const filteredWards = wards.filter((w) =>
     w.wardName.toLowerCase().includes(search.toLowerCase())
   )
+
+  // ── KEY CHANGE: both handlers now call saveDismissedIds via the useEffect ──
+  const handleDismiss = (id) => {
+    setDismissedIds((prev) => {
+      const next = new Set([...prev, id])
+      return next
+    })
+  }
+
+  const handleDismissAll = () => {
+    setDismissedIds(new Set(activeAlerts.map((a) => a._id)))
+  }
 
   if (loading) {
     return (
@@ -600,105 +949,89 @@ export default function Dashboard() {
 
   return (
     <div className='min-h-screen bg-slate-50 relative overflow-hidden z-0'>
-      {/* Decorative Background Elements */}
       <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-primary-200/30 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-brand/20 rounded-full blur-[100px] pointer-events-none -z-10 mix-blend-multiply"></div>
       <Navbar />
 
-      <WardReportModal ward={selectedWard} alerts={alerts} onClose={() => setSelectedWard(null)} />
+      <WardReportModal ward={selectedWard} alerts={allAlerts} onClose={() => setSelectedWard(null)} />
 
-      {/* Alert Banners */}
+      {showAlertCenter && (
+        <AlertCommandCenter
+          allAlerts={allAlerts}
+          dismissedIds={dismissedIds}
+          onDismiss={handleDismiss}
+          onDismissAll={handleDismissAll}
+          onClose={() => setShowAlertCenter(false)}
+          token={token}
+          onAlertStatusChange={handleAlertStatusChange}
+        />
+      )}
+
+      {/* ── Alert Banner ── */}
       {activeAlerts.length > 0 && (
-        <div style={{ background: '#FEF2F2', borderBottom: '1px solid #FECACA', padding: '10px 24px' }}>
+        <div style={{ background: criticalCount > 0 ? '#FEF2F2' : '#FFF7ED', borderBottom: `1px solid ${criticalCount > 0 ? '#FECACA' : '#FED7AA'}`, padding: '10px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ background: '#DC2626', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
+              <span style={{ background: criticalCount > 0 ? '#DC2626' : '#EA580C', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
                 🚨 {activeAlerts.length} ACTIVE ALERT{activeAlerts.length > 1 ? 'S' : ''}
               </span>
-              <span style={{ fontSize: '12px', color: '#991B1B' }}>Immediate attention required</span>
+              {criticalCount > 0 && <span style={{ fontSize: '12px', color: '#991B1B', fontWeight: 600 }}>{criticalCount} critical — immediate action required</span>}
             </div>
-            <button
-              onClick={() => setDismissedIds(new Set(activeAlerts.map(a => a._id)))}
-              style={{ background: 'none', border: '1px solid #FCA5A5', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', color: '#991B1B', cursor: 'pointer', fontWeight: 600 }}
-            >Dismiss All</button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              
+              <button onClick={handleDismissAll} style={{ background: 'none', border: `1px solid ${criticalCount > 0 ? '#FCA5A5' : '#FED7AA'}`, borderRadius: '6px', padding: '3px 10px', fontSize: '11px', color: criticalCount > 0 ? '#991B1B' : '#9A3412', cursor: 'pointer', fontWeight: 600 }}>Dismiss All</button>
+            </div>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {activeAlerts.map((a) => {
-              const isRed = a.severity?.toLowerCase() === 'red'
+            {activeAlerts.slice(0, 8).map((a) => {
+              const isRed = a.severity === 'Critical'
+              const isHigh = a.severity === 'High'
+              const bg = isRed ? '#FEE2E2' : isHigh ? '#FFF7ED' : '#FEF3C7'
+              const border = isRed ? '#FCA5A5' : isHigh ? '#FED7AA' : '#FDE68A'
+              const dot = isRed ? '#DC2626' : isHigh ? '#EA580C' : '#D97706'
+              const textColor = isRed ? '#7F1D1D' : isHigh ? '#7C2D12' : '#78350F'
+              const sevColor = isRed ? '#991B1B' : isHigh ? '#9A3412' : '#92400E'
+              const sevBg = isRed ? '#FECACA' : isHigh ? '#FED7AA' : '#FDE68A'
               return (
-                <div key={a._id} style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  background: isRed ? '#FEE2E2' : '#FEF3C7',
-                  border: `1px solid ${isRed ? '#FCA5A5' : '#FDE68A'}`,
-                  borderRadius: '8px', padding: '5px 10px',
-                }}>
-                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: isRed ? '#DC2626' : '#D97706', display: 'inline-block' }} />
-                  <span style={{ fontSize: '12px', color: isRed ? '#7F1D1D' : '#78350F', fontWeight: 600 }}>{a.wardName}</span>
-                  <span style={{ fontSize: '10px', color: isRed ? '#991B1B' : '#92400E', background: isRed ? '#FECACA' : '#FDE68A', padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>{a.severity}</span>
-                  <span style={{ fontSize: '11px', color: isRed ? '#B91C1C' : '#B45309' }}>{a.alertType}</span>
-                  <span
-                    onClick={() => setDismissedIds((prev) => new Set([...prev, a._id]))}
-                    style={{ cursor: 'pointer', fontSize: '12px', color: isRed ? '#991B1B' : '#92400E', marginLeft: '2px', fontWeight: 700 }}
-                  >✕</span>
+                <div key={a._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: bg, border: `1px solid ${border}`, borderRadius: '8px', padding: '5px 10px' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: dot, display: 'inline-block' }} />
+                  <span style={{ fontSize: '12px', color: textColor, fontWeight: 600 }}>{a.wardName}</span>
+                  <span style={{ fontSize: '10px', color: sevColor, background: sevBg, padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>{a.severity}</span>
+                  <span style={{ fontSize: '11px', color: textColor }}>{a.alertType}</span>
+                  {a.isThreshold && <span style={{ fontSize: '10px', color: '#2563EB', background: '#EFF6FF', padding: '1px 5px', borderRadius: '20px', fontWeight: 600 }}>AUTO</span>}
+                  <span onClick={() => handleDismiss(a._id)} style={{ cursor: 'pointer', fontSize: '12px', color: sevColor, marginLeft: '2px', fontWeight: 700 }}>✕</span>
                 </div>
               )
             })}
+            {activeAlerts.length > 8 && (
+              <button onClick={() => setShowAlertCenter(true)} style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '5px 12px', fontSize: '11px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                +{activeAlerts.length - 8} more → View All
+              </button>
+            )}
           </div>
         </div>
       )}
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6'>
 
-        {/* ── Summary Ribbon ── */}
+        {/* Summary Ribbon */}
         {wards.length > 0 && (() => {
-          const highestRiskWard = wards
-            .filter(w => (w.riskLevel || '').toLowerCase() === 'red')
-            .sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
-            || wards.slice().sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
-
+          const highestRiskWard = wards.filter(w => (w.riskLevel || '').toLowerCase() === 'red').sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0] || wards.slice().sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
           const diseaseMap = {}
-          wards.forEach(w => {
-            if (w.topDisease && w.topDisease !== 'None')
-              diseaseMap[w.topDisease] = (diseaseMap[w.topDisease] || 0) + (w.todayCases || 0)
-          })
+          wards.forEach(w => { if (w.topDisease && w.topDisease !== 'None') diseaseMap[w.topDisease] = (diseaseMap[w.topDisease] || 0) + (w.todayCases || 0) })
           const topDisease = Object.entries(diseaseMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
-
           const stats = [
-            {
-              icon: '🦠', label: 'Total Active Cases',
-              value: totalCases.toLocaleString(),
-              valueColor: totalCases > 200 ? '#DC2626' : totalCases > 100 ? '#D97706' : '#16A34A',
-              bg: '#F8FAFC', border: '#E2E8F0',
-            },
-            {
-              icon: '🚨', label: 'Highest Risk Ward',
-              value: highestRiskWard?.wardName || '—',
-              sub: highestRiskWard ? `${highestRiskWard.activeCases || 0} active cases` : '',
-              valueColor: highestRiskWard?.riskLevel?.toLowerCase() === 'red' ? '#DC2626'
-                : highestRiskWard?.riskLevel?.toLowerCase() === 'yellow' ? '#D97706' : '#16A34A',
-              bg: '#FFF8F8', border: '#FCA5A5',
-            },
-            {
-              icon: '🔬', label: 'Most Reported Disease',
-              value: topDisease,
-              sub: diseaseMap[topDisease] ? `${diseaseMap[topDisease]} cases today` : '',
-              valueColor: '#7C3AED',
-              bg: '#FAF5FF', border: '#DDD6FE',
-            },
+            { icon: '🦠', label: 'Total Active Cases', value: totalCases.toLocaleString(), valueColor: totalCases > 200 ? '#DC2626' : totalCases > 100 ? '#D97706' : '#16A34A' },
+            { icon: '🚨', label: 'Highest Risk Ward', value: highestRiskWard?.wardName || '—', sub: highestRiskWard ? `${highestRiskWard.activeCases || 0} active cases` : '', valueColor: highestRiskWard?.riskLevel?.toLowerCase() === 'red' ? '#DC2626' : highestRiskWard?.riskLevel?.toLowerCase() === 'yellow' ? '#D97706' : '#16A34A' },
+            { icon: '🔬', label: 'Most Reported Disease', value: topDisease, sub: diseaseMap[topDisease] ? `${diseaseMap[topDisease]} cases today` : '', valueColor: '#7C3AED' },
           ]
-
           return (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '4px' }}>
-              {stats.map(({ icon, label, value, sub, valueColor, bg, border }) => (
-                <div key={label} style={{
-                  background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: `1px solid rgba(255,255,255,0.4)`, borderRadius: '16px',
-                  padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)'
-                }}>
+              {stats.map(({ icon, label, value, sub, valueColor }) => (
+                <div key={label} style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)' }}>
                   <span style={{ fontSize: '26px', lineHeight: 1 }}>{icon}</span>
                   <div>
-                    <p style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>
-                      {label}
-                    </p>
+                    <p style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{label}</p>
                     <p style={{ fontSize: '18px', fontWeight: 700, color: valueColor, lineHeight: 1.1 }}>{value}</p>
                     {sub && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>{sub}</p>}
                   </div>
@@ -713,31 +1046,25 @@ export default function Dashboard() {
           <div>
             <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>Health Officer Dashboard</h1>
             <p className='text-sm font-medium text-slate-500 flex items-center gap-2 mt-1.5'>
-  <span className='w-2 h-2 rounded-full bg-primary-500'></span>
-  Last updated: {new Date().toLocaleTimeString()}
-</p>
+              <span className='w-2 h-2 rounded-full bg-primary-500'></span>
+              Last updated: {new Date().toLocaleTimeString()}
+            </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button onClick={() => exportCSV(wards)} disabled={wards.length === 0}
-              style={{ backgroundColor: wards.length === 0 ? '#BFDBFE' : '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: wards.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(37,99,235,0.3)', transition: 'all 0.2s', transform: 'translateY(0)' }}
-              onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(-2px)')}
-              onMouseLeave={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(0)')}>
+            <button onClick={() => setShowAlertCenter(true)} style={{ background: criticalCount > 0 ? '#DC2626' : activeAlerts.length > 0 ? '#EA580C' : '#64748B', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: criticalCount > 0 ? '0 4px 14px 0 rgba(220,38,38,0.4)' : '0 4px 14px 0 rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              🚨 Alert Center
+              {activeAlerts.length > 0 && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '20px', padding: '1px 7px', fontSize: '12px', fontWeight: 700 }}>{activeAlerts.length}</span>}
+            </button>
+            <button onClick={() => exportCSV(wards)} disabled={wards.length === 0} style={{ backgroundColor: wards.length === 0 ? '#BFDBFE' : '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: wards.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(37,99,235,0.3)' }}>
               ⬇ Export All Wards
             </button>
-            <button onClick={() => exportAlertZonesCSV(wards, alerts)} disabled={alertZoneCount === 0}
-              style={{ backgroundColor: alertZoneCount === 0 ? '#FCA5A5' : '#EF4444', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: alertZoneCount === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(239,68,68,0.3)', transition: 'all 0.2s', transform: 'translateY(0)' }}
-              onMouseEnter={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(-2px)')}
-              onMouseLeave={e => !e.currentTarget.disabled && (e.currentTarget.style.transform = 'translateY(0)')}>
+            <button onClick={() => exportAlertZonesCSV(wards, allAlerts)} disabled={alertZoneCount === 0} style={{ backgroundColor: alertZoneCount === 0 ? '#FCA5A5' : '#EF4444', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: alertZoneCount === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(239,68,68,0.3)' }}>
               🚨 Export Alert Zones ({alertZoneCount})
             </button>
           </div>
         </div>
 
-        {error && (
-          <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '12px 16px', color: '#991B1B', fontSize: '14px' }}>
-            {error}
-          </div>
-        )}
+        {error && <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '12px 16px', color: '#991B1B', fontSize: '14px' }}>{error}</div>}
 
         {/* 3 Stat Cards */}
         <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
@@ -746,15 +1073,67 @@ export default function Dashboard() {
           <StatCard title='Hospitals Reporting' value={hospitalsReporting} icon='🏥' />
         </div>
 
+        {/* Smart Alert Summary Panel */}
+        {activeAlerts.length > 0 && (
+          <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>🎯 Active Alert Summary</h2>
+                <span style={{ background: criticalCount > 0 ? '#FEE2E2' : '#FFF7ED', color: criticalCount > 0 ? '#991B1B' : '#9A3412', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', border: `1px solid ${criticalCount > 0 ? '#FCA5A5' : '#FED7AA'}` }}>
+                  {activeAlerts.length} active
+                </span>
+              </div>
+              <button onClick={() => setShowAlertCenter(true)} style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                View All & Actions →
+              </button>
+            </div>
+            <div style={{ padding: '14px 20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '10px' }}>
+                {activeAlerts.slice(0, 6).map((alert) => {
+                  const isRed = alert.severity === 'Critical'
+                  const isHigh = alert.severity === 'High'
+                  const bg = isRed ? '#FEF2F2' : isHigh ? '#FFF7ED' : '#FFFBEB'
+                  const border = isRed ? '#FECACA' : isHigh ? '#FED7AA' : '#FDE68A'
+                  const textColor = isRed ? '#7F1D1D' : isHigh ? '#7C2D12' : '#78350F'
+                  return (
+                    <div key={alert._id} style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: '10px', padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <span style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>{alert.icon || '⚠️'}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: textColor }}>{alert.wardName}</span>
+                            <SeverityPill severity={alert.severity} />
+                            <StatusPill status={alert.status} />
+                            <span style={{ fontSize: '11px', color: textColor, opacity: 0.8 }}>{alert.alertType}</span>
+                          </div>
+                          <p style={{ fontSize: '12px', color: textColor, marginBottom: '6px' }}>{alert.message}</p>
+                          {alert.recommendation && (
+                            <p style={{ fontSize: '11px', color: '#1E293B', background: 'rgba(255,255,255,0.7)', padding: '5px 8px', borderRadius: '6px', border: `1px solid ${border}` }}>
+                              💡 {alert.recommendation}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {activeAlerts.length > 6 && (
+                <button onClick={() => setShowAlertCenter(true)} style={{ marginTop: '10px', background: 'none', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', width: '100%' }}>
+                  View all {activeAlerts.length} alerts with full recommendations →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Ward Table */}
         <div className="glass-panel border border-white/60 shadow-soft rounded-2xl overflow-hidden mb-6">
           <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', backgroundColor: 'rgba(255, 255, 255, 0.3)' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>Ward-wise Overview</h2>
-            <input
-              type='text' placeholder='Search ward...' value={search}
-              style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '10px', outline: 'none', width: '220px', color: '#1E293B', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)', boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.02)' }}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <input type='text' placeholder='Search ward...' value={search}
+              style={{ padding: '8px 14px', fontSize: '13px', border: '1px solid rgba(255,255,255,0.5)', borderRadius: '10px', outline: 'none', width: '220px', color: '#1E293B', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}
+              onChange={(e) => setSearch(e.target.value)} />
           </div>
           {filteredWards.length === 0 ? (
             <p style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontSize: '14px' }}>No ward data available.</p>
@@ -766,13 +1145,9 @@ export default function Dashboard() {
         {/* Charts */}
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           <Card>
-            <div className='p-4 border-b border-gray-100'>
-              <h2 className='text-base font-semibold text-gray-800'>Top 5 Diseases This Week</h2>
-            </div>
+            <div className='p-4 border-b border-gray-100'><h2 className='text-base font-semibold text-gray-800'>Top 5 Diseases This Week</h2></div>
             <div className='p-4'>
-              {charts.topDiseases.length === 0 ? (
-                <p className='text-gray-400 text-sm text-center py-10'>No data available.</p>
-              ) : (
+              {charts.topDiseases.length === 0 ? <p className='text-gray-400 text-sm text-center py-10'>No data available.</p> : (
                 <ResponsiveContainer width='100%' height={240}>
                   <BarChart data={charts.topDiseases.slice(0, 5)}>
                     <CartesianGrid strokeDasharray='3 3' />
@@ -785,102 +1160,35 @@ export default function Dashboard() {
               )}
             </div>
           </Card>
-
-          {/* ✅ Disease-wise daily cases — multi-line with toggle pills */}
           <Card>
-            <div className='p-4 border-b border-gray-100'>
-              <h2 className='text-base font-semibold text-gray-800'>Daily Cases by Disease — Last 14 Days</h2>
-            </div>
+            <div className='p-4 border-b border-gray-100'><h2 className='text-base font-semibold text-gray-800'>Daily Cases by Disease — Last 14 Days</h2></div>
             <div className='p-4'>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
                 {DISEASES.map(disease => {
                   const isOn = activeDiseases.has(disease)
                   return (
-                    <button
-                      key={disease}
-                      onClick={() => toggleDisease(disease)}
-                      style={{
-                        padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600,
-                        cursor: 'pointer', border: `1.5px solid ${DISEASE_COLORS[disease]}`,
-                        background: isOn ? DISEASE_COLORS[disease] : '#fff',
-                        color: isOn ? '#fff' : DISEASE_COLORS[disease],
-                        transition: 'all 0.15s',
-                      }}
-                    >
+                    <button key={disease} onClick={() => toggleDisease(disease)} style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${DISEASE_COLORS[disease]}`, background: isOn ? DISEASE_COLORS[disease] : '#fff', color: isOn ? '#fff' : DISEASE_COLORS[disease], transition: 'all 0.15s' }}>
                       {disease}
                     </button>
                   )
                 })}
               </div>
-              {charts.dailyCases.length === 0 ? (
-                <p className='text-gray-400 text-sm text-center py-10'>No data available.</p>
-              ) : (
+              {charts.dailyCases.length === 0 ? <p className='text-gray-400 text-sm text-center py-10'>No data available.</p> : (
                 <ResponsiveContainer width='100%' height={240}>
                   <LineChart data={charts.dailyCases.slice(-14)}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#F1F5F9' />
                     <XAxis dataKey='date' tick={{ fontSize: 10, fill: '#94A3B8' }} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}
-                      formatter={(value, name) => [value + ' cases', name]} />
+                    <Tooltip contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #E2E8F0' }} formatter={(value, name) => [value + ' cases', name]} />
                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                     {DISEASES.filter(d => activeDiseases.has(d)).map(disease => (
-                      <Line key={disease} type='monotone' dataKey={disease} name={disease}
-                        stroke={DISEASE_COLORS[disease]} strokeWidth={2}
-                        dot={{ r: 2, fill: DISEASE_COLORS[disease] }} activeDot={{ r: 4 }}
-                        connectNulls={false} />
+                      <Line key={disease} type='monotone' dataKey={disease} name={disease} stroke={DISEASE_COLORS[disease]} strokeWidth={2} dot={{ r: 2, fill: DISEASE_COLORS[disease] }} activeDot={{ r: 4 }} connectNulls={false} />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
               )}
             </div>
           </Card>
-        </div>
-
-        {/* HAI Score Cards */}
-        <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #F1F5F9' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#1E293B', marginBottom: '6px' }}>
-              Healthcare Accessibility Index (HAI)
-            </h2>
-            <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6, marginBottom: '10px' }}>
-              The <strong>HAI score</strong> measures how easily residents of a ward can access quality healthcare.
-              It factors in <strong>available beds</strong>, <strong>number of hospitals</strong>, and
-              <strong> active disease burden</strong> — giving a single 0–100 score per ward.
-              A higher score means better access; a lower score signals overcrowding or under-resourced facilities.
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-              {[
-                { color: '#16A34A', bg: '#D1FAE5', ring: '#6EE7B7', label: '🟢 Above 70', desc: 'Good — Adequate facilities, low disease pressure' },
-                { color: '#92400E', bg: '#FEF3C7', ring: '#FDE68A', label: '🟡 40 – 70', desc: 'Moderate — Some strain, monitor closely' },
-                { color: '#991B1B', bg: '#FEE2E2', ring: '#FCA5A5', label: '🔴 Below 40', desc: 'Critical — Overburdened, immediate action needed' },
-              ].map(({ color, bg, ring, label, desc }) => (
-                <div key={label} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: '8px',
-                  background: bg, border: `1px solid ${ring}`,
-                  borderRadius: '8px', padding: '8px 12px', flex: '1 1 220px',
-                }}>
-                  <div>
-                    <p style={{ fontSize: '12px', fontWeight: 700, color, marginBottom: '2px' }}>{label}</p>
-                    <p style={{ fontSize: '11px', color, opacity: 0.85 }}>{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p style={{ fontSize: '11px', color: '#94A3B8', borderTop: '1px dashed #E2E8F0', paddingTop: '8px' }}>
-              💡 <strong>Ideal target:</strong> All wards should maintain a score above <strong>70</strong>.
-              Scores below 40 indicate critical shortage of beds or high active caseload and require
-              immediate resource allocation or inter-ward patient transfer.
-            </p>
-          </div>
-          <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
-            {wards.length === 0 ? (
-              <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#94A3B8', fontSize: '14px', padding: '24px' }}>
-                No ward data available.
-              </p>
-            ) : (
-              wards.map((ward) => <HAICard key={ward.wardName} ward={ward} />)
-            )}
-          </div>
         </div>
 
         {/* Heatmap */}
