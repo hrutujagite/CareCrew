@@ -13,10 +13,23 @@ const HospitalCapacity = require('../models/HospitalCapacity');
 const Alert = require('../models/Alert');
 const Appointment = require('../models/Appointment');
 const HealthCamp = require('../models/HealthCamp');
+const Broadcast = require('../models/Broadcast');
+const IndentRequest = require('../models/IndentRequest');
 
 // ─────────────────────────────────────────────
-// REAL SOLAPUR WARDS + HOSPITALS + DOCTORS
-// Coordinates verified for Solapur, Maharashtra
+// HELPER: Convert time slots to schedule array
+// ─────────────────────────────────────────────
+const makeSchedule = (startTime, endTime) => {
+  return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => ({
+    day,
+    startTime,
+    endTime,
+    maxAppointments: 20
+  }));
+};
+
+// ─────────────────────────────────────────────
+// REAL SOLAPUR WARDS + HOSPITALS + UPHCS + DOCTORS
 // ─────────────────────────────────────────────
 const wardData = [
   {
@@ -34,28 +47,41 @@ const wardData = [
         availableBeds: 45,
         icuTotal: 30,
         icuAvailable: 9,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: true,
+          icu: true, lab: true, xray: true, ultrasound: true, ecg: true,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: true, pharmacy: true, immunization: true
+        },
         specialties: ['General', 'Paediatrics', 'Gynaecology', 'Emergency'],
         doctors: [
-          { name: 'Dr. Priya Kulkarni', specialty: 'General', experience: 12, rating: 4.7, slots: ['09:00 AM', '10:30 AM', '12:00 PM', '02:00 PM'] },
-          { name: 'Dr. Suresh Patil', specialty: 'Paediatrics', experience: 8, rating: 4.5, slots: ['09:30 AM', '11:00 AM', '03:00 PM'] },
-          { name: 'Dr. Anita Deshmukh', specialty: 'Gynaecology', experience: 15, rating: 4.8, slots: ['10:00 AM', '01:00 PM', '04:00 PM'] },
-          { name: 'Dr. Rajesh More', specialty: 'Emergency', experience: 10, rating: 4.6, slots: ['08:00 AM', '02:00 PM', '08:00 PM'] }
+          { name: 'Dr. Priya Kulkarni', specialty: 'General', experience: 12, rating: 4.7, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Suresh Patil', specialty: 'Paediatrics', experience: 8, rating: 4.5, isVisiting: false, schedule: makeSchedule('09:30 AM', '01:00 PM') },
+          { name: 'Dr. Anita Deshmukh', specialty: 'Gynaecology', experience: 15, rating: 4.8, isVisiting: true, schedule: makeSchedule('10:00 AM', '02:00 PM') },
+          { name: 'Dr. Rajesh More', specialty: 'Emergency', experience: 10, rating: 4.6, isVisiting: false, schedule: makeSchedule('08:00 AM', '02:00 PM') }
         ]
       },
       {
-        hospitalName: 'Shri Sai Clinic Bhavani Peth',
-        address: 'Near Bhavani Temple, Solapur - 413002',
+        hospitalName: 'Bhavani Peth UPHC',
+        address: 'Near Bhavani Temple, Bhavani Peth, Solapur - 413002',
         contact: '0217-2724500',
         lat: 17.6880,
         lng: 75.9080,
-        totalBeds: 30,
-        availableBeds: 12,
-        icuTotal: 5,
-        icuAvailable: 2,
-        specialties: ['General', 'Orthopaedics'],
+        totalBeds: 4,
+        availableBeds: 3,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
         doctors: [
-          { name: 'Dr. Mahesh Jadhav', specialty: 'General', experience: 6, rating: 4.3, slots: ['09:00 AM', '11:00 AM', '04:00 PM'] },
-          { name: 'Dr. Kavita Shinde', specialty: 'Orthopaedics', experience: 9, rating: 4.4, slots: ['10:00 AM', '02:30 PM'] }
+          { name: 'Dr. Mahesh Jadhav', specialty: 'General', experience: 6, rating: 4.3, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -75,12 +101,41 @@ const wardData = [
         availableBeds: 42,
         icuTotal: 20,
         icuAvailable: 8,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: false,
+          icu: true, lab: true, xray: true, ultrasound: false, ecg: true,
+          bloodBank: false, pediatric: false, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: true, pharmacy: true, immunization: true
+        },
         specialties: ['General', 'Cardiology', 'Orthopaedics', 'Emergency'],
         doctors: [
-          { name: 'Dr. Anil Kumbhar', specialty: 'General', experience: 14, rating: 4.6, slots: ['09:00 AM', '11:30 AM', '03:00 PM'] },
-          { name: 'Dr. Sneha Reddy', specialty: 'Cardiology', experience: 11, rating: 4.9, slots: ['10:00 AM', '01:00 PM', '04:30 PM'] },
-          { name: 'Dr. Vikram Salunkhe', specialty: 'Orthopaedics', experience: 7, rating: 4.4, slots: ['09:30 AM', '02:00 PM'] },
-          { name: 'Dr. Pooja Naik', specialty: 'Emergency', experience: 5, rating: 4.2, slots: ['08:00 AM', '04:00 PM', '10:00 PM'] }
+          { name: 'Dr. Anil Kumbhar', specialty: 'General', experience: 14, rating: 4.6, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Sneha Reddy', specialty: 'Cardiology', experience: 11, rating: 4.9, isVisiting: true, schedule: makeSchedule('10:00 AM', '02:00 PM') },
+          { name: 'Dr. Vikram Salunkhe', specialty: 'Orthopaedics', experience: 7, rating: 4.4, isVisiting: false, schedule: makeSchedule('09:30 AM', '01:30 PM') },
+          { name: 'Dr. Pooja Naik', specialty: 'Emergency', experience: 5, rating: 4.2, isVisiting: false, schedule: makeSchedule('08:00 AM', '02:00 PM') }
+        ]
+      },
+      {
+        hospitalName: 'North Solapur UPHC',
+        address: 'North Solapur Ward, Solapur - 413006',
+        contact: '0217-2741200',
+        lat: 17.7130,
+        lng: 75.9190,
+        totalBeds: 4,
+        availableBeds: 2,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Kavita Shinde', specialty: 'General', experience: 5, rating: 4.2, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -100,11 +155,40 @@ const wardData = [
         availableBeds: 22,
         icuTotal: 15,
         icuAvailable: 4,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: true,
+          icu: true, lab: true, xray: true, ultrasound: true, ecg: true,
+          bloodBank: true, pediatric: false, dental: false, eye: false,
+          dotsTb: false, dialysis: false, ambulance: true, pharmacy: true, immunization: false
+        },
         specialties: ['General', 'Neurology', 'Gynaecology'],
         doctors: [
-          { name: 'Dr. Ramesh Gaikwad', specialty: 'General', experience: 18, rating: 4.8, slots: ['09:00 AM', '12:00 PM', '03:30 PM'] },
-          { name: 'Dr. Meena Joshi', specialty: 'Neurology', experience: 13, rating: 4.7, slots: ['10:30 AM', '02:00 PM'] },
-          { name: 'Dr. Sunita Pawar', specialty: 'Gynaecology', experience: 10, rating: 4.5, slots: ['09:30 AM', '01:30 PM', '04:00 PM'] }
+          { name: 'Dr. Ramesh Gaikwad', specialty: 'General', experience: 18, rating: 4.8, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Meena Joshi', specialty: 'Neurology', experience: 13, rating: 4.7, isVisiting: true, schedule: makeSchedule('10:30 AM', '02:30 PM') },
+          { name: 'Dr. Sunita Pawar', specialty: 'Gynaecology', experience: 10, rating: 4.5, isVisiting: false, schedule: makeSchedule('09:30 AM', '01:30 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Laxmi Peth UPHC',
+        address: 'Laxmi Peth, Solapur - 413002',
+        contact: '0217-2735100',
+        lat: 17.6795,
+        lng: 75.9025,
+        totalBeds: 4,
+        availableBeds: 4,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Seema Kulkarni', specialty: 'General', experience: 7, rating: 4.3, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -124,25 +208,39 @@ const wardData = [
         availableBeds: 18,
         icuTotal: 10,
         icuAvailable: 3,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: false,
+          icu: true, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
         specialties: ['General', 'Paediatrics', 'Emergency'],
         doctors: [
-          { name: 'Dr. Santosh Kamble', specialty: 'General', experience: 9, rating: 4.4, slots: ['09:00 AM', '11:00 AM', '02:00 PM'] },
-          { name: 'Dr. Ashwini Mane', specialty: 'Paediatrics', experience: 7, rating: 4.6, slots: ['10:00 AM', '01:00 PM', '03:30 PM'] }
+          { name: 'Dr. Santosh Kamble', specialty: 'General', experience: 9, rating: 4.4, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Ashwini Mane', specialty: 'Paediatrics', experience: 7, rating: 4.6, isVisiting: false, schedule: makeSchedule('10:00 AM', '02:00 PM') }
         ]
       },
       {
-        hospitalName: 'Datta Nagar Dispensary',
+        hospitalName: 'Murarji Peth UPHC',
         address: 'Datta Nagar, Murarji Peth, Solapur',
         contact: '0217-2714400',
         lat: 17.6935,
         lng: 75.8995,
-        totalBeds: 20,
-        availableBeds: 8,
-        icuTotal: 2,
-        icuAvailable: 1,
+        totalBeds: 4,
+        availableBeds: 2,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
         specialties: ['General'],
         doctors: [
-          { name: 'Dr. Prakash Lokhande', specialty: 'General', experience: 5, rating: 4.1, slots: ['09:00 AM', '12:00 PM', '04:00 PM'] }
+          { name: 'Dr. Prakash Lokhande', specialty: 'General', experience: 5, rating: 4.1, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -162,11 +260,40 @@ const wardData = [
         availableBeds: 35,
         icuTotal: 12,
         icuAvailable: 7,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: false, maternity: false,
+          icu: true, lab: true, xray: true, ultrasound: false, ecg: true,
+          bloodBank: false, pediatric: false, dental: true, eye: true,
+          dotsTb: false, dialysis: false, ambulance: false, pharmacy: true, immunization: false
+        },
         specialties: ['General', 'Dermatology', 'ENT'],
         doctors: [
-          { name: 'Dr. Nilesh Kulkarni', specialty: 'General', experience: 11, rating: 4.5, slots: ['09:00 AM', '11:30 AM', '03:00 PM'] },
-          { name: 'Dr. Archana Bhosale', specialty: 'Dermatology', experience: 8, rating: 4.7, slots: ['10:00 AM', '02:00 PM'] },
-          { name: 'Dr. Sanjay Aware', specialty: 'ENT', experience: 12, rating: 4.6, slots: ['09:30 AM', '01:00 PM', '04:30 PM'] }
+          { name: 'Dr. Nilesh Kulkarni', specialty: 'General', experience: 11, rating: 4.5, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Archana Bhosale', specialty: 'Dermatology', experience: 8, rating: 4.7, isVisiting: true, schedule: makeSchedule('10:00 AM', '02:00 PM') },
+          { name: 'Dr. Sanjay Aware', specialty: 'ENT', experience: 12, rating: 4.6, isVisiting: true, schedule: makeSchedule('09:30 AM', '01:30 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Shukrawar Peth UPHC',
+        address: 'Shukrawar Peth, Solapur - 413001',
+        contact: '0217-2726700',
+        lat: 17.6860,
+        lng: 75.9105,
+        totalBeds: 4,
+        availableBeds: 3,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Rekha Patil', specialty: 'General', experience: 4, rating: 4.0, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -186,11 +313,40 @@ const wardData = [
         availableBeds: 30,
         icuTotal: 15,
         icuAvailable: 6,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: false,
+          icu: true, lab: true, xray: true, ultrasound: true, ecg: true,
+          bloodBank: true, pediatric: false, dental: false, eye: true,
+          dotsTb: false, dialysis: true, ambulance: true, pharmacy: true, immunization: false
+        },
         specialties: ['General', 'Cardiology', 'Ophthalmology'],
         doctors: [
-          { name: 'Dr. Vinod Chavan', specialty: 'General', experience: 16, rating: 4.7, slots: ['09:00 AM', '12:00 PM', '03:00 PM'] },
-          { name: 'Dr. Rupali Patil', specialty: 'Cardiology', experience: 10, rating: 4.8, slots: ['10:30 AM', '02:30 PM'] },
-          { name: 'Dr. Ganesh Nair', specialty: 'Ophthalmology', experience: 9, rating: 4.5, slots: ['09:30 AM', '01:00 PM', '04:00 PM'] }
+          { name: 'Dr. Vinod Chavan', specialty: 'General', experience: 16, rating: 4.7, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Rupali Patil', specialty: 'Cardiology', experience: 10, rating: 4.8, isVisiting: true, schedule: makeSchedule('10:30 AM', '02:30 PM') },
+          { name: 'Dr. Ganesh Nair', specialty: 'Ophthalmology', experience: 9, rating: 4.5, isVisiting: true, schedule: makeSchedule('09:30 AM', '01:30 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Sakhar Peth UPHC',
+        address: 'Sakhar Peth, Solapur - 413005',
+        contact: '0217-2755100',
+        lat: 17.6755,
+        lng: 75.9155,
+        totalBeds: 4,
+        availableBeds: 4,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Anand Kale', specialty: 'General', experience: 6, rating: 4.2, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -210,10 +366,39 @@ const wardData = [
         availableBeds: 20,
         icuTotal: 10,
         icuAvailable: 3,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: false, maternity: true,
+          icu: true, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: false, dental: false, eye: false,
+          dotsTb: false, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
         specialties: ['General', 'Orthopaedics', 'Gynaecology'],
         doctors: [
-          { name: 'Dr. Deepak Wagh', specialty: 'General', experience: 8, rating: 4.3, slots: ['09:00 AM', '11:00 AM', '03:30 PM'] },
-          { name: 'Dr. Smita Jagtap', specialty: 'Gynaecology', experience: 12, rating: 4.6, slots: ['10:00 AM', '02:00 PM'] }
+          { name: 'Dr. Deepak Wagh', specialty: 'General', experience: 8, rating: 4.3, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Smita Jagtap', specialty: 'Gynaecology', experience: 12, rating: 4.6, isVisiting: true, schedule: makeSchedule('10:00 AM', '02:00 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Budhwar Peth UPHC',
+        address: 'Budhwar Peth, Solapur - 413002',
+        contact: '0217-2718100',
+        lat: 17.6815,
+        lng: 75.9045,
+        totalBeds: 4,
+        availableBeds: 2,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Prachi More', specialty: 'General', experience: 3, rating: 4.1, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -233,10 +418,39 @@ const wardData = [
         availableBeds: 15,
         icuTotal: 8,
         icuAvailable: 2,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: false,
+          icu: true, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: false, dental: false, eye: false,
+          dotsTb: false, dialysis: false, ambulance: false, pharmacy: true, immunization: false
+        },
         specialties: ['General', 'Emergency'],
         doctors: [
-          { name: 'Dr. Harish Deshpande', specialty: 'General', experience: 7, rating: 4.2, slots: ['09:00 AM', '12:00 PM', '04:00 PM'] },
-          { name: 'Dr. Geeta Rathod', specialty: 'Emergency', experience: 6, rating: 4.4, slots: ['08:00 AM', '02:00 PM', '08:00 PM'] }
+          { name: 'Dr. Harish Deshpande', specialty: 'General', experience: 7, rating: 4.2, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Geeta Rathod', specialty: 'Emergency', experience: 6, rating: 4.4, isVisiting: false, schedule: makeSchedule('08:00 AM', '02:00 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Osmanabad Naka UPHC',
+        address: 'Osmanabad Naka, Solapur - 413004',
+        contact: '0217-2760200',
+        lat: 17.6705,
+        lng: 75.9205,
+        totalBeds: 4,
+        availableBeds: 3,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Sunil Patil', specialty: 'General', experience: 4, rating: 4.0, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -256,11 +470,40 @@ const wardData = [
         availableBeds: 28,
         icuTotal: 12,
         icuAvailable: 5,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: true,
+          icu: true, lab: true, xray: true, ultrasound: false, ecg: true,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: true, pharmacy: true, immunization: true
+        },
         specialties: ['General', 'Paediatrics', 'Cardiology'],
         doctors: [
-          { name: 'Dr. Pallavi Shete', specialty: 'General', experience: 10, rating: 4.5, slots: ['09:00 AM', '11:30 AM', '03:00 PM'] },
-          { name: 'Dr. Ajay Mundhe', specialty: 'Cardiology', experience: 14, rating: 4.8, slots: ['10:00 AM', '01:30 PM'] },
-          { name: 'Dr. Rekha Bhandare', specialty: 'Paediatrics', experience: 6, rating: 4.4, slots: ['09:30 AM', '02:00 PM', '04:30 PM'] }
+          { name: 'Dr. Pallavi Shete', specialty: 'General', experience: 10, rating: 4.5, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Ajay Mundhe', specialty: 'Cardiology', experience: 14, rating: 4.8, isVisiting: true, schedule: makeSchedule('10:00 AM', '02:00 PM') },
+          { name: 'Dr. Rekha Bhandare', specialty: 'Paediatrics', experience: 6, rating: 4.4, isVisiting: false, schedule: makeSchedule('09:30 AM', '01:30 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Kegaon UPHC',
+        address: 'Kegaon, Solapur - 413006',
+        contact: '0217-2742300',
+        lat: 17.7055,
+        lng: 75.9305,
+        totalBeds: 4,
+        availableBeds: 2,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Vijay Salunkhe', specialty: 'General', experience: 5, rating: 4.2, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -280,11 +523,40 @@ const wardData = [
         availableBeds: 32,
         icuTotal: 18,
         icuAvailable: 7,
+        facilityType: 'general',
+        facilities: {
+          opd: true, inpatient: true, emergency: true, maternity: false,
+          icu: true, lab: true, xray: true, ultrasound: true, ecg: true,
+          bloodBank: false, pediatric: false, dental: false, eye: false,
+          dotsTb: false, dialysis: false, ambulance: true, pharmacy: true, immunization: false
+        },
         specialties: ['General', 'Neurology', 'Orthopaedics', 'Emergency'],
         doctors: [
-          { name: 'Dr. Mohan Taware', specialty: 'General', experience: 20, rating: 4.9, slots: ['09:00 AM', '12:00 PM', '03:00 PM'] },
-          { name: 'Dr. Vaishali Gore', specialty: 'Neurology', experience: 11, rating: 4.7, slots: ['10:30 AM', '02:30 PM'] },
-          { name: 'Dr. Ravi Kale', specialty: 'Orthopaedics', experience: 8, rating: 4.5, slots: ['09:30 AM', '01:00 PM', '04:00 PM'] }
+          { name: 'Dr. Mohan Taware', specialty: 'General', experience: 20, rating: 4.9, isVisiting: false, schedule: makeSchedule('09:00 AM', '01:00 PM') },
+          { name: 'Dr. Vaishali Gore', specialty: 'Neurology', experience: 11, rating: 4.7, isVisiting: true, schedule: makeSchedule('10:30 AM', '02:30 PM') },
+          { name: 'Dr. Ravi Kale', specialty: 'Orthopaedics', experience: 8, rating: 4.5, isVisiting: true, schedule: makeSchedule('09:30 AM', '01:30 PM') }
+        ]
+      },
+      {
+        hospitalName: 'Vijapur Road UPHC',
+        address: 'Vijapur Road, Solapur - 413007',
+        contact: '0217-2771600',
+        lat: 17.6955,
+        lng: 75.8855,
+        totalBeds: 4,
+        availableBeds: 4,
+        icuTotal: 0,
+        icuAvailable: 0,
+        facilityType: 'uphc',
+        facilities: {
+          opd: true, inpatient: false, emergency: false, maternity: true,
+          icu: false, lab: true, xray: false, ultrasound: false, ecg: false,
+          bloodBank: false, pediatric: true, dental: false, eye: false,
+          dotsTb: true, dialysis: false, ambulance: false, pharmacy: true, immunization: true
+        },
+        specialties: ['General'],
+        doctors: [
+          { name: 'Dr. Nandini Jadhav', specialty: 'General', experience: 4, rating: 4.1, isVisiting: false, schedule: makeSchedule('09:00 AM', '04:00 PM') }
         ]
       }
     ]
@@ -295,7 +567,6 @@ const wardData = [
 // SEED USERS
 // ─────────────────────────────────────────────
 const userData = [
-  // Health Officer
   {
     name: 'SMC Health Officer',
     email: 'officer@smc.gov.in',
@@ -304,7 +575,6 @@ const userData = [
     hospitalName: null,
     ward: null
   },
-  // Hospital Staff — one per hospital (first hospital of each ward)
   {
     name: 'Bhavani Peth Hospital Staff',
     email: 'staff.bhavani@hospital.com',
@@ -345,6 +615,23 @@ const userData = [
     hospitalName: 'Shukrawar Peth Clinic',
     ward: 'Shukrawar Peth'
   },
+  // UPHC Staff
+  {
+    name: 'Bhavani Peth UPHC Staff',
+    email: 'uphc.bhavani@smc.gov.in',
+    password: 'uphc123',
+    role: 'hospitalStaff',
+    hospitalName: 'Bhavani Peth UPHC',
+    ward: 'Bhavani Peth'
+  },
+  {
+    name: 'Kegaon UPHC Staff',
+    email: 'uphc.kegaon@smc.gov.in',
+    password: 'uphc123',
+    role: 'hospitalStaff',
+    hospitalName: 'Kegaon UPHC',
+    ward: 'Kegaon'
+  },
   // Citizens
   {
     name: 'Rahul Patil',
@@ -365,7 +652,7 @@ const userData = [
 ];
 
 // ─────────────────────────────────────────────
-// SEED HEALTH CAMPS
+// SEED HEALTH CAMPS — updated campType enum
 // ─────────────────────────────────────────────
 const healthCampData = [
   {
@@ -373,8 +660,8 @@ const healthCampData = [
     wardName: 'Bhavani Peth',
     title: 'Free Dengue Awareness & Checkup Camp',
     description: 'Free blood tests and dengue awareness for Bhavani Peth residents',
-    campType: 'Free Checkup',
-    startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+    campType: 'Vector Disease Control Camp',
+    startDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
     timing: '9:00 AM - 4:00 PM',
     location: 'Bhavani Peth Community Hall, Near Bhavani Temple',
@@ -385,7 +672,7 @@ const healthCampData = [
     wardName: 'North Solapur',
     title: 'Free Eye Checkup Camp',
     description: 'Free eye examination and spectacles distribution for senior citizens',
-    campType: 'Eye Checkup',
+    campType: 'Eye Checkup Camp',
     startDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
     timing: '10:00 AM - 3:00 PM',
@@ -397,7 +684,7 @@ const healthCampData = [
     wardName: 'Laxmi Peth',
     title: 'Blood Donation Drive',
     description: 'Voluntary blood donation camp in association with SMC',
-    campType: 'Blood Donation',
+    campType: 'Blood Donation Drive',
     startDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     timing: '8:00 AM - 1:00 PM',
@@ -409,8 +696,8 @@ const healthCampData = [
     wardName: 'Kegaon',
     title: 'Child Vaccination Drive',
     description: 'Free vaccination for children under 5 years — Polio, DPT, Hepatitis B',
-    campType: 'Vaccination',
-    startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // tomorrow
+    campType: 'Routine Immunization Drive',
+    startDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
     timing: '9:00 AM - 5:00 PM',
     location: 'Kegaon Primary School Ground',
@@ -421,17 +708,42 @@ const healthCampData = [
     wardName: 'Shukrawar Peth',
     title: 'Diabetes & BP Awareness Camp',
     description: 'Free blood sugar and blood pressure testing for all residents',
-    campType: 'Awareness Drive',
+    campType: 'NCD Screening Camp',
     startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     timing: '9:00 AM - 2:00 PM',
     location: 'Shukrawar Peth Garden',
     contactInfo: '0217-2726600'
+  },
+  // UPHC Health Camps
+  {
+    hospitalName: 'Bhavani Peth UPHC',
+    wardName: 'Bhavani Peth',
+    title: 'Maternal Health Camp — Antenatal Checkup',
+    description: 'Free antenatal checkup, iron tablets and nutrition counselling for pregnant women',
+    campType: 'Maternal Health Camp',
+    startDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+    timing: '9:00 AM - 1:00 PM',
+    location: 'Bhavani Peth UPHC Premises',
+    contactInfo: '0217-2724500'
+  },
+  {
+    hospitalName: 'Kegaon UPHC',
+    wardName: 'Kegaon',
+    title: 'TB Awareness & DOTS Camp',
+    description: 'Free TB screening and DOTS treatment awareness for Kegaon residents',
+    campType: 'TB Awareness & DOTS Camp',
+    startDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+    endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+    timing: '9:00 AM - 3:00 PM',
+    location: 'Kegaon UPHC Premises',
+    contactInfo: '0217-2742300'
   }
 ];
 
 // ─────────────────────────────────────────────
-// SEED DISEASE REPORTS (last 14 days of data)
+// DISEASE REPORTS CONFIG
 // ─────────────────────────────────────────────
 const diseases = ['Dengue', 'Malaria', 'TB', 'Typhoid', 'Cholera'];
 const wardsForReports = [
@@ -458,6 +770,8 @@ const seedDatabase = async () => {
     await Alert.deleteMany({});
     await Appointment.deleteMany({});
     await HealthCamp.deleteMany({});
+    await Broadcast.deleteMany({});
+    await IndentRequest.deleteMany({});
     console.log('All collections cleared');
 
     // Seed Wards
@@ -467,14 +781,14 @@ const seedDatabase = async () => {
     // Seed Users
     const createdUsers = [];
     for (const u of userData) {
-      const user = await User.create(u); // pre-save hook hashes password
+      const user = await User.create(u);
       createdUsers.push(user);
     }
     console.log(`${createdUsers.length} users seeded`);
 
-    const officerUser = createdUsers.find(u => u.role === 'healthOfficer');
     const citizenUser = createdUsers.find(u => u.email === 'rahul@citizen.com');
     const staffUsers = createdUsers.filter(u => u.role === 'hospitalStaff');
+    const officerUser = createdUsers.find(u => u.role === 'healthOfficer');
 
     // Seed Disease Reports — last 14 days
     const diseaseReports = [];
@@ -485,7 +799,6 @@ const seedDatabase = async () => {
 
       for (const ward of wardsForReports) {
         const staffUser = staffUsers.find(u => u.hospitalName === ward.hospitalName);
-        // 1-2 reports per ward per day
         const numReports = Math.floor(Math.random() * 2) + 1;
         for (let r = 0; r < numReports; r++) {
           const disease = diseases[Math.floor(Math.random() * diseases.length)];
@@ -497,10 +810,8 @@ const seedDatabase = async () => {
             newConfirmed: confirmed,
             newRecovered: Math.floor(confirmed * 0.6),
             newDeaths: Math.random() > 0.9 ? 1 : 0,
-            reportDate: date,
-            month: date.getMonth() + 1,
-            year: date.getFullYear(),
-            submittedBy: staffUser ? staffUser._id : null
+            submittedBy: staffUser ? staffUser._id : null,
+            createdAt: date
           });
         }
       }
@@ -508,13 +819,12 @@ const seedDatabase = async () => {
     await DiseaseReport.insertMany(diseaseReports);
     console.log(`${diseaseReports.length} disease reports seeded`);
 
-    // Seed Hospital Capacity
+    // Seed Hospital Capacity — updated with emergencyBeds
     const capacityRecords = [];
     for (const ward of wards) {
       for (const hospital of ward.hospitals) {
-        const staffUser = staffUsers.find(
-          u => u.hospitalName === hospital.hospitalName
-        );
+        const staffUser = staffUsers.find(u => u.hospitalName === hospital.hospitalName);
+        const isUPHC = hospital.facilityType === 'uphc';
         capacityRecords.push({
           hospitalName: hospital.hospitalName,
           ward: ward.wardName,
@@ -522,11 +832,11 @@ const seedDatabase = async () => {
           availableBeds: hospital.availableBeds,
           icuTotal: hospital.icuTotal,
           icuAvailable: hospital.icuAvailable,
-          ventilatorsTotal: Math.floor(hospital.icuTotal * 0.8),
-          ventilatorsAvailable: Math.floor(hospital.icuAvailable * 0.8),
-          oxygenTotal: 100,
-          oxygenAvailable: Math.floor(Math.random() * 40) + 40, // 40-80
-          medicineStockPercentage: Math.floor(Math.random() * 40) + 50, // 50-90
+          emergencyBedsTotal: isUPHC ? 0 : Math.floor(hospital.totalBeds * 0.1),
+          emergencyBedsAvailable: isUPHC ? 0 : Math.floor(hospital.availableBeds * 0.1),
+          oxygenTotal: isUPHC ? 0 : 100,
+          oxygenAvailable: isUPHC ? 0 : Math.floor(Math.random() * 40) + 40,
+          medicineStockPercentage: Math.floor(Math.random() * 40) + 50,
           submittedBy: staffUser ? staffUser._id : null,
           lastUpdated: new Date()
         });
@@ -535,7 +845,7 @@ const seedDatabase = async () => {
     await HospitalCapacity.insertMany(capacityRecords);
     console.log(`${capacityRecords.length} capacity records seeded`);
 
-    // Update ward activeCaseCount and riskLevel from disease reports
+    // Update ward stats from disease reports
     for (const ward of wards) {
       const allReports = await DiseaseReport.find({ wardName: ward.wardName });
       const totalConfirmed = allReports.reduce((s, r) => s + r.newConfirmed, 0);
@@ -543,7 +853,6 @@ const seedDatabase = async () => {
       const totalDeaths = allReports.reduce((s, r) => s + r.newDeaths, 0);
       const activeCaseCount = Math.max(0, totalConfirmed - totalRecovered - totalDeaths);
 
-      // topDisease
       const diseaseMap = {};
       allReports.forEach(r => {
         diseaseMap[r.diseaseName] = (diseaseMap[r.diseaseName] || 0) + r.newConfirmed;
@@ -552,12 +861,10 @@ const seedDatabase = async () => {
         (a, b) => diseaseMap[b] - diseaseMap[a]
       )[0] || null;
 
-      // riskLevel
       let riskLevel = 'Green';
       if (activeCaseCount > 50) riskLevel = 'Red';
       else if (activeCaseCount > 25) riskLevel = 'Yellow';
 
-      // HAI
       const totalAvailableBeds = ward.hospitals.reduce(
         (s, h) => s + (h.availableBeds || 0), 0
       );
@@ -577,9 +884,10 @@ const seedDatabase = async () => {
     }
     console.log('Ward stats updated');
 
-    // Seed Alerts for high-risk wards
+    // Seed Alerts — updated with hospitalName
     const updatedWards = await Ward.find({ riskLevel: { $in: ['Yellow', 'Red'] } });
     for (const ward of updatedWards) {
+      const firstHospital = ward.hospitals[0];
       await Alert.create({
         wardName: ward.wardName,
         alertType: 'Outbreak',
@@ -587,23 +895,56 @@ const seedDatabase = async () => {
         message: `${ward.riskLevel === 'Red' ? 'Critical' : 'Warning'}: ${ward.activeCaseCount} active ${ward.topDisease} cases in ${ward.wardName}`,
         diseaseName: ward.topDisease,
         caseCount: ward.activeCaseCount,
+        hospitalName: firstHospital ? firstHospital.hospitalName : null,
         isActive: true
       });
     }
-    console.log('Alerts seeded for high-risk wards');
+    console.log('Alerts seeded');
 
     // Seed Health Camps
     for (const camp of healthCampData) {
-      await HealthCamp.create(camp);
+      const staffUser = staffUsers.find(u => u.hospitalName === camp.hospitalName);
+      await HealthCamp.create({
+        ...camp,
+        createdBy: staffUser ? staffUser._id : null
+      });
     }
     console.log(`${healthCampData.length} health camps seeded`);
 
+    // Seed Sample Broadcast
+    if (officerUser) {
+      await Broadcast.create({
+        title: 'Dengue Prevention Advisory — Solapur',
+        category: 'health_advisory',
+        targetAudience: 'all_citizens',
+        priority: 'urgent',
+        message: 'Dengue cases are rising across Solapur wards. Please eliminate stagnant water around your homes, use mosquito repellents and visit your nearest UPHC if you have fever symptoms.',
+        postedBy: officerUser._id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        isActive: true
+      });
+      console.log('Sample broadcast seeded');
+    }
+
+    // Seed Sample Indent Request
+    const bhavaniStaff = staffUsers.find(u => u.hospitalName === 'Bhavani Peth General Hospital');
+    if (bhavaniStaff) {
+      await IndentRequest.create({
+        hospitalName: 'Bhavani Peth General Hospital',
+        wardName: 'Bhavani Peth',
+        itemName: 'Paracetamol 500mg',
+        itemType: 'medicine',
+        quantityRequired: 500,
+        urgency: 'urgent',
+        reason: 'Stock running low due to increased dengue and fever cases',
+        status: 'pending',
+        submittedBy: bhavaniStaff._id
+      });
+      console.log('Sample indent request seeded');
+    }
+
     // Seed Sample Appointments
     if (citizenUser) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 30, 0, 0);
-
       await Appointment.create({
         citizenName: citizenUser.name,
         contact: '9664269817',
@@ -611,22 +952,39 @@ const seedDatabase = async () => {
         ward: 'Bhavani Peth',
         specialty: 'General',
         doctorName: 'Dr. Priya Kulkarni',
-        preferredDate: tomorrow,
+        preferredDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
         timeSlot: '10:30 AM',
         chiefComplaint: 'Fever and body ache for 3 days',
         bookedBy: citizenUser._id,
         status: 'Confirmed',
-        bookingReference: 'CC' + Math.floor(100000 + Math.random() * 900000)
+        rating: 4
       });
-      console.log('Sample appointment seeded');
+      await Appointment.create({
+        citizenName: citizenUser.name,
+        contact: '9664269817',
+        hospitalName: 'Bhavani Peth UPHC',
+        ward: 'Bhavani Peth',
+        specialty: 'General',
+        doctorName: 'Dr. Mahesh Jadhav',
+        preferredDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        timeSlot: '09:00 AM',
+        chiefComplaint: 'Routine checkup',
+        bookedBy: citizenUser._id,
+        status: 'Pending',
+        rating: null
+      });
+      console.log('Sample appointments seeded');
     }
 
     console.log('\n✅ DATABASE SEEDED SUCCESSFULLY');
     console.log('\n📋 LOGIN CREDENTIALS:');
-    console.log('Health Officer → officer@smc.gov.in / officer123');
-    console.log('Hospital Staff → staff.bhavani@hospital.com / hospital123');
-    console.log('Citizen       → rahul@citizen.com / citizen123');
+    console.log('Health Officer  → officer@smc.gov.in / officer123');
+    console.log('Hospital Staff  → staff.bhavani@hospital.com / hospital123');
+    console.log('UPHC Staff      → uphc.bhavani@smc.gov.in / uphc123');
+    console.log('Citizen         → rahul@citizen.com / citizen123');
     console.log('\n🏥 Wards seeded:', wards.map(w => w.wardName).join(', '));
+    console.log('\n🏨 UPHCs seeded: Bhavani Peth, North Solapur, Laxmi Peth, Murarji Peth,');
+    console.log('   Shukrawar Peth, Sakhar Peth, Budhwar Peth, Osmanabad Naka, Kegaon, Vijapur Road');
 
     process.exit(0);
   } catch (error) {

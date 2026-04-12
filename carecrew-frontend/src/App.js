@@ -16,6 +16,7 @@ import OfficerDashboard from './pages/HealthOfficer/Dashboard'
 import HospitalRegister from './pages/Register/HospitalRegister'
 import OfficerRegister from './pages/Register/OfficerRegister'
 import HealthCampsDashboard from './pages/HospitalStaff/HealthCampsDashboard'
+import HealthSchemes from './pages/Citizen/HealthSchemes'
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -139,6 +140,16 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path='/citizen/health-schemes'
+        element={
+          <ProtectedRoute allowedRoles={['citizen']}>
+            <HealthSchemes />
+          </ProtectedRoute>
+        }
+      />
+
 
       {/* Default */}
       <Route path='/' element={<Navigate to='/login' replace />} />
