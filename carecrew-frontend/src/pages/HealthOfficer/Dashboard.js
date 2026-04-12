@@ -536,6 +536,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [dismissedIds, setDismissedIds] = useState(new Set())
+  // eslint-disable-next-line no-unused-vars
   const [countdown, setCountdown] = useState(30)
   const [search, setSearch] = useState('')
   const [selectedWard, setSelectedWard] = useState(null)

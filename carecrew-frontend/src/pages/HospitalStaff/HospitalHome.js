@@ -53,8 +53,8 @@ const HospitalHome = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [timeframe, setTimeframe] = useState('month')
+  // eslint-disable-next-line no-unused-vars
   const [wardRiskLevel, setWardRiskLevel] = useState('Green')
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)

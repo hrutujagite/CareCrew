@@ -11,6 +11,7 @@ const CitizenLayout = ({ children }) => {
     { path: '/citizen/home', label: 'Home', icon: '🏠' },
     { path: '/citizen/appointments/book', label: 'Appointment Booking', icon: '📅' },
     { path: '/citizen/my-appointments', label: 'My Appointments', icon: '📋' },
+    { path: "/citizen/health-schemes", label: "Health Schemes", icon: "🏥" }
   ]
 
   const isActive = (path) => location.pathname === path
