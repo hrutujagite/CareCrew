@@ -1614,6 +1614,130 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   )
 }
 
+// ─── Broadcast History Panel ──────────────────────────────────────────────────
+const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => {
+  const [deactivatingId, setDeactivatingId] = useState(null)
+
+  const handleDeactivate = async (id) => {
+    setDeactivatingId(id)
+    try {
+      await axios.patch(
+        `https://carecrew-1.onrender.com/api/broadcasts/${id}/deactivate`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      onDeactivate(id)
+    } catch (err) {
+      console.error('Deactivate failed:', err)
+    } finally {
+      setDeactivatingId(null)
+    }
+  }
+
+  const active = broadcasts.filter(b => b.isActive)
+  const inactive = broadcasts.filter(b => !b.isActive)
+
+  const BroadcastCard = ({ b }) => {
+    const typeStyle = BROADCAST_TYPE_STYLES[b.type] || BROADCAST_TYPE_STYLES['General Info']
+    const prioStyle = BROADCAST_PRIORITY_STYLES[b.priority] || BROADCAST_PRIORITY_STYLES['Medium']
+    return (
+      <div style={{
+        background: b.isActive ? '#FAFFFE' : '#F8FAFC',
+        border: `1.5px solid ${b.isActive ? '#059669' + '30' : '#E2E8F0'}`,
+        borderLeft: `4px solid ${b.isActive ? '#059669' : '#CBD5E1'}`,
+        borderRadius: '10px',
+        padding: '14px 16px',
+        opacity: b.isActive ? 1 : 0.65,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <span style={{ ...pillBase, background: typeStyle.bg, color: typeStyle.color, fontSize: '10px' }}>{typeStyle.icon} {b.type}</span>
+              <span style={{ ...pillBase, background: prioStyle.bg, color: prioStyle.color, border: `1px solid ${prioStyle.border}`, fontSize: '10px' }}>{b.priority}</span>
+              {b.isActive
+                ? <span style={{ ...pillBase, background: '#ECFDF5', color: '#065F46', fontSize: '10px' }}>● Active</span>
+                : <span style={{ ...pillBase, background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Deactivated</span>
+              }
+              {b.targetWards && b.targetWards.length > 0
+                ? b.targetWards.slice(0, 2).map(w => <span key={w} style={{ ...pillBase, background: '#F1F5F9', color: '#475569', fontSize: '10px', padding: '2px 6px' }}>{w}</span>)
+                : <span style={{ ...pillBase, background: '#EFF6FF', color: '#1D4ED8', fontSize: '10px' }}>All Wards</span>
+              }
+              {b.targetWards && b.targetWards.length > 2 && (
+                <span style={{ ...pillBase, background: '#F1F5F9', color: '#94A3B8', fontSize: '10px', padding: '2px 6px' }}>+{b.targetWards.length - 2}</span>
+              )}
+            </div>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B', marginBottom: '4px' }}>{b.title}</p>
+            <p style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5, marginBottom: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.message}</p>
+            <p style={{ fontSize: '11px', color: '#94A3B8' }}>
+              Sent {new Date(b.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {b.createdBy?.name ? ` · by ${b.createdBy.name}` : ''}
+              {b.expiresAt ? ` · Expires ${new Date(b.expiresAt).toLocaleDateString()}` : ''}
+            </p>
+          </div>
+          {b.isActive && (
+            <button
+              onClick={() => handleDeactivate(b._id)}
+              disabled={deactivatingId === b._id}
+              style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '7px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, color: '#991B1B', cursor: deactivatingId === b._id ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, opacity: deactivatingId === b._id ? 0.6 : 1 }}
+            >
+              {deactivatingId === b._id ? '...' : '🔕 Deactivate'}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '680px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📋 Broadcast History</h2>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
+              {active.length} active · {inactive.length} deactivated · {broadcasts.length} total
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B' }}>✕</button>
+        </div>
+
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {broadcasts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+              <p style={{ fontSize: '40px', marginBottom: '12px' }}>📭</p>
+              <p style={{ fontSize: '16px', fontWeight: 600, color: '#1E293B', marginBottom: '4px' }}>No broadcasts yet</p>
+              <p style={{ fontSize: '13px', color: '#94A3B8' }}>Broadcasts you send will appear here.</p>
+            </div>
+          ) : (
+            <>
+              {active.length > 0 && (
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                    ● Active Broadcasts ({active.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {active.map(b => <BroadcastCard key={b._id} b={b} />)}
+                  </div>
+                </div>
+              )}
+              {inactive.length > 0 && (
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                    Deactivated ({inactive.length})
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {inactive.map(b => <BroadcastCard key={b._id} b={b} />)}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { token } = useAuth()
