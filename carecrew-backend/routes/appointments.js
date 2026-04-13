@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Appointment = require('../models/Appointment');
 const { protect, authorizeRoles } = require('../middleware/auth');
-const Ward = require('../models/Ward'); // ✅ ADD THIS at the top
+const Ward = require('../models/Ward');
+
 // @route  POST /api/appointments/book
 // @desc   Book an appointment (citizen only)
 router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
@@ -16,64 +17,65 @@ router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
       timeSlot,
       chiefComplaint
     } = req.body;
- 
-    // ✅ NEW — check doctor availability on preferred date
-const wardDoc = await Ward.findOne({ 'hospitals.hospitalName': hospitalName });
-if (wardDoc) {
-  const hospital = wardDoc.hospitals.find(h => h.hospitalName === hospitalName);
-  if (hospital) {
-    const doctor = hospital.doctors.find(d => d.name === doctorName);
-    if (doctor && doctor.schedule && doctor.schedule.length > 0) {
 
-      // Get day of week from preferredDate
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const preferredDay = dayNames[new Date(preferredDate).getDay()];
+    // Check doctor availability on preferred date
+    const wardDoc = await Ward.findOne({ 'hospitals.hospitalName': hospitalName });
+    if (wardDoc) {
+      const hospital = wardDoc.hospitals.find(h => h.hospitalName === hospitalName);
+      if (hospital) {
+        const doctor = hospital.doctors.find(d => d.name === doctorName);
+        if (doctor && doctor.schedule && doctor.schedule.length > 0) {
 
-      // Check if doctor has schedule on that day
-      const availableOnDay = doctor.schedule.find(s => s.day === preferredDay);
-      if (!availableOnDay) {
-        return res.status(400).json({
-          success: false,
-          message: `Dr. ${doctorName} is not available on ${preferredDay}. Available days: ${doctor.schedule.map(s => s.day).join(', ')}`
-        });
-      }
+          // Get day of week from preferredDate
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const preferredDay = dayNames[new Date(preferredDate).getDay()];
 
-      // ✅ Check max appointments not exceeded for that day
-      const existingCount = await Appointment.countDocuments({
-        hospitalName,
-        doctorName,
-        preferredDate: {
-          $gte: new Date(new Date(preferredDate).setHours(0, 0, 0, 0)),
-          $lt: new Date(new Date(preferredDate).setHours(23, 59, 59, 999))
-        },
-        status: { $ne: 'Cancelled' }
-      });
+          // Check if doctor has schedule on that day
+          const availableOnDay = doctor.schedule.find(s => s.day === preferredDay);
+          if (!availableOnDay) {
+            return res.status(400).json({
+              success: false,
+              message: `Dr. ${doctorName} is not available on ${preferredDay}. Available days: ${doctor.schedule.map(s => s.day).join(', ')}`
+            });
+          }
 
-      if (existingCount >= availableOnDay.maxAppointments) {
-        return res.status(400).json({
-          success: false,
-          message: `Dr. ${doctorName} is fully booked on this date. Maximum ${availableOnDay.maxAppointments} appointments reached.`
-        });
+          // Check max appointments not exceeded for that day
+          const existingCount = await Appointment.countDocuments({
+            hospitalName,
+            doctorName,
+            preferredDate: {
+              $gte: new Date(new Date(preferredDate).setHours(0, 0, 0, 0)),
+              $lt:  new Date(new Date(preferredDate).setHours(23, 59, 59, 999))
+            },
+            status: { $ne: 'Cancelled' }
+          });
+
+          if (existingCount >= availableOnDay.maxAppointments) {
+            return res.status(400).json({
+              success: false,
+              message: `Dr. ${doctorName} is fully booked on this date. Maximum ${availableOnDay.maxAppointments} appointments reached.`
+            });
+          }
+        }
       }
     }
-  }
-}
 
-const appointment = await Appointment.create({
-  citizenName: req.user.name,
-  contact: req.user.contact || '',
-  hospitalName,
-  ward,
-  specialty,
-  doctorName,
-  preferredDate,
-  timeSlot,
-  chiefComplaint: chiefComplaint || '',
-  bookedBy: req.user._id,
-  status: 'Pending',
-  bookingReference: 'CC' + Math.floor(100000 + Math.random() * 900000)
-});
- 
+    // FIX: removed inline bookingReference — pre-save hook in Appointment.js handles it,
+    // avoiding duplicate key errors from the unique index on that field.
+    const appointment = await Appointment.create({
+      citizenName:    req.user.name,
+      contact:        req.user.contact || '',
+      hospitalName,
+      ward,
+      specialty,
+      doctorName,
+      preferredDate,
+      timeSlot,
+      chiefComplaint: chiefComplaint || '',
+      bookedBy:       req.user._id,
+      status:         'Pending'
+    });
+
     res.status(201).json({
       success: true,
       message: 'Appointment booked successfully',
@@ -85,7 +87,7 @@ const appointment = await Appointment.create({
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
- 
+
 // @route  GET /api/appointments/my
 // @desc   Get appointments for logged in citizen
 router.get('/my', protect, authorizeRoles('citizen'), async (req, res) => {
@@ -93,13 +95,13 @@ router.get('/my', protect, authorizeRoles('citizen'), async (req, res) => {
     const appointments = await Appointment.find({
       bookedBy: req.user._id
     }).sort({ preferredDate: -1 });
- 
+
     res.json({ success: true, appointments });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
- 
+
 // @route  GET /api/appointments/hospital
 // @desc   Get all appointments for this hospital (hospitalStaff only)
 router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
@@ -107,13 +109,13 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
     const appointments = await Appointment.find({
       hospitalName: req.user.hospitalName
     }).sort({ preferredDate: -1 }).limit(100);
- 
+
     res.json({ success: true, appointments });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
- 
+
 // @route  GET /api/appointments/all
 // @desc   Get all appointments (healthOfficer only)
 router.get('/all', protect, authorizeRoles('healthOfficer'), async (req, res) => {
@@ -121,13 +123,13 @@ router.get('/all', protect, authorizeRoles('healthOfficer'), async (req, res) =>
     const appointments = await Appointment.find()
       .sort({ preferredDate: -1 })
       .limit(100);
- 
+
     res.json({ success: true, appointments });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
- 
+
 // @route  PUT /api/appointments/:id/cancel
 // @desc   Cancel an appointment
 //         citizen → can cancel their own appointment
@@ -135,28 +137,28 @@ router.get('/all', protect, authorizeRoles('healthOfficer'), async (req, res) =>
 router.put('/:id/cancel', protect, authorizeRoles('citizen', 'hospitalStaff'), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
- 
+
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
- 
+
     // Citizen can only cancel their own
     if (req.user.role === 'citizen') {
       if (appointment.bookedBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Not authorized' });
       }
     }
- 
+
     // Hospital staff can only cancel at their hospital
     if (req.user.role === 'hospitalStaff') {
       if (appointment.hospitalName !== req.user.hospitalName) {
         return res.status(403).json({ message: 'Not authorized' });
       }
     }
- 
+
     appointment.status = 'Cancelled';
     await appointment.save();
- 
+
     res.json({
       success: true,
       message: 'Appointment cancelled successfully',
@@ -166,31 +168,31 @@ router.put('/:id/cancel', protect, authorizeRoles('citizen', 'hospitalStaff'), a
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
- 
+
 // @route  PUT /api/appointments/:id/confirm
 // @desc   Confirm an appointment (hospitalStaff only)
 router.put('/:id/confirm', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
- 
+
     if (!appointment) {
       return res.status(404).json({ message: 'Appointment not found' });
     }
- 
+
     // Hospital staff can only confirm at their hospital
     if (appointment.hospitalName !== req.user.hospitalName) {
       return res.status(403).json({ message: 'Not authorized' });
     }
- 
+
     if (appointment.status === 'Cancelled') {
       return res.status(400).json({
         message: 'Cannot confirm a cancelled appointment'
       });
     }
- 
+
     appointment.status = 'Confirmed';
     await appointment.save();
- 
+
     res.json({
       success: true,
       message: 'Appointment confirmed successfully',
@@ -200,7 +202,6 @@ router.put('/:id/confirm', protect, authorizeRoles('hospitalStaff'), async (req,
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
- 
 
 // @route  PUT /api/appointments/:id/rate
 // @desc   Rate a completed appointment (citizen only)
@@ -238,7 +239,6 @@ router.put('/:id/rate', protect, authorizeRoles('citizen'), async (req, res) => 
     await appointment.save();
 
     // Recalculate doctor's average rating in Ward model
-    const Ward = require('../models/Ward');
     const ward = await Ward.findOne({ 'hospitals.hospitalName': appointment.hospitalName });
     if (ward) {
       const hospital = ward.hospitals.find(h => h.hospitalName === appointment.hospitalName);
@@ -247,8 +247,8 @@ router.put('/:id/rate', protect, authorizeRoles('citizen'), async (req, res) => 
         if (doctor) {
           const ratedAppts = await Appointment.find({
             hospitalName: appointment.hospitalName,
-            doctorName: appointment.doctorName,
-            rating: { $ne: null }
+            doctorName:   appointment.doctorName,
+            rating:       { $ne: null }
           });
           const avg = ratedAppts.reduce((sum, a) => sum + a.rating, 0) / ratedAppts.length;
           doctor.rating = Math.round(avg * 10) / 10;
