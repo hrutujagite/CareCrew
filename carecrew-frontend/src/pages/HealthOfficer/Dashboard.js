@@ -1643,7 +1643,7 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
     return (
       <div style={{
         background: b.isActive ? '#FAFFFE' : '#F8FAFC',
-        border: `1.5px solid ${b.isActive ? '#059669' + '30' : '#E2E8F0'}`,
+        border: `1.5px solid ${b.isActive ? '#05906930' : '#E2E8F0'}`,
         borderLeft: `4px solid ${b.isActive ? '#059669' : '#CBD5E1'}`,
         borderRadius: '10px',
         padding: '14px 16px',
