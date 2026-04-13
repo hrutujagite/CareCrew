@@ -200,10 +200,7 @@ const InfrastructureDashboard = ({ hasCapacity, cap, diseaseHistory, navigate, t
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={handleRaiseFlag}
-                  className="px-4 py-2 border-2 border-red-200 text-red-600 bg-red-50 font-semibold rounded-lg hover:bg-red-100 transition-colors text-sm">
-                  Raise Emergency Flag
-                </button>
+                
                 <Button label="Update Capacity" onClick={() => navigate('/hospital/capacity-form')} variant="secondary" />
               </div>
             </div>

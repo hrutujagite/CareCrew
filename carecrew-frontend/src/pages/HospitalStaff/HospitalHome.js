@@ -244,52 +244,58 @@ const HospitalHome = () => {
             </button>
           </div>
 
-          {/* Nav items */}
-          <nav className="py-3 px-3 flex flex-col gap-1 overflow-x-hidden">
-            {NAV_ITEMS.map(item => (
-              <button
-                key={item.key}
-                onClick={() => setActiveSection(item.key)}
-                title={!isSidebarOpen ? item.label : ''}
-                className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-3 rounded-xl text-sm font-semibold transition-all duration-300 text-left ${
-                  activeSection === item.key
-                    ? 'bg-gradient-to-r from-primary-500 to-brand text-white shadow-md translate-x-1'
-                    : 'text-slate-500 hover:bg-white/60 hover:text-primary-600 hover:shadow-sm'
-                }`}
-              >
-                <span className="text-xl flex-shrink-0">{item.icon}</span>
-                {isSidebarOpen && <span className="flex-1 whitespace-nowrap">{item.label}</span>}
+     {/* Nav items */}
+<nav className="py-3 px-3 flex flex-col gap-1 overflow-x-hidden">
+ {NAV_ITEMS.filter(item => {
+  if (facilityType === 'uphc' && item.key === 'scheduling') return false
+  if (facilityType === 'maternity_home' && item.key === 'disease') return false
+  return true
+}).map(item => (
 
-                {/* Disease Reports — alert count badge */}
-                {isSidebarOpen && item.key === 'disease' && alerts.length > 0 && (
-                  <span className="text-xs bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                    {alerts.length}
-                  </span>
-                )}
-                {/* Appointments — today's appointment count badge */}
-                {isSidebarOpen && item.key === 'scheduling' && todayAppts.length > 0 && (
-                  <span className="text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                    {todayAppts.length}
-                  </span>
-                )}
-                {/* Notices from SMC — broadcast count badge */}
-                {isSidebarOpen && item.key === 'notices' && broadcasts.length > 0 && (
-                  <span className="text-xs bg-orange-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-                    {broadcasts.length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
+    <button
+      key={item.key}
+      onClick={() => setActiveSection(item.key)}
+      title={!isSidebarOpen ? item.label : ''}
+      className={`w-full flex items-center ${isSidebarOpen ? 'gap-3 px-3' : 'justify-center px-0'} py-3 rounded-xl text-sm font-semibold transition-all duration-300 text-left ${
+        activeSection === item.key
+          ? 'bg-gradient-to-r from-primary-500 to-brand text-white shadow-md translate-x-1'
+          : 'text-slate-500 hover:bg-white/60 hover:text-primary-600 hover:shadow-sm'
+      }`}
+    >
+      <span className="text-xl flex-shrink-0">{item.icon}</span>
+      {isSidebarOpen && <span className="flex-1 whitespace-nowrap">{item.label}</span>}
+
+      {/* Disease Reports — alert count badge */}
+      {isSidebarOpen && item.key === 'disease' && alerts.length > 0 && (
+        <span className="text-xs bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+          {alerts.length}
+        </span>
+      )}
+      {/* Appointments — today's appointment count badge */}
+      {isSidebarOpen && item.key === 'scheduling' && todayAppts.length > 0 && (
+        <span className="text-xs bg-blue-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+          {todayAppts.length}
+        </span>
+      )}
+      {/* Notices from SMC — broadcast count badge */}
+      {isSidebarOpen && item.key === 'notices' && broadcasts.length > 0 && (
+        <span className="text-xs bg-orange-500 text-white rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+          {broadcasts.length}
+        </span>
+      )}
+    </button>
+  ))}
+</nav>
 
           {/* ── Today's Tasks checklist at sidebar bottom ── */}
           <div className={`px-4 py-4 border-t border-gray-100 mt-auto transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none hidden'}`}>
             <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Today's Tasks</p>
             <div className="flex flex-col gap-1.5">
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${submittedDiseaseToday ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
+              {facilityType !== 'maternity_home' && (
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${submittedDiseaseToday ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
                 <span>{submittedDiseaseToday ? '✅' : '⚠️'}</span>
                 <span>Disease Report</span>
-              </div>
+              </div> )}
               <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${capacityUpdatedToday ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'}`}>
                 <span>{capacityUpdatedToday ? '✅' : '⚠️'}</span>
                 <span>Capacity Update</span>
@@ -352,13 +358,15 @@ const HospitalHome = () => {
 
               {/* Quick Actions — unchanged */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {facilityType !== 'maternity_home' && (
+
                 <button
                   onClick={() => navigate('/hospital/disease-form')}
                   className="flex items-center justify-center gap-2 p-5 bg-gradient-to-r from-primary-600 to-brand text-white rounded-2xl shadow-soft hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all group"
                 >
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-12 transition-transform"><path d="M12 5v14M5 12h14" /></svg>
                   <span className="font-bold tracking-wide">Submit Disease Report</span>
-                </button>
+                </button> )}
                 <button
                   onClick={() => navigate('/hospital/capacity-form')}
                   className="flex items-center justify-center gap-2 p-5 glass-card border border-primary-200 text-primary-700 rounded-2xl shadow-soft hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all group"
@@ -372,56 +380,62 @@ const HospitalHome = () => {
                 <Alert type="info" message="No capacity data found. Submit your first capacity report for full dashboard insights." />
               )}
 
-              {/* Stats row — "Camps" renamed to "Programs" */}
-              <div className="grid grid-cols-3 gap-4">
-                <StatCard title="Today's Reports" value={todayCount} subtitle="Disease reports today" color="blue" />
-                <StatCard title="Appointments" value={todayAppts.length} subtitle={`${appointments.length} total`} color="green" />
-                <StatCard title="Programs" value={upcomingCamps.length} subtitle="Active / scheduled" color="orange" />
-              </div>
+             <div className="grid grid-cols-3 gap-4">
+             {facilityType !== 'maternity_home' && (
+             <StatCard title="Today's Reports" value={todayCount} subtitle="Disease reports today" color="blue" />
+             )}
+            {facilityType !== 'uphc' && (
+            <StatCard title="Appointments" value={todayAppts.length} subtitle={`${appointments.length} total`} color="green" />
+            )}
+            <StatCard  title="Programs" value={upcomingCamps.length} subtitle="Active / scheduled" color="orange" />
+            </div>
 
               {/* Recent Reports + Trend chart — "View all history" link removed */}
-              <div className="grid grid-cols-2 gap-6">
-                <Card title="Recent Reports">
-                  {diseaseHistory.length === 0 ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">No reports yet</p>
-                  ) : (
-                    <div className="flex flex-col">
-                      {diseaseHistory.slice(0, 5).map((r, i) => (
-                        <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100/50 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
-                          <div>
-                            <p className="text-sm font-bold text-slate-800">{r.diseaseName === 'Other' && r.customDiseaseName ? r.customDiseaseName : r.diseaseName}</p>
-                            <p className="text-xs text-slate-500 font-medium">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                          </div>
-                          <div className="flex flex-col items-end gap-0.5 text-xs text-right">
-                            <span className="text-slate-800 font-bold">{r.newConfirmed} new {r.newConfirmed === 1 ? 'case' : 'cases'}</span>
-                            {r.newRecovered > 0 && <span className="text-emerald-600 font-semibold">+{r.newRecovered} recovered</span>}
-                            {r.newDeaths > 0 && <span className="text-rose-500 font-semibold">+{r.newDeaths} deaths</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-
-                {/* Outbreak trend chart — unchanged */}
-                <div className="glass-panel border border-white/60 shadow-soft rounded-2xl p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-gray-800">Outbreak Trend</h3>
-                    <select
-                      className="px-2 py-1 border border-gray-200 rounded-lg text-xs font-medium bg-white text-gray-700 outline-none cursor-pointer"
-                      value={timeframe}
-                      onChange={(e) => setTimeframe(e.target.value)}
-                    >
-                      <option value="week">7 Days</option>
-                      <option value="month">30 Days</option>
-                      <option value="all">All Time</option>
-                    </select>
-                  </div>
-                  <div className="-mx-5 -mb-5">
-                    <AnalyticsChart data={analyticsData} hideTitle={true} />
-                  </div>
-                </div>
+             {facilityType !== 'maternity_home' && (
+  <div className="grid grid-cols-2 gap-6">
+    <Card title="Recent Reports">
+      {diseaseHistory.length === 0 ? (
+        <p className="text-sm text-gray-400 py-4 text-center">No reports yet</p>
+      ) : (
+        <div className="flex flex-col">
+          {diseaseHistory.slice(0, 5).map((r, i) => (
+            <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100/50 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
+              <div>
+                <p className="text-sm font-bold text-slate-800">{r.diseaseName === 'Other' && r.customDiseaseName ? r.customDiseaseName : r.diseaseName}</p>
+                <p className="text-xs text-slate-500 font-medium">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
               </div>
+              <div className="flex flex-col items-end gap-0.5 text-xs text-right">
+                <span className="text-slate-800 font-bold">{r.newConfirmed} new {r.newConfirmed === 1 ? 'case' : 'cases'}</span>
+                {r.newRecovered > 0 && <span className="text-emerald-600 font-semibold">+{r.newRecovered} recovered</span>}
+                {r.newDeaths > 0 && <span className="text-rose-500 font-semibold">+{r.newDeaths} deaths</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+
+    <div className="glass-panel border border-white/60 shadow-soft rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-gray-800">Outbreak Trend</h3>
+        <select
+          className="px-2 py-1 border border-gray-200 rounded-lg text-xs font-medium bg-white text-gray-700 outline-none cursor-pointer"
+          value={timeframe}
+          onChange={(e) => setTimeframe(e.target.value)}
+        >
+          <option value="week">7 Days</option>
+          <option value="month">30 Days</option>
+          <option value="all">All Time</option>
+        </select>
+      </div>
+      <div className="-mx-5 -mb-5">
+        <AnalyticsChart data={analyticsData} hideTitle={true} />
+      </div>
+    </div>
+  </div>
+)}
+
+                
 
             </div>
           )}
@@ -492,6 +506,8 @@ const HospitalHome = () => {
           {activeSection === 'profile' && (
             <div className="flex flex-col gap-10">
               <ProfileDashboard token={token} />
+              {facilityType !== 'uphc' && (
+
               <div>
                 <h3 className="text-base font-bold text-gray-700 mb-4 flex items-center gap-2">
                   <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -499,6 +515,8 @@ const HospitalHome = () => {
                 </h3>
                 <DoctorManagement />
               </div>
+                  )}
+
             </div>
           )}
 
