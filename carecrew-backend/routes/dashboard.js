@@ -209,8 +209,6 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
 router.get('/alerts', protect, async (req, res) => {
   try {
     const alerts = await Alert.find({ isActive: true })
-      .populate('acknowledgedBy', 'name email')
-      .populate('resolvedBy', 'name email')
       .sort({ triggeredDate: -1 });
     res.json({ success: true, alerts });
   } catch (error) {
