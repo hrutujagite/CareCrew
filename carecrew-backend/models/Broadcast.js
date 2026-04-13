@@ -7,7 +7,6 @@ const broadcastSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['health_advisory', 'outbreak_alert', 'preventive_tip', 'scheme_announcement', 'general'],
     required: true
   },
   targetAudience: {
@@ -25,7 +24,6 @@ const broadcastSchema = new mongoose.Schema({
   },
   priority: {
     type: String,
-    enum: ['normal', 'urgent'],
     default: 'normal'
   },
   message: {
