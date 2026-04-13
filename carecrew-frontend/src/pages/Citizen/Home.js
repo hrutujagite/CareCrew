@@ -53,10 +53,7 @@ const NearestFacilityFinder = () => {
           )
           const data = await res.json()
           if (data.success) {
-            // Filter to only general hospitals, UPHCs and maternity homes
-            const filtered = (data.hospitals || []).filter(
-              h => ALLOWED_TYPES.includes(h.facilityType)
-            )
+            const filtered = data.hospitals || []
             setFacilities(filtered)
             setStatus('done')
           } else {
