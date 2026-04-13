@@ -14,8 +14,7 @@ const FACILITY_TYPES = {
   maternity_home: { label: 'Maternity Home',   emoji: '🤱', color: 'bg-pink-100 text-pink-700 border-pink-200' },
 }
 
-// Only these facility types are shown in the finder
-const ALLOWED_TYPES = Object.keys(FACILITY_TYPES)
+
 
 const getFacilityInfo = (type) =>
   FACILITY_TYPES[type] || { label: 'Facility', emoji: '🏥', color: 'bg-gray-100 text-gray-600 border-gray-200' }
