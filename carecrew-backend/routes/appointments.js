@@ -26,9 +26,13 @@ router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
         const doctor = hospital.doctors.find(d => d.name === doctorName);
         if (doctor && doctor.schedule && doctor.schedule.length > 0) {
 
-          // Get day of week from preferredDate
-          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-          const preferredDay = dayNames[new Date(preferredDate).getDay()];
+      // Get day of week from preferredDate
+      // ✅ FIX — parse date parts directly to avoid UTC→IST timezone shift
+      // new Date('2025-04-15') = midnight UTC = 11:30 PM previous day in IST → wrong getDay()
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const [yyyy, mm, dd] = preferredDate.toString().split('T')[0].split('-').map(Number);
+      const localDate = new Date(yyyy, mm - 1, dd);
+      const preferredDay = dayNames[localDate.getDay()];
 
           // Check if doctor has schedule on that day
           const availableOnDay = doctor.schedule.find(s => s.day === preferredDay);
@@ -39,16 +43,19 @@ router.post('/book', protect, authorizeRoles('citizen'), async (req, res) => {
             });
           }
 
-          // Check max appointments not exceeded for that day
-          const existingCount = await Appointment.countDocuments({
-            hospitalName,
-            doctorName,
-            preferredDate: {
-              $gte: new Date(new Date(preferredDate).setHours(0, 0, 0, 0)),
-              $lt:  new Date(new Date(preferredDate).setHours(23, 59, 59, 999))
-            },
-            status: { $ne: 'Cancelled' }
-          });
+      // ✅ Check max appointments not exceeded for that day
+      // ✅ FIX — use localDate (already parsed above) to avoid UTC shift
+      const dayStart = new Date(yyyy, mm - 1, dd, 0, 0, 0, 0);
+      const dayEnd   = new Date(yyyy, mm - 1, dd, 23, 59, 59, 999);
+      const existingCount = await Appointment.countDocuments({
+        hospitalName,
+        doctorName,
+        preferredDate: {
+          $gte: dayStart,
+          $lt:  dayEnd
+        },
+        status: { $ne: 'Cancelled' }
+      });
 
           if (existingCount >= availableOnDay.maxAppointments) {
             return res.status(400).json({

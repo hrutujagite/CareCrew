@@ -9,6 +9,7 @@ import Alert from '../../components/shared/Alert'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 
+
 const CapacityForm = () => {
   const { token, user } = useAuth()
   const { t } = useLanguage()
