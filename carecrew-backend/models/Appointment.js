@@ -69,12 +69,15 @@ const appointmentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-appointmentSchema.pre('save', function(next) {
+// FIX: use async pre-save hook (no next parameter) — compatible with Mongoose 7+
+// Generates a collision-resistant booking reference if one isn't already set.
+appointmentSchema.pre('save', async function () {
   if (!this.bookingReference) {
-    this.bookingReference = 'CC' + Date.now().toString().slice(-6) +
-      Math.floor(Math.random() * 1000)
+    this.bookingReference =
+      'CC' +
+      Date.now().toString().slice(-8) +
+      Math.floor(Math.random() * 10000).toString().padStart(4, '0');
   }
-  next()
-})
+});
 
 module.exports = mongoose.model('Appointment', appointmentSchema);
