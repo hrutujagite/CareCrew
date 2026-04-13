@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, LineChart, Line,
@@ -1273,7 +1273,6 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   }
 
   const selectAllWards = () => setForm(f => ({ ...f, targetWards: [] }))
-  const selectNoWards = () => setForm(f => ({ ...f, targetWards: [] }))
 
   const handleSend = async () => {
     if (!form.title.trim()) { setError('Title is required.'); return }
@@ -1549,7 +1548,7 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
     return (
       <div style={{
         background: b.isActive ? '#FAFFFE' : '#F8FAFC',
-        border: `1.5px solid ${b.isActive ? '#059669' + '30' : '#E2E8F0'}`,
+        border: `1.5px solid ${b.isActive ? '#05906930' : '#E2E8F0'}`,
         borderLeft: `4px solid ${b.isActive ? '#059669' : '#CBD5E1'}`,
         borderRadius: '10px',
         padding: '14px 16px',
