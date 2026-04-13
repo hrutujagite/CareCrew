@@ -115,7 +115,7 @@ const AppointmentBooking = () => {
     setForm(prev => ({
       ...prev,
       hospitalName: name,
-      ward: h?.ward || "General"
+      ward: h?.ward || "General",
       specialty: '',
       doctorName: '',
       preferredDate: '',
