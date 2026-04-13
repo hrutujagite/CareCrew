@@ -55,7 +55,7 @@ const ProfileDashboard = ({ token }) => {
     specialties: '',
     facilities: {},
   });
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchProfile(); }, [token]);
 
   const fetchProfile = async () => {

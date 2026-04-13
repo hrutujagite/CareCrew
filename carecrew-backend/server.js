@@ -10,7 +10,6 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
@@ -27,7 +26,10 @@ const healthCampRoutes = require('./routes/healthcamps');
 const chatRoutes = require('./routes/chat');
 const indentRoutes = require('./routes/indent');
 const broadcastRoutes = require('./routes/broadcasts');
+const alertRoutes = require('./routes/alerts');
 
+app.use('/api/alerts', alertRoutes);
+app.use('/api/broadcasts', broadcastRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/disease', diseaseRoutes);
 app.use('/api/capacity', capacityRoutes);
@@ -39,14 +41,11 @@ app.use('/api/wards', wardRoutes);
 app.use('/api/healthcamps', healthCampRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/indent', indentRoutes);
-app.use('/api/broadcasts', broadcastRoutes);
 
-// Health check
 app.get('/', (req, res) => {
   res.json({ message: 'SwasthSolapur API is running!' });
 });
 
-// Connect to MongoDB and start server
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {

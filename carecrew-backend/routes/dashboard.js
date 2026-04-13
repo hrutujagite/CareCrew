@@ -16,7 +16,6 @@ router.get('/public', async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Active cases today
     const todayReports = await DiseaseReport.find({
       createdAt: { $gte: today, $lt: tomorrow }
     });
@@ -24,12 +23,10 @@ router.get('/public', async (req, res) => {
       (sum, r) => sum + r.newConfirmed, 0
     );
 
-    // Hospitals reporting today
     const hospitalsReporting = await HospitalCapacity.distinct(
       'hospitalName', { lastUpdated: { $gte: today } }
     );
 
-    // Total available beds across all hospitals
     const latestCapacities = await HospitalCapacity.aggregate([
       { $sort: { lastUpdated: -1 } },
       { $group: { _id: '$hospitalName', availableBeds: { $first: '$availableBeds' } } }
@@ -38,13 +35,11 @@ router.get('/public', async (req, res) => {
       (sum, h) => sum + (h.availableBeds || 0), 0
     );
 
-    // Appointments today — by preferredDate (not bookingDate)
     const appointmentsToday = await Appointment.countDocuments({
       preferredDate: { $gte: today, $lt: tomorrow },
       status: 'Confirmed'
     });
 
-    // Active alerts
     const activeAlerts = await Alert.find({ isActive: true })
       .sort({ triggeredDate: -1 });
 
@@ -77,7 +72,6 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
     const wardData = await Promise.all(
       wards.map(async (ward) => {
         try {
-          // Today's cases for this ward
           const todayReports = await DiseaseReport.find({
             wardName: ward.wardName,
             createdAt: { $gte: today, $lt: tomorrow }
@@ -86,7 +80,6 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             (sum, r) => sum + r.newConfirmed, 0
           );
 
-          // topDisease from today's reports, fallback to ward stored value
           const diseaseCounts = {};
           todayReports.forEach(r => {
             diseaseCounts[r.diseaseName] =
@@ -96,35 +89,46 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             (a, b) => diseaseCounts[b] - diseaseCounts[a]
           )[0] || ward.topDisease || 'None';
 
-          // Latest capacity for this ward
-          const latestCapacity = await HospitalCapacity.findOne({
+          // ── Try multiple field names for ward in HospitalCapacity ──
+          let latestCapacity = await HospitalCapacity.findOne({
             ward: ward.wardName
           }).sort({ lastUpdated: -1 });
 
-          // Fallback to ward hospitals array if no capacity submitted
-          const defaultAvailableBeds = ward.hospitals.reduce(
-            (sum, h) => sum + (h.availableBeds || 0), 0
-          );
-          const defaultTotalBeds = ward.hospitals.reduce(
-            (sum, h) => sum + (h.totalBeds || 0), 0
-          );
-          const defaultIcuAvailable = ward.hospitals.reduce(
-            (sum, h) => sum + (h.icuAvailable || 0), 0
-          );
-          const defaultIcuTotal = ward.hospitals.reduce(
-            (sum, h) => sum + (h.icuTotal || 0), 0
-          );
+          if (!latestCapacity) {
+            latestCapacity = await HospitalCapacity.findOne({
+              wardName: ward.wardName
+            }).sort({ lastUpdated: -1 });
+          }
 
-          // Appointments today for this ward — by preferredDate
+          if (!latestCapacity && ward.hospitals && ward.hospitals.length > 0) {
+            const hospitalNames = ward.hospitals.map(h => h.hospitalName).filter(Boolean);
+            if (hospitalNames.length > 0) {
+              latestCapacity = await HospitalCapacity.findOne({
+                hospitalName: { $in: hospitalNames }
+              }).sort({ lastUpdated: -1 });
+            }
+          }
+
+          const defaultAvailableBeds = ward.hospitals ? ward.hospitals.reduce(
+            (sum, h) => sum + (h.availableBeds || 0), 0
+          ) : 0;
+          const defaultTotalBeds = ward.hospitals ? ward.hospitals.reduce(
+            (sum, h) => sum + (h.totalBeds || 0), 0
+          ) : 0;
+          const defaultIcuAvailable = ward.hospitals ? ward.hospitals.reduce(
+            (sum, h) => sum + (h.icuAvailable || 0), 0
+          ) : 0;
+          const defaultIcuTotal = ward.hospitals ? ward.hospitals.reduce(
+            (sum, h) => sum + (h.icuTotal || 0), 0
+          ) : 0;
+
           const appointmentsToday = await Appointment.countDocuments({
             ward: ward.wardName,
             preferredDate: { $gte: today, $lt: tomorrow },
             status: 'Confirmed'
           });
 
-          // hospitalName for "Hospitals Reporting" stat
-          // Returns first hospital name — frontend uses unique count
-          const reportingHospital = ward.hospitals.length > 0
+          const reportingHospital = ward.hospitals && ward.hospitals.length > 0
             ? ward.hospitals[0].hospitalName
             : '';
 
@@ -147,15 +151,13 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             icuTotal: latestCapacity
               ? latestCapacity.icuTotal
               : defaultIcuTotal,
-              emergencyBedsAvailable: latestCapacity
-  ? latestCapacity.emergencyBedsAvailable
-  : 0,
-emergencyBedsTotal: latestCapacity
-  ? latestCapacity.emergencyBedsTotal
-  
-  : 0,
-            // hospitals = COUNT of hospitals in ward (used in HAI formula)
-            hospitals: ward.hospitals.length,
+            emergencyBedsAvailable: latestCapacity
+              ? latestCapacity.emergencyBedsAvailable
+              : 0,
+            emergencyBedsTotal: latestCapacity
+              ? latestCapacity.emergencyBedsTotal
+              : 0,
+            hospitals: ward.hospitals ? ward.hospitals.length : 0,
             hospitalName: reportingHospital,
             appointmentsToday,
             riskLevel: ward.riskLevel || 'Green',
@@ -179,15 +181,14 @@ emergencyBedsTotal: latestCapacity
             icuAvailable: 0,
             icuTotal: 0,
             emergencyBedsAvailable: 0,
-emergencyBedsTotal: 0,
-            hospitals: ward.hospitals.length,
+            emergencyBedsTotal: 0,
+            hospitals: ward.hospitals ? ward.hospitals.length : 0,
             hospitalName: '',
             appointmentsToday: 0,
-            // NEW
-        riskLevel: ward.riskLevel || 'Green',
-        accessibilityIndex: 0,
-        medicineStockPercentage: null,
-        lastUpdated: ward.lastUpdated
+            riskLevel: ward.riskLevel || 'Green',
+            accessibilityIndex: 0,
+            medicineStockPercentage: null,
+            lastUpdated: ward.lastUpdated
           };
         }
       })
@@ -219,7 +220,6 @@ router.get('/alerts', protect, async (req, res) => {
 // @desc   Chart data — Health Officer only
 router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res) => {
   try {
-    // Daily cases by disease — last 14 days
     const last14Days = [];
     for (let i = 13; i >= 0; i--) {
       const date = new Date();
@@ -232,7 +232,6 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
         createdAt: { $gte: date, $lt: nextDate }
       });
 
-      // One object per day with each disease as its own key
       const dayEntry = { date: date.toISOString().split('T')[0] };
       reports.forEach(r => {
         dayEntry[r.diseaseName] = (dayEntry[r.diseaseName] || 0) + r.newConfirmed;
@@ -241,7 +240,6 @@ router.get('/charts', protect, authorizeRoles('healthOfficer'), async (req, res)
       last14Days.push(dayEntry);
     }
 
-    // Top diseases this week
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekReports = await DiseaseReport.find({
@@ -278,32 +276,27 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Today's disease reports for this hospital
     const todayReports = await DiseaseReport.find({
       hospitalName: req.user.hospitalName,
       createdAt: { $gte: today, $lt: tomorrow }
     });
     const todayCases = todayReports.reduce((sum, r) => sum + r.newConfirmed, 0);
 
-    // Latest capacity
     const latestCapacity = await HospitalCapacity.findOne({
       hospitalName: req.user.hospitalName
     }).sort({ lastUpdated: -1 });
 
-    // Appointments today at this hospital by preferredDate
     const appointmentsToday = await Appointment.countDocuments({
       hospitalName: req.user.hospitalName,
       preferredDate: { $gte: today, $lt: tomorrow },
       status: 'Confirmed'
     });
 
-    // Active alerts for this ward
     const activeAlerts = await Alert.find({
       wardName: req.user.ward,
       isActive: true
     });
 
-    // Get Ward Risk Level
     const wardDoc = await Ward.findOne({ wardName: req.user.ward });
 
     res.json({
