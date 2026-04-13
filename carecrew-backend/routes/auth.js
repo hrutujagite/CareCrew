@@ -63,14 +63,15 @@ router.post('/register/hospital', async (req, res) => {
       address,
       contact,
       ward,
-      zone,
       lat,
       lng,
       totalBeds,
       availableBeds,
       icuTotal,
       icuAvailable,
-      specialties
+      specialties,
+      facilityType,
+      facilities
     } = req.body;
 
     if (password !== confirmPassword) {
@@ -107,24 +108,27 @@ router.post('/register/hospital', async (req, res) => {
       icuTotal: parseInt(icuTotal) || 0,
       icuAvailable: parseInt(icuAvailable) || 0,
       specialties: specialties || [],
+      facilityType: facilityType || 'general',
+      facilities: facilities || {},
       doctors: []
     })
     await targetWard.save()
 
+
     await HospitalCapacity.create({
-      hospitalName,
-      ward,
-      totalBeds: parseInt(totalBeds) || 0,
-      availableBeds: parseInt(availableBeds) || 0,
-      icuTotal: parseInt(icuTotal) || 0,
-      icuAvailable: parseInt(icuAvailable) || 0,
-      ventilatorsTotal: 0,
-      ventilatorsAvailable: 0,
-      oxygenTotal: 100,
-      oxygenAvailable: 80,
-      medicineStockPercentage: 100,
-      lastUpdated: new Date()
-    })
+  hospitalName,
+  ward,
+  totalBeds: parseInt(totalBeds) || 0,
+  availableBeds: parseInt(availableBeds) || 0,
+  icuTotal: parseInt(icuTotal) || 0,
+  icuAvailable: parseInt(icuAvailable) || 0,
+  emergencyBedsTotal: 0,      // ← add
+  emergencyBedsAvailable: 0,  // ← add
+  oxygenTotal: 0,             // ← was 100, now 0
+  oxygenAvailable: 0,         // ← was 80, now 0
+  medicineStockPercentage: 100,
+  lastUpdated: new Date()
+})
 
     const user = await User.create({
       name: staffName,

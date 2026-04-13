@@ -22,14 +22,49 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelled', bg: '#FFF1F2', color: '#BE123C', border: '#FECDD3', dot: '#F43F5E' },
 }
 
+// ✅ Updated to match backend enum exactly
+const CAMP_TYPES = [
+  'Free General Checkup',
+  'Medical & Dental Camp',
+  'Eye Checkup Camp',
+  'Blood Donation Drive',
+  'Routine Immunization Drive',
+  'RBSK Screening',
+  'NCD Screening Camp',
+  'Maternal Health Camp',
+  'TB Awareness & DOTS Camp',
+  'Vector Disease Control Camp',
+  'Nutrition & Anaemia Awareness',
+  'Mental Health Awareness',
+  'Sanitation & Hygiene Drive',
+  'Adolescent Health Session',
+  'Other'
+]
+
 const CAMP_TYPE_ICONS = {
-  'Free Checkup':    '🩺',
-  'Vaccination':     '💉',
-  'Blood Donation':  '🩸',
-  'Eye Checkup':     '👁️',
-  'Dental Checkup':  '🦷',
-  'Awareness Drive': '📢',
-  'Other':           '🏥',
+  'Free General Checkup': '🩺',
+  'Medical & Dental Camp': '🦷',
+  'Eye Checkup Camp': '👁️',
+  'Blood Donation Drive': '🩸',
+  'Routine Immunization Drive': '💉',
+  'RBSK Screening': '🧒',
+  'NCD Screening Camp': '💊',
+  'Maternal Health Camp': '👶',
+  'TB Awareness & DOTS Camp': '🫁',
+  'Vector Disease Control Camp': '🦟',
+  'Nutrition & Anaemia Awareness': '🥗',
+  'Mental Health Awareness': '🧠',
+  'Sanitation & Hygiene Drive': '🧼',
+  'Adolescent Health Session': '📚',
+  'Other': '🏥',
+}
+
+const HOURS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+const MINUTES = ['00', '15', '30', '45']
+
+const selectStyle = {
+  padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '8px',
+  fontSize: '13px', background: '#fff', outline: 'none', cursor: 'pointer',
 }
 
 const StatusBadge = ({ status }) => {
@@ -56,15 +91,6 @@ const formatDateRange = (start, end) => {
   return s === e ? s : `${s} – ${e}`
 }
 
-const CAMP_TYPES = ['Free Checkup', 'Vaccination', 'Blood Donation', 'Eye Checkup', 'Dental Checkup', 'Awareness Drive', 'Other']
-const HOURS = ['1','2','3','4','5','6','7','8','9','10','11','12']
-const MINUTES = ['00','15','30','45']
-
-const selectStyle = {
-  padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: '8px',
-  fontSize: '13px', background: '#fff', outline: 'none', cursor: 'pointer',
-}
-
 const parseTimingParts = (timing) => {
   try {
     const [startStr, endStr] = timing.split(' - ')
@@ -84,29 +110,43 @@ const EditModal = ({ camp, token, onClose, onSaved }) => {
   const [form, setForm] = useState({
     title: camp.title || '',
     description: camp.description || '',
-    campType: camp.campType || 'Free Checkup',
+    campType: camp.campType || 'Free General Checkup',
+    customCampType: camp.customCampType || '',
     startDate: camp.startDate ? camp.startDate.split('T')[0] : '',
     endDate: camp.endDate ? camp.endDate.split('T')[0] : '',
     location: camp.location || '',
     contactInfo: camp.contactInfo || '',
   })
   const [startHour, setStartHour] = useState(parsed.start.h)
-  const [startMin, setStartMin]   = useState(parsed.start.m)
+  const [startMin, setStartMin] = useState(parsed.start.m)
   const [startAmPm, setStartAmPm] = useState(parsed.start.ampm)
-  const [endHour, setEndHour]     = useState(parsed.end.h)
-  const [endMin, setEndMin]       = useState(parsed.end.m)
-  const [endAmPm, setEndAmPm]     = useState(parsed.end.ampm)
+  const [endHour, setEndHour] = useState(parsed.end.h)
+  const [endMin, setEndMin] = useState(parsed.end.m)
+  const [endAmPm, setEndAmPm] = useState(parsed.end.ampm)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    if (name === 'campType' && value !== 'Other') {
+      setForm(prev => ({ ...prev, campType: value, customCampType: '' }))
+      return
+    }
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSave = async () => {
+    if (form.campType === 'Other' && !form.customCampType.trim()) {
+      setError('Please specify the program type.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
       const timing = `${startHour}:${startMin} ${startAmPm} - ${endHour}:${endMin} ${endAmPm}`
-      await axios.put(`${API}/${camp._id}`, { ...form, timing }, {
+      const payload = { ...form, timing }
+      if (form.campType !== 'Other') delete payload.customCampType
+      await axios.put(`${API}/${camp._id}`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       })
       onSaved()
@@ -127,21 +167,27 @@ const EditModal = ({ camp, token, onClose, onSaved }) => {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>Edit Health Camp</h2>
+          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>Edit Health Program</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94A3B8' }}>✕</button>
         </div>
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {error && <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', color: '#991B1B', fontSize: '13px' }}>{error}</div>}
           <div>
-            <label style={labelStyle}>Camp Title *</label>
-            <input name="title" value={form.title} onChange={handleChange} style={inputStyle} placeholder="Camp title" />
+            <label style={labelStyle}>Program Title *</label>
+            <input name="title" value={form.title} onChange={handleChange} style={inputStyle} placeholder="Program title" />
           </div>
           <div>
-            <label style={labelStyle}>Camp Type</label>
+            <label style={labelStyle}>Program Type</label>
             <select name="campType" value={form.campType} onChange={handleChange} style={{ ...inputStyle, cursor: 'pointer' }}>
               {CAMP_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
+          {form.campType === 'Other' && (
+            <div>
+              <label style={labelStyle}>Specify Program Type *</label>
+              <input name="customCampType" value={form.customCampType} onChange={handleChange} style={inputStyle} placeholder="e.g. Yoga & Wellness Camp" />
+            </div>
+          )}
           <div>
             <label style={labelStyle}>Description</label>
             <textarea name="description" value={form.description} onChange={handleChange} rows={3} style={{ ...inputStyle, resize: 'none' }} placeholder="Optional description" />
@@ -196,6 +242,8 @@ const EditModal = ({ camp, token, onClose, onSaved }) => {
 
 const CampCard = ({ camp, onEdit, onCancel }) => {
   const status = getCampStatus(camp)
+  // Show customCampType if campType is Other
+  const displayType = camp.campType === 'Other' && camp.customCampType ? camp.customCampType : camp.campType
   const icon = CAMP_TYPE_ICONS[camp.campType] || '🏥'
   const canEdit = status === 'upcoming'
   const canCancel = status === 'upcoming' || status === 'ongoing'
@@ -210,7 +258,7 @@ const CampCard = ({ camp, onEdit, onCancel }) => {
           <span style={{ fontSize: '22px', lineHeight: 1.2 }}>{icon}</span>
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B', marginBottom: '3px', lineHeight: 1.3 }}>{camp.title}</h3>
-            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>{camp.campType}</span>
+            <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 500 }}>{displayType}</span>
           </div>
         </div>
         <StatusBadge status={status} />
@@ -261,7 +309,7 @@ const HealthCampsDashboard = () => {
       const res = await axios.get(`${API}/all`, { headers: { Authorization: `Bearer ${token}` } })
       setCamps(res.data.camps || [])
     } catch {
-      setError('Failed to load health camps. Please try again.')
+      setError('Failed to load health programs. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -277,7 +325,7 @@ const HealthCampsDashboard = () => {
       setCancelConfirm(null)
       fetchCamps()
     } catch {
-      setError('Failed to cancel camp. Please try again.')
+      setError('Failed to cancel program. Please try again.')
     } finally {
       setCancelLoading(false)
     }
@@ -292,96 +340,87 @@ const HealthCampsDashboard = () => {
   const filteredCamps = filter === 'all' ? camps : camps.filter(c => getCampStatus(c) === filter)
 
   const FILTERS = [
-    { key: 'all',       label: 'All Camps',  count: camps.length },
-    { key: 'upcoming',  label: 'Upcoming',   count: stats.upcoming  || 0 },
-    { key: 'ongoing',   label: 'Ongoing',    count: stats.ongoing   || 0 },
-    { key: 'completed', label: 'Completed',  count: stats.completed || 0 },
-    { key: 'cancelled', label: 'Cancelled',  count: stats.cancelled || 0 },
+    { key: 'all', label: 'All Programs', count: camps.length },
+    { key: 'upcoming', label: 'Upcoming', count: stats.upcoming || 0 },
+    { key: 'ongoing', label: 'Ongoing', count: stats.ongoing || 0 },
+    { key: 'completed', label: 'Completed', count: stats.completed || 0 },
+    { key: 'cancelled', label: 'Cancelled', count: stats.cancelled || 0 },
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC' }}>
+    <div>
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
         @keyframes spin { to { transform: rotate(360deg) } }
       `}</style>
-      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#0F172A', margin: 0 }}>Health Camps</h1>
-            <p style={{ fontSize: '14px', color: '#64748B', marginTop: '4px' }}>Manage and track health camps organised by your hospital</p>
-          </div>
-          {/* ✅ FIXED: /hospital/create-camp */}
-          <button
-            onClick={() => navigate('/hospital/create-camp')}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '11px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.35)', transition: 'transform 0.15s, box-shadow 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(37,99,235,0.4)' }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.35)' }}
-          >
-            <span style={{ fontSize: '16px' }}>+</span> Create New Camp
-          </button>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>Manage and announce health programs for citizens</p>
         </div>
-
-        {/* Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '24px' }}>
-          {[
-            { label: 'Total Camps', value: camps.length,         color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
-            { label: 'Upcoming',    value: stats.upcoming  || 0, color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
-            { label: 'Ongoing',     value: stats.ongoing   || 0, color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
-            { label: 'Completed',   value: stats.completed || 0, color: '#475569', bg: '#F8FAFC', border: '#E2E8F0' },
-          ].map(({ label, value, color, bg, border }) => (
-            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: '12px', padding: '16px 18px' }}>
-              <p style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px' }}>{label}</p>
-              <p style={{ fontSize: '26px', fontWeight: 800, color, margin: 0, lineHeight: 1 }}>{value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '10px', padding: '12px 16px', color: '#991B1B', fontSize: '13px', marginBottom: '20px' }}>{error}</div>
-        )}
-
-        {/* Filter Tabs */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          {FILTERS.map(({ key, label, count }) => (
-            <button key={key} onClick={() => setFilter(key)} style={{ padding: '7px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid', background: filter === key ? '#0F172A' : '#fff', color: filter === key ? '#fff' : '#64748B', borderColor: filter === key ? '#0F172A' : '#E2E8F0', transition: 'all 0.15s' }}>
-              {label} <span style={{ opacity: 0.7 }}>({count})</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '80px 0' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '3px solid #E2E8F0', borderTopColor: '#2563EB', animation: 'spin 0.8s linear infinite' }} />
-          </div>
-        ) : filteredCamps.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 24px', background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-            <p style={{ fontSize: '36px', marginBottom: '12px' }}>🏕️</p>
-            <p style={{ fontSize: '15px', fontWeight: 600, color: '#1E293B', marginBottom: '6px' }}>
-              {filter === 'all' ? 'No health camps yet' : `No ${filter} camps`}
-            </p>
-            <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '20px' }}>
-              {filter === 'all' ? 'Create your first health camp to get started.' : `You have no ${filter} health camps.`}
-            </p>
-            {filter === 'all' && (
-              /* ✅ FIXED: /hospital/create-camp */
-              <button onClick={() => navigate('/hospital/create-camp')} style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
-                + Create Health Camp
-              </button>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-            {filteredCamps.map(camp => (
-              <CampCard key={camp._id} camp={camp} onEdit={setEditingCamp} onCancel={setCancelConfirm} />
-            ))}
-          </div>
-        )}
+        <button
+          onClick={() => navigate('/hospital/create-camp')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.3)' }}
+        >
+          <span style={{ fontSize: '16px' }}>+</span> Create Program
+        </button>
       </div>
+
+      {/* Summary Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+        {[
+          { label: 'Total', value: camps.length, color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+          { label: 'Upcoming', value: stats.upcoming || 0, color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+          { label: 'Ongoing', value: stats.ongoing || 0, color: '#15803D', bg: '#F0FDF4', border: '#BBF7D0' },
+          { label: 'Completed', value: stats.completed || 0, color: '#475569', bg: '#F8FAFC', border: '#E2E8F0' },
+        ].map(({ label, value, color, bg, border }) => (
+          <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: '12px', padding: '14px 16px' }}>
+            <p style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px' }}>{label}</p>
+            <p style={{ fontSize: '24px', fontWeight: 800, color, margin: 0, lineHeight: 1 }}>{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {error && (
+        <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '10px', padding: '12px 16px', color: '#991B1B', fontSize: '13px', marginBottom: '16px' }}>{error}</div>
+      )}
+
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        {FILTERS.map(({ key, label, count }) => (
+          <button key={key} onClick={() => setFilter(key)} style={{ padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: '1px solid', background: filter === key ? '#0F172A' : '#fff', color: filter === key ? '#fff' : '#64748B', borderColor: filter === key ? '#0F172A' : '#E2E8F0', transition: 'all 0.15s' }}>
+            {label} <span style={{ opacity: 0.7 }}>({count})</span>
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '3px solid #E2E8F0', borderTopColor: '#2563EB', animation: 'spin 0.8s linear infinite' }} />
+        </div>
+      ) : filteredCamps.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 24px', background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+          <p style={{ fontSize: '32px', marginBottom: '10px' }}>🏕️</p>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: '#1E293B', marginBottom: '6px' }}>
+            {filter === 'all' ? 'No health programs yet' : `No ${filter} programs`}
+          </p>
+          <p style={{ fontSize: '12px', color: '#94A3B8', marginBottom: '16px' }}>
+            {filter === 'all' ? 'Create your first health program to get started.' : `You have no ${filter} programs.`}
+          </p>
+          {filter === 'all' && (
+            <button onClick={() => navigate('/hospital/create-camp')} style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: '8px', padding: '9px 18px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+              + Create Health Program
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
+          {filteredCamps.map(camp => (
+            <CampCard key={camp._id} camp={camp} onEdit={setEditingCamp} onCancel={setCancelConfirm} />
+          ))}
+        </div>
+      )}
 
       {editingCamp && (
         <EditModal camp={editingCamp} token={token} onClose={() => setEditingCamp(null)} onSaved={() => { setEditingCamp(null); fetchCamps() }} />
@@ -389,14 +428,14 @@ const HealthCampsDashboard = () => {
 
       {cancelConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '380px', width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,0.2)' }}>
-            <p style={{ fontSize: '36px', textAlign: 'center', marginBottom: '10px' }}>🚫</p>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B', textAlign: 'center', marginBottom: '8px' }}>Cancel Health Camp?</h3>
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', maxWidth: '360px', width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,0.2)' }}>
+            <p style={{ fontSize: '32px', textAlign: 'center', marginBottom: '10px' }}>🚫</p>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1E293B', textAlign: 'center', marginBottom: '8px' }}>Cancel Program?</h3>
             <p style={{ fontSize: '13px', color: '#64748B', textAlign: 'center', marginBottom: '20px', lineHeight: 1.5 }}>
               Are you sure you want to cancel <strong>{cancelConfirm.title}</strong>? This will remove it from the public listing.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setCancelConfirm(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#475569' }}>Keep Camp</button>
+              <button onClick={() => setCancelConfirm(null)} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#475569' }}>Keep It</button>
               <button onClick={handleCancel} disabled={cancelLoading} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: cancelLoading ? '#FDA4AF' : '#F43F5E', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: cancelLoading ? 'not-allowed' : 'pointer' }}>
                 {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
               </button>

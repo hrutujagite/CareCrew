@@ -50,11 +50,7 @@ router.get('/', async (req, res) => {
           icuAvailable: latestCapacity
             ? latestCapacity.icuAvailable
             : hospital.icuAvailable,
-          // Ventilators
-          ventilatorsTotal: latestCapacity
-            ? latestCapacity.ventilatorsTotal : 0,
-          ventilatorsAvailable: latestCapacity
-            ? latestCapacity.ventilatorsAvailable : 0,
+
           // Oxygen — return both numeric and label
           oxygenAvailable: latestCapacity ? latestCapacity.oxygenAvailable : 0,
           oxygenTotal: latestCapacity ? latestCapacity.oxygenTotal : 0,
@@ -69,7 +65,9 @@ router.get('/', async (req, res) => {
           lastUpdated: latestCapacity ? latestCapacity.lastUpdated : null,
           // Specialties and doctors for appointment booking
           specialties: hospital.specialties || [],
-          doctors: hospital.doctors || []
+          doctors: hospital.doctors || [],
+          facilityType: hospital.facilityType || 'general',
+          facilities: hospital.facilities || {}
         });
       }
     }
@@ -106,9 +104,9 @@ router.get('/nearest', async (req, res) => {
       const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLng / 2) *
-          Math.sin(dLng / 2);
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       return R * c;
     };
@@ -195,7 +193,9 @@ router.post('/add', protect, async (req, res) => {
       availableBeds,
       icuTotal,
       icuAvailable,
-      specialties
+      specialties,
+      facilityType,
+      facilities
     } = req.body;
 
     // Validate required fields
@@ -238,6 +238,8 @@ router.post('/add', protect, async (req, res) => {
       icuTotal: icuTotal || 0,
       icuAvailable: icuAvailable || 0,
       specialties: specialties || [],
+      facilityType: facilityType || 'general',
+      facilities: facilities || {},
       doctors: []
     });
 
@@ -251,8 +253,8 @@ router.post('/add', protect, async (req, res) => {
       availableBeds: availableBeds || 0,
       icuTotal: icuTotal || 0,
       icuAvailable: icuAvailable || 0,
-      ventilatorsTotal: 0,
-      ventilatorsAvailable: 0,
+      emergencyBedsTotal: 0,
+      emergencyBedsAvailable: 0,
       oxygenTotal: 0,
       oxygenAvailable: 0,
       medicineStockPercentage: 100,
@@ -268,16 +270,57 @@ router.post('/add', protect, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+// @route  GET /api/hospitals/profile
+// @desc   Get the logged-in hospital's profile (facilities, type, etc)
+// @access Protected — hospitalStaff only
+router.get('/profile', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
+    if (!ward) return res.status(404).json({ success: false, message: 'Hospital not found in any ward' });
+
+    const hospital = ward.hospitals.find(h => h.hospitalName === req.user.hospitalName);
+    res.json({ success: true, profile: hospital });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// @route  PUT /api/hospitals/profile
+// @desc   Update hospital profile (facilityType, facilities checklist, address, etc)
+// @access Protected — hospitalStaff only
+router.put('/profile', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
+  try {
+    const { facilityType, facilities, address, contact, specialties } = req.body;
+
+    const ward = await Ward.findOne({ 'hospitals.hospitalName': req.user.hospitalName });
+    if (!ward) return res.status(404).json({ success: false, message: 'Hospital not found' });
+
+    const hospital = ward.hospitals.find(h => h.hospitalName === req.user.hospitalName);
+
+    if (facilityType) hospital.facilityType = facilityType;
+    if (address) hospital.address = address;
+    if (contact) hospital.contact = contact;
+    if (specialties) hospital.specialties = specialties;
+    if (facilities) {
+      hospital.facilities = { ...hospital.facilities.toObject(), ...facilities };
+    }
+
+    await ward.save();
+    res.json({ success: true, message: 'Profile updated successfully', profile: hospital });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
 
 
 // @route  POST /api/hospitals/doctors
 // @desc   Add a doctor to hospital staff's hospital (hospitalStaff only)
 router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
-    const { 
-      name, 
-      specialty, 
-      experience, 
+    const {
+      name,
+      specialty,
+      experience,
       isVisiting,  // ✅ NEW
       schedule     // ✅ NEW — array of { day, startTime, endTime, maxAppointments }
     } = req.body;
@@ -290,9 +333,9 @@ router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, re
     if (schedule && schedule.length > 0) {
       for (const slot of schedule) {
         if (!slot.day || !slot.startTime || !slot.endTime) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Each schedule slot must have day, startTime and endTime' 
+          return res.status(400).json({
+            success: false,
+            message: 'Each schedule slot must have day, startTime and endTime'
           });
         }
       }
@@ -304,9 +347,9 @@ router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, re
     const hospitalIndex = ward.hospitals.findIndex(h => h.hospitalName === req.user.hospitalName);
     if (hospitalIndex === -1) return res.status(404).json({ success: false, message: 'Hospital not found' });
 
-    ward.hospitals[hospitalIndex].doctors.push({ 
-      name, 
-      specialty, 
+    ward.hospitals[hospitalIndex].doctors.push({
+      name,
+      specialty,
       experience: experience || 0,
       isVisiting: isVisiting || false, // ✅ NEW
       schedule: schedule || []          // ✅ NEW
@@ -324,10 +367,10 @@ router.post('/doctors', protect, authorizeRoles('hospitalStaff'), async (req, re
 // @desc   Edit a doctor (hospitalStaff only)
 router.put('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
-    const { 
-      name, 
-      specialty, 
-      experience, 
+    const {
+      name,
+      specialty,
+      experience,
       isVisiting,  // ✅ NEW
       schedule     // ✅ NEW
     } = req.body;
@@ -350,9 +393,9 @@ router.put('/doctors/:doctorId', protect, authorizeRoles('hospitalStaff'), async
     if (schedule) {
       for (const slot of schedule) {
         if (!slot.day || !slot.startTime || !slot.endTime) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Each schedule slot must have day, startTime and endTime' 
+          return res.status(400).json({
+            success: false,
+            message: 'Each schedule slot must have day, startTime and endTime'
           });
         }
       }

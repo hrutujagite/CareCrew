@@ -7,17 +7,32 @@ import Input from '../../components/shared/Input'
 import Alert from '../../components/shared/Alert'
 import { useAuth } from '../../context/AuthContext'
 
-const CAMP_TYPES = ['Free Checkup', 'Vaccination', 'Blood Donation', 'Eye Checkup', 'Dental Checkup', 'Awareness Drive', 'Other']
+// ✅ These match the backend HealthCamp.js schema enum exactly
+const CAMP_TYPES = [
+  'Free General Checkup',
+  'Medical & Dental Camp',
+  'Eye Checkup Camp',
+  'Blood Donation Drive',
+  'Routine Immunization Drive',
+  'RBSK Screening',
+  'NCD Screening Camp',
+  'Maternal Health Camp',
+  'TB Awareness & DOTS Camp',
+  'Vector Disease Control Camp',
+  'Nutrition & Anaemia Awareness',
+  'Mental Health Awareness',
+  'Sanitation & Hygiene Drive',
+  'Adolescent Health Session',
+  'Other'
+]
 
-const HOURS = ['1','2','3','4','5','6','7','8','9','10','11','12']
-const MINUTES = ['00','15','30','45']
+const HOURS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
+const MINUTES = ['00', '15', '30', '45']
 
 const selectStyle = "px-3 py-2.5 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none cursor-pointer"
 
-// Convert hour/min/ampm to readable string
 const formatTimeParts = (h, m, ampm) => `${h}:${m} ${ampm}`
 
-// Convert to total minutes for comparison
 const to24hMinutes = (h, m, ampm) => {
   let hour = parseInt(h)
   if (ampm === 'AM' && hour === 12) hour = 0
@@ -36,14 +51,14 @@ const HealthCampForm = () => {
   const [form, setForm] = useState({
     title: '',
     description: '',
-    campType: 'Free Checkup',
+    campType: 'Free General Checkup',
+    customCampType: '',
     startDate: '',
     endDate: '',
     location: '',
     contactInfo: ''
   })
 
-  // Timing as simple dropdowns
   const [startHour, setStartHour] = useState('9')
   const [startMin, setStartMin] = useState('00')
   const [startAmPm, setStartAmPm] = useState('AM')
@@ -54,7 +69,7 @@ const HealthCampForm = () => {
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => {
-        navigate('/hospital/dashboard', { state: { activeSection: 'healthcamps' } })
+        navigate('/hospital/dashboard', { state: { activeSection: 'scheduling' } })
       }, 2500)
       return () => clearTimeout(timer)
     }
@@ -62,6 +77,10 @@ const HealthCampForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
+    if (name === 'campType' && value !== 'Other') {
+      setForm(prev => ({ ...prev, campType: value, customCampType: '' }))
+      return
+    }
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
@@ -70,7 +89,7 @@ const HealthCampForm = () => {
   const timingValid = endMinutes > startMinutes
 
   const getValidationError = () => {
-    if (!form.title.trim()) return 'Camp title is required.'
+    if (!form.title.trim()) return 'Program title is required.'
     if (!form.startDate) return 'Start date is required.'
     if (!form.endDate) return 'End date is required.'
     if (new Date(form.endDate) < new Date(form.startDate)) return 'End date must be on or after the start date.'
@@ -78,6 +97,7 @@ const HealthCampForm = () => {
     if (!timingValid) return 'End time must be after start time.'
     if (!form.location.trim()) return 'Location is required.'
     if (!form.contactInfo.trim()) return 'Contact information is required.'
+    if (form.campType === 'Other' && !form.customCampType.trim()) return 'Please specify the program type.'
     return null
   }
 
@@ -98,6 +118,7 @@ const HealthCampForm = () => {
           title: form.title,
           description: form.description,
           campType: form.campType,
+          customCampType: form.campType === 'Other' ? form.customCampType.trim() : undefined,
           startDate: form.startDate,
           endDate: form.endDate,
           timing,
@@ -108,7 +129,7 @@ const HealthCampForm = () => {
       )
       setSuccess(true)
     } catch (err) {
-      setError('Failed to create health camp. Please try again.')
+      setError(err.response?.data?.message || 'Failed to create health program. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -116,7 +137,6 @@ const HealthCampForm = () => {
 
   const todayStr = new Date().toISOString().split('T')[0]
 
-  // Reusable time picker row
   const TimePicker = ({ label, hour, min, ampm, setHour, setMin, setAmPm }) => (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -144,43 +164,51 @@ const HealthCampForm = () => {
       <Navbar />
       <div className="max-w-2xl mx-auto px-6 py-8">
 
-        {/* Header */}
         <div className="mb-8">
           <button onClick={() => navigate('/hospital/dashboard')}
             className="text-sm text-gray-500 hover:text-gray-700 mb-3 flex items-center gap-1">
             ← Back to Dashboard
           </button>
-          <h1 className="text-2xl font-bold text-gray-800">Create Health Camp</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Create Health Program</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Set up a health camp for citizens in your area. Once created, it will be visible to the public.
+            Announce a health program or camp for citizens in your area. Once created, it will be visible to the public.
           </p>
         </div>
 
         {success && (
           <div className="mb-6">
-            <Alert type="success" message="Health camp created successfully! Redirecting to camps page..." />
+            <Alert type="success" message="Health program created successfully! Redirecting..." />
           </div>
         )}
 
         {error && <div className="mb-6"><Alert type="error" message={error} /></div>}
 
-        {/* Form */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
 
           {/* Section 1: Basic info */}
           <div className="p-6 border-b border-gray-100">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Camp Information</h3>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Program Information</h3>
             <div className="flex flex-col gap-4">
-              <Input label="Camp Title" name="title" value={form.title} onChange={handleChange}
+              <Input label="Program Title" name="title" value={form.title} onChange={handleChange}
                 placeholder="e.g. Free Eye Checkup Camp for Senior Citizens" required />
-              <Input label="Camp Type" type="select" name="campType" value={form.campType}
+              <Input label="Program Type" type="select" name="campType" value={form.campType}
                 onChange={handleChange} options={CAMP_TYPES} required />
+
+              {/* Custom type field when Other is selected */}
+              {form.campType === 'Other' && (
+                <div>
+                  <Input label="Specify Program Type" name="customCampType"
+                    value={form.customCampType} onChange={handleChange}
+                    placeholder="e.g. Yoga & Wellness Camp" required />
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description <span className="text-gray-400 font-normal">(optional)</span>
                 </label>
                 <textarea name="description" value={form.description} onChange={handleChange}
-                  placeholder="Brief description about what the camp offers, who should attend, etc."
+                  placeholder="Brief description about what the program offers, who should attend, etc."
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none resize-none"
                 />
@@ -192,8 +220,6 @@ const HealthCampForm = () => {
           <div className="p-6 border-b border-gray-100">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Schedule</h3>
             <div className="flex flex-col gap-5">
-
-              {/* Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Start Date <span className="text-red-400">*</span></label>
@@ -212,7 +238,6 @@ const HealthCampForm = () => {
                 </div>
               </div>
 
-              {/* Time pickers — easy dropdowns */}
               <div className="grid grid-cols-2 gap-6">
                 <TimePicker label="Start Time" hour={startHour} min={startMin} ampm={startAmPm}
                   setHour={setStartHour} setMin={setStartMin} setAmPm={setStartAmPm} />
@@ -220,11 +245,10 @@ const HealthCampForm = () => {
                   setHour={setEndHour} setMin={setEndMin} setAmPm={setEndAmPm} />
               </div>
 
-              {/* Time preview / error */}
               {timingValid ? (
                 <div className="bg-blue-50 rounded-lg px-4 py-2.5 text-sm text-blue-700 flex items-center gap-2">
                   <span>⏰</span>
-                  <span>Camp timing: <strong>{formatTimeParts(startHour, startMin, startAmPm)} — {formatTimeParts(endHour, endMin, endAmPm)}</strong></span>
+                  <span>Timing: <strong>{formatTimeParts(startHour, startMin, startAmPm)} — {formatTimeParts(endHour, endMin, endAmPm)}</strong></span>
                 </div>
               ) : (
                 <div className="bg-red-50 rounded-lg px-4 py-2.5 text-sm text-red-600">
@@ -245,7 +269,7 @@ const HealthCampForm = () => {
             </div>
           </div>
 
-          {/* Validation + Submit */}
+          {/* Submit */}
           <div className="p-6 bg-gray-50">
             {validationError && !success && (
               <p className="text-red-500 text-sm mb-4">⚠ {validationError}</p>
@@ -256,7 +280,8 @@ const HealthCampForm = () => {
                 <p className="text-xs text-gray-400 uppercase font-semibold mb-2">Preview</p>
                 <p className="text-sm font-semibold text-gray-800">{form.title}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {form.campType} · {form.startDate && new Date(form.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {form.campType === 'Other' ? form.customCampType : form.campType}
+                  {form.startDate && ` · ${new Date(form.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                   {form.endDate && form.endDate !== form.startDate && (
                     <> to {new Date(form.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</>
                   )}
@@ -269,7 +294,7 @@ const HealthCampForm = () => {
             )}
 
             <Button
-              label={loading ? 'Creating...' : 'Create Health Camp'}
+              label={loading ? 'Creating...' : 'Create Health Program'}
               onClick={handleSubmit}
               variant="primary"
               disabled={loading || success || !!validationError}
@@ -277,7 +302,6 @@ const HealthCampForm = () => {
             />
           </div>
         </div>
-
       </div>
     </div>
   )

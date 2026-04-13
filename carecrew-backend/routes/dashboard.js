@@ -89,22 +89,38 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             (a, b) => diseaseCounts[b] - diseaseCounts[a]
           )[0] || ward.topDisease || 'None';
 
-          const latestCapacity = await HospitalCapacity.findOne({
+          // ── Try multiple field names for ward in HospitalCapacity ──
+          let latestCapacity = await HospitalCapacity.findOne({
             ward: ward.wardName
           }).sort({ lastUpdated: -1 });
 
-          const defaultAvailableBeds = ward.hospitals.reduce(
+          if (!latestCapacity) {
+            latestCapacity = await HospitalCapacity.findOne({
+              wardName: ward.wardName
+            }).sort({ lastUpdated: -1 });
+          }
+
+          if (!latestCapacity && ward.hospitals && ward.hospitals.length > 0) {
+            const hospitalNames = ward.hospitals.map(h => h.hospitalName).filter(Boolean);
+            if (hospitalNames.length > 0) {
+              latestCapacity = await HospitalCapacity.findOne({
+                hospitalName: { $in: hospitalNames }
+              }).sort({ lastUpdated: -1 });
+            }
+          }
+
+          const defaultAvailableBeds = ward.hospitals ? ward.hospitals.reduce(
             (sum, h) => sum + (h.availableBeds || 0), 0
-          );
-          const defaultTotalBeds = ward.hospitals.reduce(
+          ) : 0;
+          const defaultTotalBeds = ward.hospitals ? ward.hospitals.reduce(
             (sum, h) => sum + (h.totalBeds || 0), 0
-          );
-          const defaultIcuAvailable = ward.hospitals.reduce(
+          ) : 0;
+          const defaultIcuAvailable = ward.hospitals ? ward.hospitals.reduce(
             (sum, h) => sum + (h.icuAvailable || 0), 0
-          );
-          const defaultIcuTotal = ward.hospitals.reduce(
+          ) : 0;
+          const defaultIcuTotal = ward.hospitals ? ward.hospitals.reduce(
             (sum, h) => sum + (h.icuTotal || 0), 0
-          );
+          ) : 0;
 
           const appointmentsToday = await Appointment.countDocuments({
             ward: ward.wardName,
@@ -112,7 +128,7 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             status: 'Confirmed'
           });
 
-          const reportingHospital = ward.hospitals.length > 0
+          const reportingHospital = ward.hospitals && ward.hospitals.length > 0
             ? ward.hospitals[0].hospitalName
             : '';
 
@@ -135,7 +151,13 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             icuTotal: latestCapacity
               ? latestCapacity.icuTotal
               : defaultIcuTotal,
-            hospitals: ward.hospitals.length,
+            emergencyBedsAvailable: latestCapacity
+              ? latestCapacity.emergencyBedsAvailable
+              : 0,
+            emergencyBedsTotal: latestCapacity
+              ? latestCapacity.emergencyBedsTotal
+              : 0,
+            hospitals: ward.hospitals ? ward.hospitals.length : 0,
             hospitalName: reportingHospital,
             appointmentsToday,
             riskLevel: ward.riskLevel || 'Green',
@@ -158,7 +180,9 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
             totalBeds: 0,
             icuAvailable: 0,
             icuTotal: 0,
-            hospitals: ward.hospitals.length,
+            emergencyBedsAvailable: 0,
+            emergencyBedsTotal: 0,
+            hospitals: ward.hospitals ? ward.hospitals.length : 0,
             hospitalName: '',
             appointmentsToday: 0,
             riskLevel: ward.riskLevel || 'Green',
@@ -182,7 +206,6 @@ router.get('/wards', protect, authorizeRoles('healthOfficer'), async (req, res) 
 
 // @route  GET /api/dashboard/alerts
 // @desc   Get active alerts — accessible to all logged in users
-// Now also returns status, acknowledgedBy, resolvedBy for Health Officer UI
 router.get('/alerts', protect, async (req, res) => {
   try {
     const alerts = await Alert.find({ isActive: true })
@@ -276,7 +299,6 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
       isActive: true
     });
 
-    // Get Ward Risk Level
     const wardDoc = await Ward.findOne({ wardName: req.user.ward });
 
     res.json({

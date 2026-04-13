@@ -10,8 +10,6 @@ import Alert from '../../components/shared/Alert'
 import { useAuth } from '../../context/AuthContext'
 import { useLanguage } from '../../context/LanguageContext'
 
-
-// Risk zone config
 const zoneConfig = {
   Red: {
     color: 'text-red-600',
@@ -39,7 +37,6 @@ const DiseaseForm = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Read state passed from HospitalHome
   const lastSubmission = location.state?.lastSubmission || null
   const riskLevel = location.state?.riskLevel || 'Green'
   const zone = zoneConfig[riskLevel] || zoneConfig['Green']
@@ -51,12 +48,12 @@ const DiseaseForm = () => {
 
   const [form, setForm] = useState({
     diseaseName: 'Dengue',
+    customDiseaseName: '',
     newConfirmed: 0,
     newRecovered: 0,
     newDeaths: 0
   })
 
-  // Check if overdue based on risk zone
   const isOverdue = () => {
     if (!lastSubmission) return true
     const last = new Date(lastSubmission)
@@ -67,18 +64,14 @@ const DiseaseForm = () => {
 
   const overdue = isOverdue()
 
-  // Check if submitted today already
   const submittedToday = () => {
     if (!lastSubmission) return false
     return new Date(lastSubmission).toDateString() === new Date().toDateString()
   }
 
-  // Auto-redirect after success
   useEffect(() => {
     if (success) {
-      const timer = setTimeout(() => {
-        navigate('/hospital/dashboard')
-      }, 3000)
+      const timer = setTimeout(() => navigate('/hospital/dashboard'), 3000)
       return () => clearTimeout(timer)
     }
   }, [success, navigate])
@@ -91,10 +84,14 @@ const DiseaseForm = () => {
       setForm(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }))
       return
     }
+    // When disease changes away from Other, clear the custom name
+    if (name === 'diseaseName' && value !== 'Other') {
+      setForm(prev => ({ ...prev, diseaseName: value, customDiseaseName: '' }))
+      return
+    }
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
-  // Validation
   const getValidationError = () => {
     if (form.newConfirmed === '' || form.newRecovered === '' || form.newDeaths === '') {
       return 'Please fill out all the fields before submitting.'
@@ -102,11 +99,13 @@ const DiseaseForm = () => {
     if (form.newConfirmed < 0) return 'Confirmed cases cannot be negative.'
     if (form.newRecovered < 0) return 'Recovered count cannot be negative.'
     if (form.newDeaths < 0) return 'Deaths count cannot be negative.'
+    if (form.diseaseName === 'Other' && !form.customDiseaseName.trim()) {
+      return 'Please specify the disease name.'
+    }
     return null
   }
 
   const validationError = getValidationError()
-
 
   const handleSubmit = async () => {
     if (validationError) return
@@ -116,34 +115,37 @@ const DiseaseForm = () => {
     setWardRiskLevel(null)
 
     try {
+      const payload = {
+        wardName: user?.ward,
+        hospitalName: user?.hospitalName,
+        diseaseName: form.diseaseName,
+        newConfirmed: form.newConfirmed,
+        newRecovered: form.newRecovered,
+        newDeaths: form.newDeaths
+      }
+      // Only send customDiseaseName when Other is selected
+      if (form.diseaseName === 'Other') {
+        payload.customDiseaseName = form.customDiseaseName.trim()
+      }
+
       const res = await axios.post(
         'https://carecrew-1.onrender.com/api/disease/submit',
-        {
-          wardName: user?.ward,
-          hospitalName: user?.hospitalName,
-          diseaseName: form.diseaseName,
-          newConfirmed: form.newConfirmed,
-          newRecovered: form.newRecovered,
-          newDeaths: form.newDeaths
-        },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       )
 
-      if (res.data?.wardRiskLevel) {
-        setWardRiskLevel(res.data.wardRiskLevel)
-      }
+      if (res.data?.wardRiskLevel) setWardRiskLevel(res.data.wardRiskLevel)
       setSuccess(true)
 
-      // Reset counts only
       setForm(prev => ({
         ...prev,
+        customDiseaseName: '',
         newConfirmed: 0,
         newRecovered: 0,
         newDeaths: 0
       }))
     } catch (err) {
-      console.error('Submission error:', err.response?.data || err.message)
-      setError(`Failed to submit: ${err.response?.data?.error || err.message}`)
+      setError(`Failed to submit: ${err.response?.data?.message || err.response?.data?.error || err.message}`)
     } finally {
       setLoading(false)
     }
@@ -154,28 +156,18 @@ const DiseaseForm = () => {
       <Navbar />
       <div className="max-w-7xl mx-auto px-6 py-6">
 
-        {/* Page header */}
         <div className="mb-6 flex items-center gap-4">
-          <Button
-            label="← Back"
-            onClick={() => navigate('/hospital/dashboard')}
-            variant="secondary"
-          />
+          <Button label="← Back" onClick={() => navigate('/hospital/dashboard')} variant="secondary" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              {t('submitReport')}
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800">{t('submitReport')}</h1>
             <p className="text-sm text-gray-500 mt-1">
               {user?.hospitalName} · {t('wardName')}: {user?.ward}
             </p>
           </div>
         </div>
 
-        {/* Risk zone banner */}
         <div className={`rounded-lg px-4 py-3 mb-4 ${zone.bg}`}>
-          <span className={`text-sm font-medium ${zone.color}`}>
-            {zone.label}
-          </span>
+          <span className={`text-sm font-medium ${zone.color}`}>{zone.label}</span>
           {lastSubmission && (
             <span className="text-xs text-gray-400 ml-3">
               Last submitted:{' '}
@@ -186,7 +178,6 @@ const DiseaseForm = () => {
           )}
         </div>
 
-        {/* Overdue alert */}
         {overdue && !success && (
           <div className="mb-4">
             <Alert
@@ -200,23 +191,15 @@ const DiseaseForm = () => {
           </div>
         )}
 
-        {/* Submitted today notice */}
         {submittedToday() && !success && (
           <div className="mb-4">
-            <Alert
-              type="success"
-              message="Report already submitted today — you are up to date."
-            />
+            <Alert type="success" message="Report already submitted today — you are up to date." />
           </div>
         )}
 
-        {/* Success message */}
         {success && (
           <div className="mb-6 flex flex-col gap-2">
-            <Alert
-              type="success"
-              message="Disease report submitted successfully. Redirecting to dashboard in 3 seconds..."
-            />
+            <Alert type="success" message="Disease report submitted successfully. Redirecting to dashboard in 3 seconds..." />
             {wardRiskLevel && (wardRiskLevel === 'Red' || wardRiskLevel === 'Yellow') && (
               <Alert
                 type={wardRiskLevel === 'Red' ? 'error' : 'warning'}
@@ -226,16 +209,12 @@ const DiseaseForm = () => {
             {wardRiskLevel && (
               <div className="flex items-center gap-2 px-1">
                 <span className="text-sm text-gray-500">{t('riskLevel')}:</span>
-                <Badge severity={
-                  wardRiskLevel === 'Red' ? 'red' :
-                  wardRiskLevel === 'Yellow' ? 'yellow' : 'green'
-                } />
+                <Badge severity={wardRiskLevel === 'Red' ? 'red' : wardRiskLevel === 'Yellow' ? 'yellow' : 'green'} />
               </div>
             )}
           </div>
         )}
 
-        {/* Error message */}
         {error && (
           <div className="mb-6">
             <Alert type="error" message={error} />
@@ -245,15 +224,8 @@ const DiseaseForm = () => {
         <Card title="Disease Report">
           <div className="flex flex-col gap-6">
 
-            {/* Ward — pre-filled and disabled */}
-            <Input
-              label={t('wardName')}
-              name="wardName"
-              value={user?.ward || ''}
-              disabled
-            />
+            <Input label={t('wardName')} name="wardName" value={user?.ward || ''} disabled />
 
-            {/* Disease */}
             <div className="grid grid-cols-1 gap-4">
               <Input
                 label={t('disease')}
@@ -266,7 +238,24 @@ const DiseaseForm = () => {
               />
             </div>
 
-            {/* Direct text inputs (configured for regex digits only) */}
+            {/* Custom disease name — only shown when Other is selected */}
+            {form.diseaseName === 'Other' && (
+              <div>
+                <Input
+                  label="Disease Name (specify)"
+                  name="customDiseaseName"
+                  type="text"
+                  value={form.customDiseaseName}
+                  onChange={handleChange}
+                  placeholder="e.g. Leptospirosis"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  This name will appear in analytics and ward reports instead of "Other".
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
                 label="New Confirmed Cases"
@@ -297,11 +286,9 @@ const DiseaseForm = () => {
               />
             </div>
 
-            {/* Validation error */}
             {validationError && (
               <p className="text-red-600 text-sm">{validationError}</p>
             )}
-
 
             <Button
               label={loading ? 'Submitting...' : t('submitReport')}

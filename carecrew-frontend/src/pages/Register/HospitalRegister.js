@@ -1,6 +1,6 @@
-import React, { useState} from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
- 
+
 const WARDS = [
   { wardName: 'Bhavani Peth', zone: 'Zone 1' },
   { wardName: 'North Solapur', zone: 'Zone 2' },
@@ -28,26 +28,56 @@ const WARDS = [
   { wardName: 'Shanti Nagar', zone: 'Zone 24' },
   { wardName: 'Kamgar Nagar', zone: 'Zone 25' },
 ]
- 
 const SPECIALTIES = [
   'General', 'Cardiology', 'Paediatrics', 'Orthopaedics',
   'Gynaecology', 'Neurology', 'Dermatology', 'ENT',
   'Ophthalmology', 'Emergency'
 ]
- 
+
+const FACILITY_OPTIONS = [
+  { key: 'opd', label: 'OPD Services', icon: '🏥' },
+  { key: 'inpatient', label: 'Inpatient / Admitted', icon: '🛏️' },
+  { key: 'emergency', label: 'Emergency / Casualty', icon: '🚨' },
+  { key: 'maternity', label: 'Maternity / Delivery', icon: '👶' },
+  { key: 'icu', label: 'ICU', icon: '💉' },
+  { key: 'lab', label: 'Laboratory', icon: '🔬' },
+  { key: 'xray', label: 'X-Ray', icon: '📷' },
+  { key: 'ultrasound', label: 'Ultrasound / Sonography', icon: '📡' },
+  { key: 'ecg', label: 'ECG', icon: '💓' },
+  { key: 'bloodBank', label: 'Blood Bank', icon: '🩸' },
+  { key: 'pediatric', label: 'Pediatric Care', icon: '🧒' },
+  { key: 'dental', label: 'Dental', icon: '🦷' },
+  { key: 'eye', label: 'Eye / Ophthalmology', icon: '👁️' },
+  { key: 'dotsTb', label: 'TB DOTS Center', icon: '💊' },
+  { key: 'dialysis', label: 'Dialysis', icon: '🫀' },
+  { key: 'ambulance', label: 'Ambulance', icon: '🚑' },
+  { key: 'pharmacy', label: 'Pharmacy', icon: '💊' },
+  { key: 'immunization', label: 'Immunization', icon: '💉' },
+];
+
+const FACILITY_TYPE_LABELS = {
+  general: 'General Hospital',
+  uphc: 'UPHC (Urban Primary Health Center)',
+  maternity_home: 'Maternity Home',
+  private: 'Private Clinic / Hospital',
+  id_hospital: 'Infectious Disease Hospital',
+  specialty: 'Specialty Center',
+};
+
+const FACILITY_TYPES = Object.entries(FACILITY_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
 const STEPS = [
   'Hospital Info',
   'Location',
-  'Specialties',
+  'Services',
   'Staff Account'
 ]
- 
+
 const HospitalRegister = () => {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
- 
   const [form, setForm] = useState({
     // Step 1
     hospitalName: '',
@@ -55,18 +85,20 @@ const HospitalRegister = () => {
     contact: '',
     ward: '',
     zone: '',
+    facilityType: 'general',
     // Step 2
     lat: '',
     lng: '',
     // Step 3
     specialties: [],
+    facilities: {},
     // Step 5
     staffName: '',
     email: '',
     password: '',
     confirmPassword: ''
   })
- 
+
   // Auto fill zone when ward changes
   const handleWardChange = (e) => {
     const selectedWard = WARDS.find(w => w.wardName === e.target.value)
@@ -76,11 +108,11 @@ const HospitalRegister = () => {
       zone: selectedWard?.zone || ''
     }))
   }
- 
+
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
- 
+
   const handleSpecialtyToggle = (specialty) => {
     setForm(prev => ({
       ...prev,
@@ -89,12 +121,19 @@ const HospitalRegister = () => {
         : [...prev.specialties, specialty]
     }))
   }
- 
+
+  const handleFacilityToggle = (key) => {
+    setForm(prev => ({
+      ...prev,
+      facilities: { ...prev.facilities, [key]: !prev.facilities[key] }
+    }))
+  }
+
   const validateStep = () => {
     setError('')
     if (step === 0) {
       if (!form.hospitalName || !form.address ||
-          !form.contact || !form.ward) {
+        !form.contact || !form.ward) {
         setError('Please fill all required fields')
         return false
       }
@@ -113,7 +152,7 @@ const HospitalRegister = () => {
     }
     if (step === 3) {
       if (!form.staffName || !form.email ||
-          !form.password || !form.confirmPassword) {
+        !form.password || !form.confirmPassword) {
         setError('Please fill all required fields')
         return false
       }
@@ -128,16 +167,16 @@ const HospitalRegister = () => {
     }
     return true
   }
- 
+
   const handleNext = () => {
     if (validateStep()) setStep(prev => prev + 1)
   }
- 
+
   const handleBack = () => {
     setError('')
     setStep(prev => prev - 1)
   }
- 
+
   const handleSubmit = async () => {
     if (!validateStep()) return
     setLoading(true)
@@ -167,12 +206,12 @@ const HospitalRegister = () => {
       setLoading(false)
     }
   }
- 
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-blue-100
                     flex items-center justify-center p-4'>
       <div className='bg-white rounded-2xl shadow-lg w-full max-w-lg'>
- 
+
         {/* Header */}
         <div className='p-6 border-b border-gray-100'>
           <div className='flex items-center gap-3 mb-4'>
@@ -189,7 +228,7 @@ const HospitalRegister = () => {
               </p>
             </div>
           </div>
- 
+
           {/* Step indicators */}
           <div className='flex items-center gap-1'>
             {STEPS.map((s, i) => (
@@ -199,36 +238,36 @@ const HospitalRegister = () => {
                                   justify-center text-xs font-bold
                                   transition-colors
                                   ${i < step
-                                    ? 'bg-green-500 text-white'
-                                    : i === step
-                                      ? 'bg-blue-600 text-white'
-                                      : 'bg-gray-100 text-gray-400'
-                                  }`}>
+                      ? 'bg-green-500 text-white'
+                      : i === step
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-400'
+                    }`}>
                     {i < step ? '✓' : i + 1}
                   </div>
                   <p className={`text-xs mt-1 hidden sm:block
                                 ${i === step
-                                  ? 'text-blue-600 font-medium'
-                                  : 'text-gray-400'
-                                }`}>
+                      ? 'text-blue-600 font-medium'
+                      : 'text-gray-400'
+                    }`}>
                     {s}
                   </p>
                 </div>
                 {i < STEPS.length - 1 && (
                   <div className={`flex-1 h-0.5 mb-4 transition-colors
                                   ${i < step
-                                    ? 'bg-green-400'
-                                    : 'bg-gray-200'
-                                  }`} />
+                      ? 'bg-green-400'
+                      : 'bg-gray-200'
+                    }`} />
                 )}
               </React.Fragment>
             ))}
           </div>
         </div>
- 
+
         {/* Form body */}
         <div className='p-6'>
- 
+
           {/* Error */}
           {error && (
             <div className='bg-red-50 border border-red-200 rounded-lg p-3
@@ -236,7 +275,7 @@ const HospitalRegister = () => {
               <p className='text-sm text-red-600'>{error}</p>
             </div>
           )}
- 
+
           {/* STEP 0 — Hospital Info */}
           {step === 0 && (
             <div className='flex flex-col gap-4'>
@@ -306,6 +345,23 @@ const HospitalRegister = () => {
                   ))}
                 </select>
               </div>
+              <div className='flex flex-col gap-1'>
+                <label className='text-sm font-medium text-gray-700'>
+                  Facility Type <span className='text-red-500'>*</span>
+                </label>
+                <select
+                  name='facilityType'
+                  value={form.facilityType}
+                  onChange={handleChange}
+                  className='w-full px-3 py-2 border border-gray-300
+                             rounded-lg text-sm focus:outline-none
+                             focus:ring-2 focus:ring-blue-500 bg-white'
+                >
+                  {FACILITY_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
               {form.zone && (
                 <div className='bg-blue-50 rounded-lg px-3 py-2'>
                   <p className='text-sm text-blue-700'>
@@ -315,7 +371,7 @@ const HospitalRegister = () => {
               )}
             </div>
           )}
- 
+
           {/* STEP 1 — Location */}
           {step === 1 && (
             <div className='flex flex-col gap-4'>
@@ -364,41 +420,73 @@ const HospitalRegister = () => {
               </div>
             </div>
           )}
- 
-          {/* STEP 2 — Specialties */}
+
+          {/* STEP 2 — Services & Specialties */}
           {step === 2 && (
-            <div className='flex flex-col gap-4'>
-              <h2 className='text-sm font-semibold text-gray-700 uppercase
-                             tracking-wide'>
-                Medical Specialties
-              </h2>
-              <p className='text-xs text-gray-500'>
-                Select all departments available at your hospital
-              </p>
-              <div className='grid grid-cols-2 gap-2'>
-                {SPECIALTIES.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => handleSpecialtyToggle(s)}
-                    className={`px-3 py-2 rounded-lg border text-sm
+            <div className='flex flex-col gap-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar'>
+              <div>
+                <h2 className='text-sm font-bold text-gray-700 uppercase tracking-wide mb-1'>
+                  Facilities & Services
+                </h2>
+                <p className='text-xs text-gray-500 mb-3'>
+                  Select all services available at your hospital
+                </p>
+                <div className='grid grid-cols-2 gap-2'>
+                  {FACILITY_OPTIONS.map(opt => (
+                    <label
+                      key={opt.key}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm
+                                 cursor-pointer transition-colors
+                                 ${form.facilities[opt.key]
+                          ? 'bg-blue-50 border-blue-400 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-700 hover:border-blue-300'
+                        }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={!!form.facilities[opt.key]}
+                        onChange={() => handleFacilityToggle(opt.key)}
+                      />
+                      <span className="text-lg">{opt.icon}</span>
+                      <span className="font-medium flex-1 leading-tight">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h2 className='text-sm font-bold text-gray-700 uppercase tracking-wide mb-1'>
+                  Medical Departments
+                </h2>
+                <p className='text-xs text-gray-500 mb-3'>
+                  Select primary medical specialties
+                </p>
+                <div className='grid grid-cols-2 gap-2'>
+                  {SPECIALTIES.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => handleSpecialtyToggle(s)}
+                      className={`px-3 py-2 rounded-lg border text-sm
                                font-medium text-left transition-colors
                                ${form.specialties.includes(s)
-                                 ? 'bg-blue-600 text-white border-blue-600'
-                                 : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
-                               }`}
-                  >
-                    {form.specialties.includes(s) ? '✓ ' : ''}{s}
-                  </button>
-                ))}
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300'
+                        }`}
+                    >
+                      {form.specialties.includes(s) ? '✓ ' : ''}{s}
+                    </button>
+                  ))}
+                </div>
+                {form.specialties.length > 0 && (
+                  <p className='text-xs text-blue-600'>
+                    {form.specialties.length} specialties selected
+                  </p>
+                )}
               </div>
-              {form.specialties.length > 0 && (
-                <p className='text-xs text-blue-600'>
-                  {form.specialties.length} specialties selected
-                </p>
-              )}
             </div>
           )}
- 
+
           {/* STEP 3 — Staff Account */}
           {step === 3 && (
             <div className='flex flex-col gap-4'>
@@ -470,9 +558,9 @@ const HospitalRegister = () => {
               </div>
             </div>
           )}
- 
+
         </div>
- 
+
         {/* Footer buttons */}
         <div className='px-6 pb-6 flex items-center justify-between gap-3'>
           {step > 0 ? (
@@ -492,7 +580,7 @@ const HospitalRegister = () => {
               Already registered? Login
             </Link>
           )}
- 
+
           {step < STEPS.length - 1 ? (
             <button
               onClick={handleNext}
@@ -514,10 +602,10 @@ const HospitalRegister = () => {
             </button>
           )}
         </div>
- 
+
       </div>
     </div>
   )
 }
- 
+
 export default HospitalRegister
