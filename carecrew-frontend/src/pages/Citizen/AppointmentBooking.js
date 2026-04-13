@@ -9,23 +9,27 @@ import { InlineLoader } from '../../components/shared/Loader'
 
 const BASE_URL = 'https://carecrew-1.onrender.com/api'
 
+// Day name from a Date object — matches backend enum exactly
+const getDayName = (date) => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return days[date.getDay()]
+}
+
 const AppointmentBooking = () => {
   const { token } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Pre-selected hospital from Find Hospital page
   const preSelected = location.state?.hospitalName || ''
 
-  const [hospitals, setHospitals] = useState([])
-  const [specialties, setSpecialties] = useState([])
-  const [doctors, setDoctors] = useState([])
-  const [timeSlots, setTimeSlots] = useState([])
+  const [hospitals, setHospitals]               = useState([])
+  const [specialties, setSpecialties]           = useState([])
+  const [doctors, setDoctors]                   = useState([])
   const [loadingHospitals, setLoadingHospitals] = useState(true)
-  const [loadingDoctors, setLoadingDoctors] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-  const [confirmed, setConfirmed] = useState(null)
+  const [loadingDoctors, setLoadingDoctors]     = useState(false)
+  const [submitting, setSubmitting]             = useState(false)
+  const [error, setError]                       = useState('')
+  const [confirmed, setConfirmed]               = useState(null)
 
   const [form, setForm] = useState({
     hospitalName: preSelected,
@@ -39,14 +43,41 @@ const AppointmentBooking = () => {
 
   const [selectedDoctor, setSelectedDoctor] = useState(null)
 
-  // Generate next 10 dates
-  const next10Days = Array.from({ length: 10 }, (_, i) => {
+  // ── Generate next 14 dates ──────────────────────────────────────────────
+  const next14Days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() + i + 1)
     return d
   })
 
-  // Load hospitals on mount
+  // ── Get schedule slot for a given date (or null if unavailable) ─────────
+  const getScheduleForDate = (doctor, date) => {
+    if (!doctor?.schedule || doctor.schedule.length === 0) return null
+    const dayName = getDayName(date)
+    return doctor.schedule.find(s => s.day === dayName) || null
+  }
+
+  // ── Is a date available for the selected doctor? ────────────────────────
+  const isDateAvailable = (date) => {
+    if (!selectedDoctor) return false
+    return getScheduleForDate(selectedDoctor, date) !== null
+  }
+
+  // ── Time slot label for a date: "9:00 AM – 1:00 PM" ────────────────────
+  const getTimeSlotLabel = (slot) => {
+    if (!slot) return ''
+    return `${slot.startTime} – ${slot.endTime}`
+  }
+
+  // ── Parse date string without timezone shift ────────────────────────────
+  // new Date('2024-01-15') creates midnight UTC which shifts day in IST
+  // This parses directly to local date
+  const parseDateString = (dateStr) => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  // ── Load hospitals on mount ─────────────────────────────────────────────
   useEffect(() => {
     const fetchHospitals = async () => {
       try {
@@ -54,11 +85,8 @@ const AppointmentBooking = () => {
         const data = await res.json()
         if (data.success) {
           setHospitals(data.hospitals)
-          // If pre-selected, load specialties
           if (preSelected) {
-            const h = data.hospitals.find(
-              h => h.hospitalName === preSelected
-            )
+            const h = data.hospitals.find(h => h.hospitalName === preSelected)
             if (h) {
               setSpecialties(h.specialties || [])
               setForm(prev => ({
@@ -69,7 +97,7 @@ const AppointmentBooking = () => {
             }
           }
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load hospitals')
       } finally {
         setLoadingHospitals(false)
@@ -78,7 +106,7 @@ const AppointmentBooking = () => {
     fetchHospitals()
   }, [preSelected])
 
-  // When hospital changes
+  // ── Hospital change ─────────────────────────────────────────────────────
   const handleHospitalChange = (e) => {
     const name = e.target.value
     const h = hospitals.find(h => h.hospitalName === name)
@@ -93,11 +121,10 @@ const AppointmentBooking = () => {
     }))
     setSpecialties(h?.specialties || [])
     setDoctors([])
-    setTimeSlots([])
     setSelectedDoctor(null)
   }
 
-  // When specialty changes — load doctors
+  // ── Specialty change — load doctors ─────────────────────────────────────
   const handleSpecialtyChange = async (e) => {
     const specialty = e.target.value
     setForm(prev => ({
@@ -108,7 +135,6 @@ const AppointmentBooking = () => {
       timeSlot: ''
     }))
     setDoctors([])
-    setTimeSlots([])
     setSelectedDoctor(null)
 
     if (!specialty || !form.hospitalName) return
@@ -119,34 +145,50 @@ const AppointmentBooking = () => {
       )
       const data = await res.json()
       if (data.success) setDoctors(data.doctors || [])
-    } catch (err) {
+    } catch {
       setError('Failed to load doctors')
     } finally {
       setLoadingDoctors(false)
     }
   }
 
-  // When doctor changes
+  // ── Doctor change ────────────────────────────────────────────────────────
   const handleDoctorChange = (e) => {
     const name = e.target.value
-    const doc = doctors.find(d => d.name === name)
-    setSelectedDoctor(doc || null)
+    const doc = doctors.find(d => d.name === name) || null
+    setSelectedDoctor(doc)
     setForm(prev => ({
       ...prev,
       doctorName: name,
+      preferredDate: '',
       timeSlot: ''
     }))
-    setTimeSlots(doc?.slots || [])
   }
 
-  // Submit booking
+  // ── Date selection ───────────────────────────────────────────────────────
+  const handleDateSelect = (dateStr, date) => {
+    if (!isDateAvailable(date)) return
+
+    const slot = getScheduleForDate(selectedDoctor, date)
+    const slotLabel = getTimeSlotLabel(slot)
+
+    setForm(prev => ({
+      ...prev,
+      preferredDate: dateStr,
+      timeSlot: slotLabel
+    }))
+  }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setError('')
-    const { hospitalName, ward, specialty, doctorName,
-      preferredDate, timeSlot, chiefComplaint } = form
+    const {
+      hospitalName, ward, specialty, doctorName,
+      preferredDate, timeSlot, chiefComplaint
+    } = form
 
-    if (!hospitalName || !specialty || !doctorName ||
-      !preferredDate || !timeSlot) {
+    // ✅ FIX — added ward to required fields check
+    if (!hospitalName || !ward || !specialty || !doctorName || !preferredDate || !timeSlot) {
       setError('Please fill all required fields')
       return
     }
@@ -175,22 +217,21 @@ const AppointmentBooking = () => {
       } else {
         setError(data.message || 'Booking failed')
       }
-    } catch (err) {
+    } catch {
       setError('Server error. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Confirmation screen
+  // ── Confirmation screen ──────────────────────────────────────────────────
   if (confirmed) {
     return (
       <CitizenLayout>
         <div className='max-w-md mx-auto mt-16'>
           <Card>
             <div className='flex flex-col items-center text-center py-6'>
-              <div className='w-16 h-16 bg-yellow-100 rounded-full flex
-                              items-center justify-center mb-4'>
+              <div className='w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4'>
                 <span className='text-yellow-600 text-2xl'>⏳</span>
               </div>
               <h2 className='text-xl font-bold text-gray-800 mb-1'>
@@ -206,28 +247,22 @@ const AppointmentBooking = () => {
                 </span>
               </p>
 
-              <div className='w-full bg-gray-50 rounded-xl p-4 text-left
-                              border border-gray-100 mb-6'>
+              <div className='w-full bg-gray-50 rounded-xl p-4 text-left border border-gray-100 mb-6'>
                 {[
-                  { label: 'Hospital', value: confirmed.hospitalName },
-                  { label: 'Doctor', value: confirmed.doctorName },
+                  { label: 'Hospital',  value: confirmed.hospitalName },
+                  { label: 'Doctor',    value: confirmed.doctorName },
                   { label: 'Specialty', value: confirmed.specialty },
                   {
                     label: 'Date',
-                    value: new Date(confirmed.preferredDate)
-                      .toLocaleDateString('en-IN', {
-                        day: '2-digit', month: 'short', year: 'numeric'
-                      })
+                    value: new Date(confirmed.preferredDate).toLocaleDateString('en-IN', {
+                      day: '2-digit', month: 'short', year: 'numeric'
+                    })
                   },
                   { label: 'Time', value: confirmed.timeSlot },
                 ].map((item, i) => (
-                  <div key={i}
-                    className='flex justify-between py-2 border-b
-                               border-gray-100 last:border-0'>
+                  <div key={i} className='flex justify-between py-2 border-b border-gray-100 last:border-0'>
                     <span className='text-sm text-gray-500'>{item.label}</span>
-                    <span className='text-sm font-semibold text-gray-800'>
-                      {item.value}
-                    </span>
+                    <span className='text-sm font-semibold text-gray-800'>{item.value}</span>
                   </div>
                 ))}
               </div>
@@ -251,13 +286,11 @@ const AppointmentBooking = () => {
     )
   }
 
+  // ── Booking form ─────────────────────────────────────────────────────────
   return (
     <CitizenLayout>
-      {/* Header */}
       <div className='mb-6'>
-        <h1 className='text-2xl font-bold text-gray-800'>
-          Schedule Your Visit
-        </h1>
+        <h1 className='text-2xl font-bold text-gray-800'>Schedule Your Visit</h1>
         <p className='text-sm text-gray-500 mt-1'>
           Book a specialist appointment in under 60 seconds
         </p>
@@ -267,17 +300,18 @@ const AppointmentBooking = () => {
         <InlineLoader message='Loading hospitals...' />
       ) : (
         <div className='grid grid-cols-3 gap-6'>
-          {/* Booking Form */}
+
+          {/* ── Booking Form ── */}
           <div className='col-span-2'>
             <Card title='Appointment Details'>
               {error && (
-                <div className='bg-red-50 border border-red-200 rounded-lg
-                                p-3 mb-4'>
+                <div className='bg-red-50 border border-red-200 rounded-lg p-3 mb-4'>
                   <p className='text-sm text-red-600'>{error}</p>
                 </div>
               )}
 
               <div className='flex flex-col gap-4'>
+
                 {/* Hospital */}
                 <Input
                   label='Preferred Hospital'
@@ -318,43 +352,65 @@ const AppointmentBooking = () => {
                     disabled={!form.specialty}
                     options={doctors.map(d => ({
                       value: d.name,
-                      label: `${d.name} — ${d.specialty}`
+                      label: `${d.name} — ${d.specialty}${d.isVisiting ? ' (Visiting)' : ''}`
                     }))}
                   />
                 )}
 
-                {/* Date Picker */}
+                {/* ── Date Picker ── */}
                 {form.doctorName && (
                   <div>
-                    <label className='text-sm font-medium text-gray-700 block mb-2'>
+                    <label className='text-sm font-medium text-gray-700 block mb-1'>
                       Select Date <span className='text-red-500'>*</span>
                     </label>
+
+                    {selectedDoctor?.schedule?.length > 0 ? (
+                      <p className='text-xs text-gray-400 mb-2'>
+                        Available on:{' '}
+                        <span className='font-semibold text-blue-600'>
+                          {selectedDoctor.schedule.map(s => s.day).join(', ')}
+                        </span>
+                      </p>
+                    ) : (
+                      <p className='text-xs text-orange-500 mb-2'>
+                        ⚠ No schedule set for this doctor — contact the hospital directly.
+                      </p>
+                    )}
+
                     <div className='flex gap-2 overflow-x-auto pb-2'>
-                      {next10Days.map((date, i) => {
-                        const dateStr = date.toISOString().split('T')[0]
+                      {next14Days.map((date, i) => {
+                        const dateStr   = date.toISOString().split('T')[0]
+                        const available = isDateAvailable(date)
                         const isSelected = form.preferredDate === dateStr
+
                         return (
                           <button
                             key={i}
-                            onClick={() => setForm(prev => ({
-                              ...prev,
-                              preferredDate: dateStr,
-                              timeSlot: ''
-                            }))}
-                            className={`flex flex-col items-center px-3 py-2
-                                       rounded-lg border text-xs font-medium
-                                       flex-shrink-0 transition-colors
-                                       ${isSelected
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'border-gray-200 text-gray-600 hover:border-blue-300'
-                              }`}
+                            onClick={() => handleDateSelect(dateStr, date)}
+                            disabled={!available}
+                            title={
+                              available
+                                ? `Available — ${getDayName(date)}`
+                                : `${getDayName(date)} — not available`
+                            }
+                            className={`flex flex-col items-center px-3 py-2 rounded-lg border
+                                        text-xs font-medium flex-shrink-0 transition-colors
+                                        ${isSelected
+                                          ? 'bg-blue-600 text-white border-blue-600'
+                                          : available
+                                            ? 'border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 cursor-pointer'
+                                            : 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed'
+                                        }`}
                           >
-                            <span className='uppercase text-xs'>
+                            <span className='uppercase text-[10px]'>
                               {date.toLocaleDateString('en-US', { weekday: 'short' })}
                             </span>
                             <span className='text-base font-bold mt-0.5'>
                               {date.getDate()}
                             </span>
+                            {available && !isSelected && (
+                              <span className='w-1.5 h-1.5 rounded-full bg-blue-400 mt-0.5' />
+                            )}
                           </button>
                         )
                       })}
@@ -362,31 +418,40 @@ const AppointmentBooking = () => {
                   </div>
                 )}
 
-                {/* Time Slots */}
-                {form.preferredDate && timeSlots.length > 0 && (
+                {/* ── Time slot — auto-filled from schedule ── */}
+                {form.preferredDate && form.timeSlot && (
                   <div>
-                    <label className='text-sm font-medium text-gray-700
-                                      block mb-2'>
-                      Select Time Slot <span className='text-red-500'>*</span>
+                    <label className='text-sm font-medium text-gray-700 block mb-1'>
+                      Appointment Time
                     </label>
-                    <div className='flex flex-wrap gap-2'>
-                      {timeSlots.map((slot, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setForm(prev => ({
-                            ...prev, timeSlot: slot
-                          }))}
-                          className={`px-4 py-2 rounded-lg border text-sm
-                                     font-medium transition-colors
-                                     ${form.timeSlot === slot
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'border-gray-200 text-gray-600 hover:border-blue-300'
-                            }`}
-                        >
-                          {slot}
-                        </button>
-                      ))}
-                    </div>
+                    {(() => {
+                      // ✅ FIX — parse date string directly to avoid timezone shift
+                      const selectedDate = parseDateString(form.preferredDate)
+                      const slot = getScheduleForDate(selectedDoctor, selectedDate)
+                      return (
+                        <div className='flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg'>
+                          <span className='text-blue-600 text-base'>🕐</span>
+                          <div>
+                            <p className='text-sm font-bold text-blue-800'>{form.timeSlot}</p>
+                            <p className='text-xs text-blue-500'>
+                              {getDayName(selectedDate)} · Up to {slot?.maxAppointments || 20} appointments
+                            </p>
+                          </div>
+                          <span className='ml-auto text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200'>
+                            Available
+                          </span>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+
+                {/* No schedule message */}
+                {form.doctorName && selectedDoctor?.schedule?.length === 0 && (
+                  <div className='bg-orange-50 border border-orange-200 rounded-lg p-3'>
+                    <p className='text-sm text-orange-700 font-medium'>
+                      This doctor has no schedule set yet. Please contact the hospital directly or choose a different doctor.
+                    </p>
                   </div>
                 )}
 
@@ -397,7 +462,8 @@ const AppointmentBooking = () => {
                   name='chiefComplaint'
                   value={form.chiefComplaint}
                   onChange={(e) => setForm(prev => ({
-                    ...prev, chiefComplaint: e.target.value
+                    ...prev,
+                    chiefComplaint: e.target.value
                   }))}
                   placeholder='Please briefly describe your symptoms...'
                 />
@@ -408,21 +474,21 @@ const AppointmentBooking = () => {
                     label={submitting ? 'Booking...' : 'Confirm Appointment →'}
                     variant='primary'
                     fullWidth
-                    disabled={submitting}
+                    disabled={submitting || !form.timeSlot}
                     onClick={handleSubmit}
                   />
                 </div>
+
               </div>
             </Card>
           </div>
 
-          {/* Doctor Info Panel */}
+          {/* ── Doctor Info Panel ── */}
           <div className='col-span-1 flex flex-col gap-4'>
             {selectedDoctor ? (
               <Card title='Assigned Specialist'>
                 <div className='flex flex-col items-center text-center py-2'>
-                  <div className='w-14 h-14 bg-blue-100 rounded-full flex
-                                  items-center justify-center mb-3'>
+                  <div className='w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-3'>
                     <span className='text-blue-600 text-xl font-bold'>
                       {selectedDoctor.name?.charAt(0) || 'D'}
                     </span>
@@ -433,48 +499,70 @@ const AppointmentBooking = () => {
                   <p className='text-sm text-gray-500 mt-0.5'>
                     {selectedDoctor.specialty}
                   </p>
+                  {selectedDoctor.isVisiting && (
+                    <span className='mt-1 text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200'>
+                      Visiting Consultant
+                    </span>
+                  )}
                 </div>
 
                 <div className='mt-4 flex flex-col gap-2'>
+                  {/* Rating */}
                   {selectedDoctor.rating ? (
-                    <div className='bg-blue-50 rounded-lg p-3 flex items-center
-                                    gap-2'>
-                      <div className='flex flex-col'>
-                        <div className='flex items-center gap-1'>
-                          {[1,2,3,4,5].map(s => (
-                            <span key={s} className={s <= Math.round(selectedDoctor.rating)
-                              ? 'text-yellow-400 text-base'
-                              : 'text-gray-200 text-base'}>★</span>
-                          ))}
-                        </div>
-                        <p className='text-xs text-gray-500 mt-0.5'>
-                          {selectedDoctor.rating}/5 · Citizen rated
-                        </p>
+                    <div className='bg-blue-50 rounded-lg p-3'>
+                      <div className='flex items-center gap-1 mb-0.5'>
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <span
+                            key={s}
+                            className={
+                              s <= Math.round(selectedDoctor.rating)
+                                ? 'text-yellow-400 text-base'
+                                : 'text-gray-200 text-base'
+                            }
+                          >★</span>
+                        ))}
                       </div>
+                      <p className='text-xs text-gray-500'>
+                        {selectedDoctor.rating}/5 · Citizen rated
+                      </p>
                     </div>
                   ) : (
-                    <div className='bg-gray-50 rounded-lg p-3 flex items-center
-                                    gap-2'>
+                    <div className='bg-gray-50 rounded-lg p-3 flex items-center gap-2'>
                       <span className='text-gray-300 text-base'>★★★★★</span>
                       <p className='text-xs text-gray-400'>Not yet rated</p>
                     </div>
                   )}
-                  <div className='bg-blue-50 rounded-lg p-3 flex items-center
-                                  gap-2'>
+
+                  {/* Experience */}
+                  <div className='bg-blue-50 rounded-lg p-3 flex items-center gap-2'>
                     <span>🏥</span>
-                    <div>
-                      <p className='text-sm font-semibold text-gray-800'>
-                        {selectedDoctor.experience} Yrs Experience
-                      </p>
-                    </div>
+                    <p className='text-sm font-semibold text-gray-800'>
+                      {selectedDoctor.experience} Yrs Experience
+                    </p>
                   </div>
+
+                  {/* Schedule summary */}
+                  {selectedDoctor.schedule?.length > 0 && (
+                    <div className='bg-gray-50 rounded-lg p-3'>
+                      <p className='text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2'>
+                        Weekly Schedule
+                      </p>
+                      <div className='flex flex-col gap-1.5'>
+                        {selectedDoctor.schedule.map((s, i) => (
+                          <div key={i} className='flex items-center justify-between text-xs'>
+                            <span className='font-semibold text-gray-700 w-20'>{s.day}</span>
+                            <span className='text-gray-500'>{s.startTime} – {s.endTime}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </Card>
             ) : (
               <Card title='Assigned Specialist'>
                 <div className='flex flex-col items-center py-8 text-center'>
-                  <div className='w-14 h-14 bg-gray-100 rounded-full flex
-                                  items-center justify-center mb-3'>
+                  <div className='w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3'>
                     <span className='text-gray-400 text-2xl'>👨‍⚕️</span>
                   </div>
                   <p className='text-sm text-gray-400'>
@@ -499,6 +587,7 @@ const AppointmentBooking = () => {
               </div>
             </Card>
           </div>
+
         </div>
       )}
     </CitizenLayout>
