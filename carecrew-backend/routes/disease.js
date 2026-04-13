@@ -9,6 +9,7 @@ const { protect, authorizeRoles } = require('../middleware/auth');
 // @desc   Submit disease report (hospitalStaff only)
 router.post('/submit', protect, authorizeRoles('hospitalStaff'), async (req, res) => {
   try {
+    console.log("REQ BODY:", req.body);   
     const {
       wardName,
       diseaseName,

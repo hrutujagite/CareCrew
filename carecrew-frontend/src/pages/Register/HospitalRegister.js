@@ -69,6 +69,7 @@ const FACILITY_TYPES = Object.entries(FACILITY_TYPE_LABELS).map(([value, label])
 const STEPS = [
   'Hospital Info',
   'Location',
+  'Initial Capacity',
   'Services',
   'Staff Account'
 ]
@@ -89,7 +90,12 @@ const HospitalRegister = () => {
     // Step 2
     lat: '',
     lng: '',
-    // Step 3
+    // Step 3 — Initial Capacity
+    totalBeds: '',
+    availableBeds: '',
+    icuTotal: '',
+    icuAvailable: '',
+    // Step 4 — Services
     specialties: [],
     facilities: {},
     // Step 5
@@ -145,12 +151,26 @@ const HospitalRegister = () => {
       }
     }
     if (step === 2) {
+      if (!form.totalBeds || !form.availableBeds) {
+        setError('Please enter total beds and available beds')
+        return false
+      }
+      if (Number(form.availableBeds) > Number(form.totalBeds)) {
+        setError('Available beds cannot exceed total beds')
+        return false
+      }
+      if (form.icuAvailable !== '' && form.icuTotal !== '' && Number(form.icuAvailable) > Number(form.icuTotal)) {
+        setError('Available ICU beds cannot exceed total ICU beds')
+        return false
+      }
+    }
+    if (step === 3) {
       if (form.specialties.length === 0) {
         setError('Please select at least one specialty')
         return false
       }
     }
-    if (step === 3) {
+    if (step === 4) {
       if (!form.staffName || !form.email ||
         !form.password || !form.confirmPassword) {
         setError('Please fill all required fields')
@@ -421,8 +441,98 @@ const HospitalRegister = () => {
             </div>
           )}
 
-          {/* STEP 2 — Services & Specialties */}
+          {/* STEP 2 — Initial Capacity */}
           {step === 2 && (
+            <div className='flex flex-col gap-4'>
+              <h2 className='text-sm font-semibold text-gray-700 uppercase tracking-wide'>
+                Initial Capacity
+              </h2>
+              <p className='text-xs text-gray-500'>
+                Enter your hospital's current bed capacity. This helps citizens find available beds immediately after registration.
+              </p>
+
+              {/* General Beds */}
+              <div className='bg-gray-50 rounded-lg p-4 flex flex-col gap-3'>
+                <p className='text-xs font-bold text-gray-500 uppercase tracking-wide'>General Beds</p>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div className='flex flex-col gap-1'>
+                    <label className='text-sm font-medium text-gray-700'>
+                      Total Beds <span className='text-red-500'>*</span>
+                    </label>
+                    <input
+                      name='totalBeds'
+                      value={form.totalBeds}
+                      onChange={handleChange}
+                      type='number'
+                      min='0'
+                      placeholder='e.g. 50'
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
+                  </div>
+                  <div className='flex flex-col gap-1'>
+                    <label className='text-sm font-medium text-gray-700'>
+                      Available Beds <span className='text-red-500'>*</span>
+                    </label>
+                    <input
+                      name='availableBeds'
+                      value={form.availableBeds}
+                      onChange={handleChange}
+                      type='number'
+                      min='0'
+                      placeholder={`max ${form.totalBeds || '—'}`}
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
+                  </div>
+                </div>
+                {form.availableBeds !== '' && form.totalBeds !== '' && Number(form.availableBeds) > Number(form.totalBeds) && (
+                  <p className='text-red-500 text-xs'>⚠ Available beds cannot exceed total beds</p>
+                )}
+              </div>
+
+              {/* ICU Beds */}
+              <div className='bg-gray-50 rounded-lg p-4 flex flex-col gap-3'>
+                <p className='text-xs font-bold text-gray-500 uppercase tracking-wide'>ICU Beds <span className='text-gray-400 font-normal normal-case'>(optional)</span></p>
+                <div className='grid grid-cols-2 gap-3'>
+                  <div className='flex flex-col gap-1'>
+                    <label className='text-sm font-medium text-gray-700'>Total ICU Beds</label>
+                    <input
+                      name='icuTotal'
+                      value={form.icuTotal}
+                      onChange={handleChange}
+                      type='number'
+                      min='0'
+                      placeholder='e.g. 10'
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
+                  </div>
+                  <div className='flex flex-col gap-1'>
+                    <label className='text-sm font-medium text-gray-700'>Available ICU Beds</label>
+                    <input
+                      name='icuAvailable'
+                      value={form.icuAvailable}
+                      onChange={handleChange}
+                      type='number'
+                      min='0'
+                      placeholder={`max ${form.icuTotal || '—'}`}
+                      className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+                    />
+                  </div>
+                </div>
+                {form.icuAvailable !== '' && form.icuTotal !== '' && Number(form.icuAvailable) > Number(form.icuTotal) && (
+                  <p className='text-red-500 text-xs'>⚠ Available ICU beds cannot exceed total ICU beds</p>
+                )}
+              </div>
+
+              <div className='bg-blue-50 border border-blue-100 rounded-lg p-3'>
+                <p className='text-xs text-blue-700'>
+                  💡 You can update these numbers anytime from the <strong>Beds & Resources</strong> section in your dashboard after login.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3 — Services & Specialties */}
+          {step === 3 && (
             <div className='flex flex-col gap-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar'>
               <div>
                 <h2 className='text-sm font-bold text-gray-700 uppercase tracking-wide mb-1'>
@@ -487,8 +597,8 @@ const HospitalRegister = () => {
             </div>
           )}
 
-          {/* STEP 3 — Staff Account */}
-          {step === 3 && (
+          {/* STEP 4 — Staff Account */}
+          {step === 4 && (
             <div className='flex flex-col gap-4'>
               <h2 className='text-sm font-semibold text-gray-700 uppercase
                              tracking-wide'>

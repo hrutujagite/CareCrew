@@ -389,7 +389,7 @@ const HospitalHome = () => {
                       {diseaseHistory.slice(0, 5).map((r, i) => (
                         <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100/50 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
                           <div>
-                            <p className="text-sm font-bold text-slate-800">{r.diseaseName}</p>
+                            <p className="text-sm font-bold text-slate-800">{r.diseaseName === 'Other' && r.customDiseaseName ? r.customDiseaseName : r.diseaseName}</p>
                             <p className="text-xs text-slate-500 font-medium">{new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                           </div>
                           <div className="flex flex-col items-end gap-0.5 text-xs text-right">
