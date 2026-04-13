@@ -33,7 +33,7 @@ const AppointmentBooking = () => {
 
   const [form, setForm] = useState({
     hospitalName: preSelected,
-    ward: h?.ward || 'General',
+    ward: 'General',
     specialty: '',
     doctorName: '',
     preferredDate: '',
