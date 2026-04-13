@@ -36,7 +36,9 @@ const AppointmentBooking = () => {
     timeSlot: '',
     chiefComplaint: ''
   })
-
+  const filteredHospitals = hospitals.filter(h =>
+  !h.hospitalName.toLowerCase().includes("uphc")
+);
   const [selectedDoctor, setSelectedDoctor] = useState(null)
 
   // Generate next 10 dates
@@ -286,10 +288,10 @@ const AppointmentBooking = () => {
                   value={form.hospitalName}
                   onChange={handleHospitalChange}
                   required
-                  options={hospitals.map(h => ({
-                    value: h.hospitalName,
-                    label: h.hospitalName
-                  }))}
+                  options={filteredHospitals.map(h => ({
+  value: h.hospitalName,
+  label: h.hospitalName
+}))}
                 />
 
                 {/* Specialty */}
