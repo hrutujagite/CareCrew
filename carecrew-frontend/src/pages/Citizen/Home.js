@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import CitizenLayout from './CitizenLayout'
-import Card from '../../components/shared/Card'
 import Button from '../../components/shared/Button'
 import { InlineLoader } from '../../components/shared/Loader'
 
