@@ -1273,33 +1273,64 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   }
 
   const selectAllWards = () => setForm(f => ({ ...f, targetWards: [] }))
-
-  const handleSend = async () => {
-    if (!form.title.trim()) { setError('Title is required.'); return }
-    if (!form.message.trim()) { setError('Message is required.'); return }
-    setSending(true); setError(null)
-    try {
-      const res = await axios.post(
-        'https://carecrew-1.onrender.com/api/broadcasts',
-        {
-          title: form.title.trim(),
-          message: form.message.trim(),
-          type: form.type,
-          priority: form.priority,
-          targetWards: form.targetWards,
-          expiresAt: form.expiresAt || null,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      setSuccess(true)
-      onSent(res.data.broadcast)
-      setTimeout(() => onClose(), 2000)
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send broadcast. Please try again.')
-    } finally {
-      setSending(false)
-    }
+const handleSend = async () => {
+  if (!form.title.trim()) {
+    setError('Title is required.')
+    return
   }
+  if (!form.message.trim()) {
+    setError('Message is required.')
+    return
+  }
+
+  setSending(true)
+  setError(null)
+
+  try {
+    const res = await axios.post(
+      'https://carecrew-1.onrender.com/api/broadcasts',
+      {
+        title: form.title.trim(),
+        message: form.message.trim(),
+
+        // ✅ FIX 1: type → category
+        category: form.type,
+
+        priority: form.priority,
+
+        // ✅ FIX 2: handle audience properly
+        targetAudience:
+          form.targetWards.length === 0
+            ? "all_citizens"
+            : "ward_citizens",
+
+        // ✅ FIX 3: backend expects single ward (string)
+        targetWard:
+          form.targetWards.length === 0
+            ? null
+            : form.targetWards[0],
+
+        // ✅ FIX 4: expiry
+        expiresAt: form.expiresAt || null,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+
+    setSuccess(true)
+    onSent(res.data.broadcast)
+
+    setTimeout(() => onClose(), 2000)
+  } catch (err) {
+    console.log("Broadcast error:", err.response?.data || err.message) // 🔥 debug
+    setError(err.response?.data?.message || 'Failed to send broadcast. Please try again.')
+  } finally {
+    setSending(false)
+  }
+}
 
   const typeStyle = BROADCAST_TYPE_STYLES[form.type] || BROADCAST_TYPE_STYLES['General Info']
 
