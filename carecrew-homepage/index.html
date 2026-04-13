@@ -509,6 +509,78 @@
     body { top: 0 !important; position: static !important; }
     iframe.goog-te-banner-frame { display: none !important; }
 
+    /* ── BROADCASTS ── */
+    .broadcasts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .broadcast-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      border-left: 4px solid var(--blue);
+      border-top: 1px solid var(--gray-200);
+      border-right: 1px solid var(--gray-200);
+      border-bottom: 1px solid var(--gray-200);
+      transition: box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .broadcast-card:hover { box-shadow: var(--shadow); }
+    .broadcast-card.priority-urgent { border-left-color: #DC2626; }
+    .broadcast-card.priority-high   { border-left-color: #EA580C; }
+    .broadcast-card.priority-medium { border-left-color: #D97706; }
+    .broadcast-card.priority-low    { border-left-color: #16A34A; }
+
+    .broadcast-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .broadcast-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .broadcast-priority {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    .broadcast-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-900);
+      line-height: 1.4;
+    }
+
+    .broadcast-message {
+      font-size: 13px;
+      color: var(--gray-600);
+      line-height: 1.6;
+    }
+
+    .broadcast-footer {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
       .navbar { padding: 0 20px; }
@@ -517,6 +589,7 @@
       .section { padding: 48px 20px; }
       .portals-grid { grid-template-columns: 1fr; }
       .camps-grid { grid-template-columns: 1fr; }
+      .broadcasts-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -535,9 +608,13 @@
       <button id="langToggle" onclick="handleTranslate()" class="lang-btn">
         🌐 <span id="langLabel">मराठी</span>
       </button>
+      <a href="#broadcasts" class="btn btn-outline btn-sm"
+         onclick="document.getElementById('broadcasts').scrollIntoView({behavior:'smooth'}); return false;">
+        📢 Broadcasts
+      </a>
       <a href="#health-camps" class="btn btn-outline btn-sm"
          onclick="document.getElementById('health-camps').scrollIntoView({behavior:'smooth'}); return false;">
-        🏕️ Health Camps
+        🏕️ Health Camps/Vaccination Drives
       </a>
       <a href="https://care-crew-six.vercel.app/login" class="btn btn-primary btn-sm">
         Login
@@ -691,6 +768,29 @@
 
   <hr class="section-divider" />
 
+  <!-- BROADCASTS -->
+  <span id="broadcasts"></span>
+  <div>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-label">Health Officer Notices</div>
+        <div class="section-title">📢 Public Broadcasts</div>
+        <div class="section-sub">
+          Official health advisories and alerts issued by Solapur Municipal Corporation
+        </div>
+      </div>
+      <div id="broadcastsContainer">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px;">
+          <div class="skeleton" style="height:160px;"></div>
+          <div class="skeleton" style="height:160px;"></div>
+          <div class="skeleton" style="height:160px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="section-divider" />
+
   <!-- FOOTER -->
   <footer class="footer">
     <div class="footer-logo">
@@ -808,6 +908,69 @@
       }
     }
 
+    const BROADCAST_TYPE_STYLES = {
+      'General Info':      { bg: '#EFF6FF', color: '#1D4ED8', icon: 'ℹ️' },
+      'Health Advisory':   { bg: '#F0FDF4', color: '#16A34A', icon: '🩺' },
+      'Disease Alert':     { bg: '#FEF3C7', color: '#92400E', icon: '🦠' },
+      'Vaccination Drive': { bg: '#F3E8FF', color: '#6B21A8', icon: '💉' },
+      'Emergency':         { bg: '#FEE2E2', color: '#991B1B', icon: '🚨' },
+    }
+
+    const PRIORITY_STYLES = {
+      Urgent: { bg: '#FEE2E2', color: '#991B1B', borderClass: 'priority-urgent' },
+      High:   { bg: '#FFF7ED', color: '#9A3412', borderClass: 'priority-high' },
+      Medium: { bg: '#FEF3C7', color: '#92400E', borderClass: 'priority-medium' },
+      Low:    { bg: '#F0FDF4', color: '#16A34A', borderClass: 'priority-low' },
+    }
+
+    const loadBroadcasts = async () => {
+      try {
+        const res = await fetch(`${API}/broadcasts`)
+        const data = await res.json()
+
+        const broadcasts = (data.broadcasts || data.data || []).filter(b =>
+          b.targetAudience === 'all_citizens' || b.targetAudience === 'ward_citizens'
+        )
+
+        if (!broadcasts.length) {
+          document.getElementById('broadcastsContainer').innerHTML =
+            '<div class="empty-state">No public broadcasts at this time</div>'
+          return
+        }
+
+        document.getElementById('broadcastsContainer').innerHTML = `
+          <div class="broadcasts-grid">
+            ${broadcasts.map(b => {
+              const typeStyle = BROADCAST_TYPE_STYLES[b.category] || BROADCAST_TYPE_STYLES['General Info']
+              const priStyle  = PRIORITY_STYLES[b.priority] || PRIORITY_STYLES['Medium']
+              const timeAgo   = formatDate(b.createdAt || b.sentAt)
+              return `
+                <div class="broadcast-card ${priStyle.borderClass}">
+                  <div class="broadcast-top">
+                    <span class="broadcast-type-badge"
+                      style="background:${typeStyle.bg}; color:${typeStyle.color};">
+                      ${typeStyle.icon} ${b.category || 'General Info'}
+                    </span>
+                    <span class="broadcast-priority"
+                      style="background:${priStyle.bg}; color:${priStyle.color};">
+                      ${b.priority || 'Medium'}
+                    </span>
+                  </div>
+                  <div class="broadcast-title">${b.title}</div>
+                  <div class="broadcast-message">${b.message}</div>
+                  <div class="broadcast-footer">📅 ${timeAgo}</div>
+                </div>
+              `
+            }).join('')}
+          </div>
+        `
+      } catch (err) {
+        document.getElementById('broadcastsContainer').innerHTML =
+          '<div class="empty-state">Could not load broadcasts.</div>'
+      }
+    }
+
+    loadBroadcasts()
     loadCamps()
   </script>
 </body>
