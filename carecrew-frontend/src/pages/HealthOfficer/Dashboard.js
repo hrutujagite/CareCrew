@@ -1245,13 +1245,16 @@ const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, 
 // ─── Broadcast Composer Modal ─────────────────────────────────────────────────
 const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   const wardNames = wards.map(w => w.wardName)
+  const hospitalNames = [...new Set(wards.map(w => w.hospitalName).filter(Boolean))].sort()
 
   const [form, setForm] = useState({
     title: '',
     message: '',
     type: 'General Info',
     priority: 'Medium',
-    targetWards: [],   // empty = all wards
+    targetType: 'citizens',   // 'citizens' or 'hospitals'
+    targetWards: [],          // empty = all wards (citizens only)
+    targetHospital: '',       // '' = all hospitals, or specific hospital name
     expiresAt: '',
   })
   const [sending, setSending] = useState(false)
@@ -1273,64 +1276,51 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   }
 
   const selectAllWards = () => setForm(f => ({ ...f, targetWards: [] }))
-const handleSend = async () => {
-  if (!form.title.trim()) {
-    setError('Title is required.')
-    return
-  }
-  if (!form.message.trim()) {
-    setError('Message is required.')
-    return
-  }
 
-  setSending(true)
-  setError(null)
+  const handleSend = async () => {
+    if (!form.title.trim()) { setError('Title is required.'); return }
+    if (!form.message.trim()) { setError('Message is required.'); return }
 
-  try {
-    const res = await axios.post(
-      'https://carecrew-1.onrender.com/api/broadcasts',
-      {
-        title: form.title.trim(),
-        message: form.message.trim(),
+    setSending(true)
+    setError(null)
 
-        // ✅ FIX 1: type → category
-        category: form.type,
+    try {
+      // Determine targetAudience and target fields
+      let targetAudience, targetWard = null, targetHospitalName = null
 
-        priority: form.priority,
-
-        // ✅ FIX 2: handle audience properly
-        targetAudience:
-          form.targetWards.length === 0
-            ? "all_citizens"
-            : "ward_citizens",
-
-        // ✅ FIX 3: backend expects single ward (string)
-        targetWard:
-          form.targetWards.length === 0
-            ? null
-            : form.targetWards[0],
-
-        // ✅ FIX 4: expiry
-        expiresAt: form.expiresAt || null,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      if (form.targetType === 'citizens') {
+        targetAudience = form.targetWards.length === 0 ? 'all_citizens' : 'ward_citizens'
+        targetWard = form.targetWards.length > 0 ? form.targetWards[0] : null
+      } else {
+        targetAudience = form.targetHospital === '' ? 'all_hospitals' : 'specific_hospital'
+        targetHospitalName = form.targetHospital || null
       }
-    )
 
-    setSuccess(true)
-    onSent(res.data.broadcast)
+      const res = await axios.post(
+        'https://carecrew-1.onrender.com/api/broadcasts',
+        {
+          title: form.title.trim(),
+          message: form.message.trim(),
+          category: form.type,
+          priority: form.priority,
+          targetAudience,
+          targetWard,
+          targetHospitalName,
+          expiresAt: form.expiresAt || null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
 
-    setTimeout(() => onClose(), 2000)
-  } catch (err) {
-    console.log("Broadcast error:", err.response?.data || err.message) // 🔥 debug
-    setError(err.response?.data?.message || 'Failed to send broadcast. Please try again.')
-  } finally {
-    setSending(false)
+      setSuccess(true)
+      onSent(res.data.broadcast)
+      setTimeout(() => onClose(), 2000)
+    } catch (err) {
+      console.log('Broadcast error:', err.response?.data || err.message)
+      setError(err.response?.data?.message || 'Failed to send broadcast. Please try again.')
+    } finally {
+      setSending(false)
+    }
   }
-}
 
   const typeStyle = BROADCAST_TYPE_STYLES[form.type] || BROADCAST_TYPE_STYLES['General Info']
 
@@ -1341,9 +1331,9 @@ const handleSend = async () => {
         {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
           <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📢 Broadcast to Citizens</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📢 Send Broadcast</h2>
             <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
-              Message will be visible on the Citizen Dashboard immediately after sending
+              Message will be visible on the target dashboard immediately after sending
             </p>
           </div>
           <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B', flexShrink: 0 }}>✕</button>
@@ -1355,7 +1345,10 @@ const handleSend = async () => {
             <p style={{ fontSize: '52px', marginBottom: '14px' }}>📡</p>
             <p style={{ fontSize: '20px', fontWeight: 700, color: '#16A34A', marginBottom: '6px' }}>Broadcast Sent!</p>
             <p style={{ fontSize: '13px', color: '#94A3B8' }}>
-              Citizens {form.targetWards.length > 0 ? `in ${form.targetWards.join(', ')}` : 'across all wards'} will see this message on their dashboard.
+              {form.targetType === 'citizens'
+                ? `Citizens ${form.targetWards.length > 0 ? `in ${form.targetWards.join(', ')}` : 'across all wards'} will see this on their dashboard.`
+                : `${form.targetHospital || 'All hospital staff'} will see this on their dashboard.`
+              }
             </p>
           </div>
         ) : (
@@ -1368,6 +1361,41 @@ const handleSend = async () => {
                 <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#991B1B', fontSize: '14px', fontWeight: 700 }}>✕</button>
               </div>
             )}
+
+            {/* Send To — who receives this */}
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
+                Send To
+              </label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => setForm(f => ({ ...f, targetType: 'citizens', targetHospital: '' }))}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer',
+                    border: `1.5px solid ${form.targetType === 'citizens' ? '#2563EB' : '#E2E8F0'}`,
+                    background: form.targetType === 'citizens' ? '#EFF6FF' : '#fff',
+                    color: form.targetType === 'citizens' ? '#2563EB' : '#64748B',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  👨‍👩‍👧 Citizens
+                </button>
+                <button
+                  onClick={() => setForm(f => ({ ...f, targetType: 'hospitals', targetWards: [] }))}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer',
+                    border: `1.5px solid ${form.targetType === 'hospitals' ? '#059669' : '#E2E8F0'}`,
+                    background: form.targetType === 'hospitals' ? '#ECFDF5' : '#fff',
+                    color: form.targetType === 'hospitals' ? '#059669' : '#64748B',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  🏥 Hospital Staff
+                </button>
+              </div>
+            </div>
 
             {/* Title */}
             <div>
@@ -1415,7 +1443,11 @@ const handleSend = async () => {
                 Message <span style={{ color: '#DC2626' }}>*</span>
               </label>
               <textarea
-                placeholder="Write a clear, actionable message for citizens. Include what precautions to take, where to go for help, and any emergency contact numbers if relevant."
+                placeholder={
+                  form.targetType === 'citizens'
+                    ? 'Write a clear, actionable message for citizens. Include what precautions to take, where to go for help, and any emergency contact numbers if relevant.'
+                    : 'Write a message for hospital staff. Include action items, reporting requirements, or operational instructions.'
+                }
                 maxLength={2000}
                 rows={5}
                 value={form.message}
@@ -1425,44 +1457,67 @@ const handleSend = async () => {
               <p style={{ fontSize: '11px', color: form.message.length > 1800 ? '#EA580C' : '#CBD5E1', marginTop: '4px', textAlign: 'right' }}>{form.message.length}/2000</p>
             </div>
 
-            {/* Target Wards */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Target Wards
-                </label>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: '#94A3B8' }}>
-                    {form.targetWards.length === 0 ? '📣 Broadcasting to all wards' : `${form.targetWards.length} ward(s) selected`}
-                  </span>
-                  {form.targetWards.length > 0 && (
-                    <button onClick={selectAllWards} style={{ fontSize: '11px', color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: '0' }}>
-                      Clear (all wards)
-                    </button>
-                  )}
+            {/* Target — conditional on targetType */}
+            {form.targetType === 'citizens' ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '7px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Target Wards
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                      {form.targetWards.length === 0 ? '📣 Broadcasting to all wards' : `${form.targetWards.length} ward(s) selected`}
+                    </span>
+                    {form.targetWards.length > 0 && (
+                      <button onClick={selectAllWards} style={{ fontSize: '11px', color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: '0' }}>
+                        Clear (all wards)
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <button
+                    onClick={selectAllWards}
+                    style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${form.targetWards.length === 0 ? '#2563EB' : '#E2E8F0'}`, background: form.targetWards.length === 0 ? '#EFF6FF' : '#fff', color: form.targetWards.length === 0 ? '#2563EB' : '#64748B', transition: 'all 0.15s' }}
+                  >
+                    🌐 All Wards
+                  </button>
+                  {wardNames.map(ward => {
+                    const isSelected = form.targetWards.includes(ward)
+                    return (
+                      <button
+                        key={ward}
+                        onClick={() => toggleWard(ward)}
+                        style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${isSelected ? '#059669' : '#E2E8F0'}`, background: isSelected ? '#ECFDF5' : '#fff', color: isSelected ? '#065F46' : '#64748B', transition: 'all 0.15s' }}
+                      >
+                        {isSelected ? '✓ ' : ''}{ward}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                <button
-                  onClick={selectAllWards}
-                  style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${form.targetWards.length === 0 ? '#2563EB' : '#E2E8F0'}`, background: form.targetWards.length === 0 ? '#EFF6FF' : '#fff', color: form.targetWards.length === 0 ? '#2563EB' : '#64748B', transition: 'all 0.15s' }}
+            ) : (
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
+                  Target Hospital
+                </label>
+                <select
+                  value={form.targetHospital}
+                  onChange={e => setForm(f => ({ ...f, targetHospital: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: '1.5px solid #E2E8F0', borderRadius: '10px', outline: 'none', color: '#1E293B', background: '#fff', cursor: 'pointer' }}
                 >
-                  🌐 All Wards
-                </button>
-                {wardNames.map(ward => {
-                  const isSelected = form.targetWards.includes(ward)
-                  return (
-                    <button
-                      key={ward}
-                      onClick={() => toggleWard(ward)}
-                      style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${isSelected ? '#059669' : '#E2E8F0'}`, background: isSelected ? '#ECFDF5' : '#fff', color: isSelected ? '#065F46' : '#64748B', transition: 'all 0.15s' }}
-                    >
-                      {isSelected ? '✓ ' : ''}{ward}
-                    </button>
-                  )
-                })}
+                  <option value=''>🏥 All Hospitals & UPHCs</option>
+                  {hospitalNames.map(h => (
+                    <option key={h} value={h}>
+                      {h.includes('UPHC') ? '🏥 ' : '🏨 '}{h}
+                    </option>
+                  ))}
+                </select>
+                <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '5px' }}>
+                  {form.targetHospital === '' ? `📣 Broadcasting to all ${hospitalNames.length} hospitals & UPHCs` : `Sending only to ${form.targetHospital}`}
+                </p>
               </div>
-            </div>
+            )}
 
             {/* Optional expiry */}
             <div>
@@ -1480,7 +1535,9 @@ const handleSend = async () => {
             {/* Live preview */}
             {(form.title || form.message) && (
               <div>
-                <p style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Preview — as citizens will see it</p>
+                <p style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                  Preview — as {form.targetType === 'citizens' ? 'citizens' : 'hospital staff'} will see it
+                </p>
                 <div style={{
                   background: form.priority === 'Urgent' ? '#FEF2F2' : form.priority === 'High' ? '#FFF7ED' : '#F8FAFC',
                   border: `1.5px solid ${PRIORITY_COLORS[form.priority]}30`,
@@ -1491,10 +1548,15 @@ const handleSend = async () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                     <span style={{ ...pillBase, background: typeStyle.bg, color: typeStyle.color }}>{typeStyle.icon} {form.type}</span>
                     <span style={{ ...pillBase, background: PRIORITY_BG[form.priority], color: PRIORITY_COLORS[form.priority], border: `1px solid ${PRIORITY_COLORS[form.priority]}40` }}>{form.priority} Priority</span>
-                    {form.targetWards.length === 0
-                      ? <span style={{ ...pillBase, background: '#F1F5F9', color: '#475569' }}>🌐 All Wards</span>
-                      : form.targetWards.slice(0, 3).map(w => <span key={w} style={{ ...pillBase, background: '#ECFDF5', color: '#065F46' }}>{w}</span>)
-                    }
+                    {form.targetType === 'citizens' ? (
+                      form.targetWards.length === 0
+                        ? <span style={{ ...pillBase, background: '#F1F5F9', color: '#475569' }}>🌐 All Wards</span>
+                        : form.targetWards.slice(0, 3).map(w => <span key={w} style={{ ...pillBase, background: '#ECFDF5', color: '#065F46' }}>{w}</span>)
+                    ) : (
+                      <span style={{ ...pillBase, background: '#ECFDF5', color: '#065F46' }}>
+                        🏥 {form.targetHospital || 'All Hospitals'}
+                      </span>
+                    )}
                     {form.targetWards.length > 3 && <span style={{ ...pillBase, background: '#F1F5F9', color: '#94A3B8' }}>+{form.targetWards.length - 3} more</span>}
                   </div>
                   {form.title && <p style={{ fontSize: '15px', fontWeight: 700, color: '#1E293B', marginBottom: '6px' }}>{form.title}</p>}
@@ -1517,7 +1579,9 @@ const handleSend = async () => {
                     ? '#E2E8F0'
                     : form.priority === 'Urgent'
                       ? '#DC2626'
-                      : '#059669',
+                      : form.targetType === 'hospitals'
+                        ? '#059669'
+                        : '#2563EB',
                 color: !form.title.trim() || !form.message.trim() ? '#94A3B8' : '#fff',
                 border: 'none',
                 borderRadius: '10px',
@@ -1526,9 +1590,7 @@ const handleSend = async () => {
                 fontWeight: 700,
                 cursor: sending || !form.title.trim() || !form.message.trim() ? 'not-allowed' : 'pointer',
                 width: '100%',
-                boxShadow: sending || !form.title.trim() || !form.message.trim()
-                  ? 'none'
-                  : '0 4px 14px rgba(5,150,105,0.35)',
+                boxShadow: sending || !form.title.trim() || !form.message.trim() ? 'none' : '0 4px 14px rgba(0,0,0,0.15)',
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
@@ -1538,137 +1600,15 @@ const handleSend = async () => {
             >
               {sending ? (
                 <>📡 Sending broadcast...</>
+              ) : form.targetType === 'citizens' ? (
+                <>📢 Send to Citizens{form.targetWards.length > 0 ? ` (${form.targetWards.length} ward${form.targetWards.length > 1 ? 's' : ''})` : ' (All Wards)'}</>
               ) : (
-                <>📢 Send Broadcast to Citizens{form.targetWards.length > 0 ? ` (${form.targetWards.length} ward${form.targetWards.length > 1 ? 's' : ''})` : ' (All Wards)'}</>
+                <>🏥 Send to {form.targetHospital || 'All Hospitals'}</>
               )}
             </button>
 
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Broadcast History Panel ──────────────────────────────────────────────────
-const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => {
-  const [deactivatingId, setDeactivatingId] = useState(null)
-
-  const handleDeactivate = async (id) => {
-    setDeactivatingId(id)
-    try {
-      await axios.patch(
-        `https://carecrew-1.onrender.com/api/broadcasts/${id}/deactivate`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      onDeactivate(id)
-    } catch (err) {
-      console.error('Deactivate failed:', err)
-    } finally {
-      setDeactivatingId(null)
-    }
-  }
-
-  const active = broadcasts.filter(b => b.isActive)
-  const inactive = broadcasts.filter(b => !b.isActive)
-
-  const BroadcastCard = ({ b }) => {
-    const typeStyle = BROADCAST_TYPE_STYLES[b.type] || BROADCAST_TYPE_STYLES['General Info']
-    const prioStyle = BROADCAST_PRIORITY_STYLES[b.priority] || BROADCAST_PRIORITY_STYLES['Medium']
-    return (
-      <div style={{
-        background: b.isActive ? '#FAFFFE' : '#F8FAFC',
-        border: `1.5px solid ${b.isActive ? '#05906930' : '#E2E8F0'}`,
-        borderLeft: `4px solid ${b.isActive ? '#059669' : '#CBD5E1'}`,
-        borderRadius: '10px',
-        padding: '14px 16px',
-        opacity: b.isActive ? 1 : 0.65,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
-              <span style={{ ...pillBase, background: typeStyle.bg, color: typeStyle.color, fontSize: '10px' }}>{typeStyle.icon} {b.type}</span>
-              <span style={{ ...pillBase, background: prioStyle.bg, color: prioStyle.color, border: `1px solid ${prioStyle.border}`, fontSize: '10px' }}>{b.priority}</span>
-              {b.isActive
-                ? <span style={{ ...pillBase, background: '#ECFDF5', color: '#065F46', fontSize: '10px' }}>● Active</span>
-                : <span style={{ ...pillBase, background: '#F1F5F9', color: '#64748B', fontSize: '10px' }}>Deactivated</span>
-              }
-              {b.targetWards && b.targetWards.length > 0
-                ? b.targetWards.slice(0, 2).map(w => <span key={w} style={{ ...pillBase, background: '#F1F5F9', color: '#475569', fontSize: '10px', padding: '2px 6px' }}>{w}</span>)
-                : <span style={{ ...pillBase, background: '#EFF6FF', color: '#1D4ED8', fontSize: '10px' }}>All Wards</span>
-              }
-              {b.targetWards && b.targetWards.length > 2 && (
-                <span style={{ ...pillBase, background: '#F1F5F9', color: '#94A3B8', fontSize: '10px', padding: '2px 6px' }}>+{b.targetWards.length - 2}</span>
-              )}
-            </div>
-            <p style={{ fontSize: '14px', fontWeight: 700, color: '#1E293B', marginBottom: '4px' }}>{b.title}</p>
-            <p style={{ fontSize: '12px', color: '#64748B', lineHeight: 1.5, marginBottom: '6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{b.message}</p>
-            <p style={{ fontSize: '11px', color: '#94A3B8' }}>
-              Sent {new Date(b.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              {b.createdBy?.name ? ` · by ${b.createdBy.name}` : ''}
-              {b.expiresAt ? ` · Expires ${new Date(b.expiresAt).toLocaleDateString()}` : ''}
-            </p>
-          </div>
-          {b.isActive && (
-            <button
-              onClick={() => handleDeactivate(b._id)}
-              disabled={deactivatingId === b._id}
-              style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '7px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, color: '#991B1B', cursor: deactivatingId === b._id ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, opacity: deactivatingId === b._id ? 0.6 : 1 }}
-            >
-              {deactivatingId === b._id ? '...' : '🔕 Deactivate'}
-            </button>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '680px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
-          <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📋 Broadcast History</h2>
-            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
-              {active.length} active · {inactive.length} deactivated · {broadcasts.length} total
-            </p>
-          </div>
-          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B' }}>✕</button>
-        </div>
-
-        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {broadcasts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-              <p style={{ fontSize: '40px', marginBottom: '12px' }}>📭</p>
-              <p style={{ fontSize: '16px', fontWeight: 600, color: '#1E293B', marginBottom: '4px' }}>No broadcasts yet</p>
-              <p style={{ fontSize: '13px', color: '#94A3B8' }}>Broadcasts you send will appear here.</p>
-            </div>
-          ) : (
-            <>
-              {active.length > 0 && (
-                <div>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                    ● Active Broadcasts ({active.length})
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {active.map(b => <BroadcastCard key={b._id} b={b} />)}
-                  </div>
-                </div>
-              )}
-              {inactive.length > 0 && (
-                <div>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                    Deactivated ({inactive.length})
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {inactive.map(b => <BroadcastCard key={b._id} b={b} />)}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
   )
