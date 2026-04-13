@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+﻿import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, LineChart, Line,
@@ -1886,34 +1886,15 @@ export default function Dashboard() {
       if (alert.isActive && alert.status !== 'resolved' && isSevere && !sentAlertIds.current.has(alert._id)) {
         sentAlertIds.current.add(alert._id);
         localStorage.setItem('sentWhatsAppIds', JSON.stringify([...sentAlertIds.current]));
-
-        const accountSid = 'AC647b2214322e07e197f3c9991e41e0a5';
-        const authToken = 'c5a3abd8e5f9a567620e7bd7f514c17e';
-        const from = 'whatsapp:+14155238886';
-        const to = 'whatsapp:+919642220057';
-
-        const emoji = alert.severity === 'Critical' ? '🚨' : alert.severity === 'High' ? '⚠️' : '✅';
-        const body = `${emoji} *CareCrew Auto-Alert*\n\n*Ward:* ${alert.wardName}\n*Issue:* ${alert.alertType}\n*Severity:* ${alert.severity}\n\n*Detail:* ${alert.message}`;
-
-        const data = new URLSearchParams();
-        data.append('To', to);
-        data.append('From', from);
-        data.append('Body', body);
-
         try {
           await axios.post(
-            `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-            data,
-            {
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                Authorization: 'Basic ' + window.btoa(`${accountSid}:${authToken}`)
-              }
-            }
-          );
+            'https://carecrew-1.onrender.com/api/notifications/whatsapp',
+            { alertId: alert._id, wardName: alert.wardName, alertType: alert.alertType, severity: alert.severity, message: alert.message },
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
           console.log('WhatsApp sent for trigger:', alert._id);
         } catch (error) {
-          console.error('WhatsApp TWILIO error:', error);
+          console.error('WhatsApp backend error:', error);
         }
       }
     });
