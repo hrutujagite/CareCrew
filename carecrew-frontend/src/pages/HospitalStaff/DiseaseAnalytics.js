@@ -21,9 +21,14 @@ const getColor = (name) => DISEASE_COLORS[name] || '#64748b'
 const buildDiseaseMap = (reports) => {
   const map = {}
   reports.forEach((r) => {
-    if (!map[r.diseaseName]) {
-      map[r.diseaseName] = {
-        disease: r.diseaseName,
+    // Use customDiseaseName when disease is "Other" so it shows real name everywhere
+    const displayName = r.diseaseName === 'Other' && r.customDiseaseName
+      ? r.customDiseaseName
+      : r.diseaseName
+
+    if (!map[displayName]) {
+      map[displayName] = {
+        disease: displayName,
         confirmed: 0, recovered: 0, deaths: 0,
         submissionCount: 0,
         lastReported: null,
@@ -32,7 +37,7 @@ const buildDiseaseMap = (reports) => {
         weeklyData: {},   // week label → confirmed count
       }
     }
-    const d = map[r.diseaseName]
+    const d = map[displayName]
     d.confirmed  += r.newConfirmed || 0
     d.recovered  += r.newRecovered || 0
     d.deaths     += r.newDeaths    || 0

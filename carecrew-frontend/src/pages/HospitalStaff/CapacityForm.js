@@ -15,7 +15,7 @@ const CapacityForm = () => {
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(false)
-  const [prefilling, setPrefilling] = useState(true)   // fetching previous values
+  const [prefilling, setPrefilling] = useState(true)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [previousSubmission, setPreviousSubmission] = useState(null)
@@ -25,6 +25,8 @@ const CapacityForm = () => {
     availableBeds: '',
     icuTotal: '',
     icuAvailable: '',
+    emergencyBedsTotal: '',
+    emergencyBedsAvailable: '',
     oxygenTotal: '',
     oxygenAvailable: '',
     medicineStockPercentage: ''
@@ -40,13 +42,15 @@ const CapacityForm = () => {
         )
         const history = res.data?.history || []
         if (history.length > 0) {
-          const latest = history[0]   // already sorted newest first from backend
+          const latest = history[0]
           setPreviousSubmission(latest)
           setForm({
             totalBeds: latest.totalBeds ?? '',
             availableBeds: latest.availableBeds ?? '',
             icuTotal: latest.icuTotal ?? '',
             icuAvailable: latest.icuAvailable ?? '',
+            emergencyBedsTotal: latest.emergencyBedsTotal ?? '',
+            emergencyBedsAvailable: latest.emergencyBedsAvailable ?? '',
             oxygenTotal: latest.oxygenTotal ?? '',
             oxygenAvailable: latest.oxygenAvailable ?? '',
             medicineStockPercentage: latest.medicineStockPercentage ?? ''
@@ -71,7 +75,13 @@ const CapacityForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    const numericFields = ['totalBeds', 'availableBeds', 'icuTotal', 'icuAvailable', 'oxygenTotal', 'oxygenAvailable', 'medicineStockPercentage']
+    const numericFields = [
+      'totalBeds', 'availableBeds',
+      'icuTotal', 'icuAvailable',
+      'emergencyBedsTotal', 'emergencyBedsAvailable',
+      'oxygenTotal', 'oxygenAvailable',
+      'medicineStockPercentage'
+    ]
     if (numericFields.includes(name)) {
       if (value !== '' && !/^\d+$/.test(value)) return
       setForm(prev => ({ ...prev, [name]: value === '' ? '' : Number(value) }))
@@ -83,10 +93,11 @@ const CapacityForm = () => {
   // ── Validation ──────────────────────────────────────────────────────────────
   const bedsInvalid = form.availableBeds !== '' && form.totalBeds !== '' && Number(form.availableBeds) > Number(form.totalBeds)
   const icuInvalid = form.icuAvailable !== '' && form.icuTotal !== '' && Number(form.icuAvailable) > Number(form.icuTotal)
+  const emergencyBedsInvalid = form.emergencyBedsAvailable !== '' && form.emergencyBedsTotal !== '' && Number(form.emergencyBedsAvailable) > Number(form.emergencyBedsTotal)
   const oxygenInvalid = form.oxygenAvailable !== '' && form.oxygenTotal !== '' && Number(form.oxygenAvailable) > Number(form.oxygenTotal)
   const medicineInvalid = form.medicineStockPercentage !== '' && (Number(form.medicineStockPercentage) < 0 || Number(form.medicineStockPercentage) > 100)
 
-  const anyInvalid = bedsInvalid || icuInvalid || oxygenInvalid || medicineInvalid
+  const anyInvalid = bedsInvalid || icuInvalid || emergencyBedsInvalid || oxygenInvalid || medicineInvalid
 
   // Live warning banners
   const oxygenPct = form.oxygenTotal > 0 ? (form.oxygenAvailable / form.oxygenTotal) : 1
@@ -98,7 +109,13 @@ const CapacityForm = () => {
     setError('')
     setSuccess(false)
 
-    const requiredFields = ['totalBeds', 'availableBeds', 'icuTotal', 'icuAvailable', 'oxygenTotal', 'oxygenAvailable', 'medicineStockPercentage']
+    const requiredFields = [
+      'totalBeds', 'availableBeds',
+      'icuTotal', 'icuAvailable',
+      'emergencyBedsTotal', 'emergencyBedsAvailable',
+      'oxygenTotal', 'oxygenAvailable',
+      'medicineStockPercentage'
+    ]
     const hasEmpty = requiredFields.some(f => form[f] === '')
     if (hasEmpty) {
       setError('Please fill in all fields before submitting.')
@@ -256,6 +273,36 @@ const CapacityForm = () => {
               )}
             </div>
 
+            {/* ── Emergency Beds ── */}
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Emergency Beds</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Total Emergency Beds"
+                  name="emergencyBedsTotal"
+                  type="text"
+                  value={form.emergencyBedsTotal}
+                  onChange={handleChange}
+                  placeholder="e.g. 10"
+                  required
+                />
+                <Input
+                  label="Available Emergency Beds"
+                  name="emergencyBedsAvailable"
+                  type="text"
+                  value={form.emergencyBedsAvailable}
+                  onChange={handleChange}
+                  placeholder={`max ${form.emergencyBedsTotal || '—'}`}
+                  required
+                />
+              </div>
+              {emergencyBedsInvalid && (
+                <p className="text-red-600 text-xs mt-1">
+                  ⚠ Available emergency beds ({form.emergencyBedsAvailable}) cannot exceed total ({form.emergencyBedsTotal}).
+                </p>
+              )}
+            </div>
+
             {/* ── Oxygen ── */}
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Oxygen Cylinders</p>
@@ -322,17 +369,18 @@ const CapacityForm = () => {
                     </div>
                     <div className="w-full bg-gray-100 rounded-full h-3">
                       <div
-                        className={`h-3 rounded-full transition-all ${form.medicineStockPercentage < 20 ? 'bg-red-500' :
-                            form.medicineStockPercentage < 50 ? 'bg-yellow-400' :
-                              'bg-green-500'
-                          }`}
+                        className={`h-3 rounded-full transition-all ${
+                          form.medicineStockPercentage < 20 ? 'bg-red-500' :
+                          form.medicineStockPercentage < 50 ? 'bg-yellow-400' :
+                          'bg-green-500'
+                        }`}
                         style={{ width: `${Math.min(100, Math.max(0, form.medicineStockPercentage))}%` }}
                       />
                     </div>
                     <p className="text-xs text-gray-400">
                       {form.medicineStockPercentage < 20 ? '🔴 Critical — send alert' :
                         form.medicineStockPercentage < 50 ? '🟡 Low — order soon' :
-                          '🟢 Adequate'}
+                        '🟢 Adequate'}
                     </p>
                   </div>
                 )}

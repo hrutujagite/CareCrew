@@ -241,14 +241,15 @@ const DiseaseForm = () => {
             {/* Custom disease name — only shown when Other is selected */}
             {form.diseaseName === 'Other' && (
               <div>
-                <Input
-                  label="Disease Name (specify)"
-                  name="customDiseaseName"
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Disease Name (specify) <span className="text-red-500">*</span>
+                </label>
+                <input
                   type="text"
                   value={form.customDiseaseName}
-                  onChange={handleChange}
+                  onChange={(e) => setForm(prev => ({ ...prev, customDiseaseName: e.target.value }))}
                   placeholder="e.g. Leptospirosis"
-                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   This name will appear in analytics and ward reports instead of "Other".
