@@ -1987,40 +1987,9 @@ export default function Dashboard() {
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6'>
 
-        {/* Consolidated Summary Panel */}
-        {wards.length > 0 && (() => {
-          const highestRiskWard = wards.filter(w => (w.riskLevel || '').toLowerCase() === 'red').sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0] || wards.slice().sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
-          const diseaseMap = {}
-          wards.forEach(w => { if (w.topDisease && w.topDisease !== 'None') diseaseMap[w.topDisease] = (diseaseMap[w.topDisease] || 0) + (w.todayCases || 0) })
-          const topDisease = Object.entries(diseaseMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
-          const stats = [
-            { icon: '🦺', label: 'Total Active Cases', value: totalCases.toLocaleString(), sub: 'Live', valueColor: totalCases > 200 ? '#DC2626' : totalCases > 100 ? '#D97706' : '#16A34A' },
-            { icon: '🚨', label: 'Highest Risk Ward', value: highestRiskWard?.wardName || '—', sub: highestRiskWard ? `${highestRiskWard.activeCases || 0} active cases` : 'Stable', valueColor: highestRiskWard?.riskLevel?.toLowerCase() === 'red' ? '#DC2626' : highestRiskWard?.riskLevel?.toLowerCase() === 'yellow' ? '#D97706' : '#16A34A' },
-            { icon: '🔬', label: 'Most Reported Disease', value: topDisease, sub: diseaseMap[topDisease] ? `${diseaseMap[topDisease]} cases today` : 'No surge', valueColor: '#7C3AED' },
-            { icon: '⚠️', label: 'Wards on Alert', value: wardsOnAlert.toLocaleString(), sub: 'Live Status', valueColor: wardsOnAlert > 5 ? '#DC2626' : '#D97706' },
-            { icon: '🏥', label: 'Hospitals Reporting', value: hospitalsReporting.toLocaleString(), sub: 'Active Facilities', valueColor: '#2563EB' },
-          ]
-          return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px', width: '100%' }}>
-              {stats.map(({ icon, label, value, sub, valueColor }) => (
-                <div key={label} style={{ background: '#fff', border: '1px solid #EAEDF1', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', minWidth: 0 }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{icon}</div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ fontSize: '9px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                      <p style={{ fontSize: '18px', fontWeight: 800, color: '#1E293B', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</p>
-                      {sub === 'Live' && <span style={{ fontSize: '7px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '0.5px 4px', borderRadius: '3px', textTransform: 'uppercase', border: '1px solid #DBEAFE' }}>Live</span>}
-                    </div>
-                    {sub !== 'Live' && <p style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>{sub}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        })()}
 
         {/* Page Header */}
-        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4'>
           <div>
             <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>Health Officer Dashboard</h1>
             <p className='text-sm font-medium text-slate-500 flex items-center gap-2 mt-1.5'>
@@ -2028,7 +1997,7 @@ export default function Dashboard() {
               Last updated: {new Date().toLocaleTimeString()}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1, paddingLeft: '20px' }}>
 
             {/* ← NEW */}
             <button
@@ -2101,6 +2070,39 @@ export default function Dashboard() {
         </div>
 
         {error && <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '12px 16px', color: '#991B1B', fontSize: '14px' }}>{error}</div>}
+
+        {/* Consolidated Summary Panel */}
+        {wards.length > 0 && (() => {
+          const highestRiskWard = wards.filter(w => (w.riskLevel || '').toLowerCase() === 'red').sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0] || wards.slice().sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
+          const diseaseMap = {}
+          wards.forEach(w => { if (w.topDisease && w.topDisease !== 'None') diseaseMap[w.topDisease] = (diseaseMap[w.topDisease] || 0) + (w.todayCases || 0) })
+          const topDisease = Object.entries(diseaseMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
+          const stats = [
+            { icon: '🦺', label: 'Total Active Cases', value: totalCases.toLocaleString(), sub: 'Live', valueColor: totalCases > 200 ? '#DC2626' : totalCases > 100 ? '#D97706' : '#16A34A' },
+            { icon: '🚨', label: 'Highest Risk Ward', value: highestRiskWard?.wardName || '—', sub: highestRiskWard ? `${highestRiskWard.activeCases || 0} active cases` : 'Stable', valueColor: highestRiskWard?.riskLevel?.toLowerCase() === 'red' ? '#DC2626' : highestRiskWard?.riskLevel?.toLowerCase() === 'yellow' ? '#D97706' : '#16A34A' },
+            { icon: '🔬', label: 'Most Reported Disease', value: topDisease, sub: diseaseMap[topDisease] ? `${diseaseMap[topDisease]} cases today` : 'No surge', valueColor: '#7C3AED' },
+            { icon: '⚠️', label: 'Wards on Alert', value: wardsOnAlert.toLocaleString(), sub: 'Live Status', valueColor: wardsOnAlert > 5 ? '#DC2626' : '#D97706' },
+            { icon: '🏥', label: 'Hospitals Reporting', value: hospitalsReporting.toLocaleString(), sub: 'Active Facilities', valueColor: '#2563EB' },
+          ]
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px', width: '100%' }}>
+              {stats.map(({ icon, label, value, sub, valueColor }) => (
+                <div key={label} style={{ background: '#fff', border: '1px solid #EAEDF1', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', minWidth: 0 }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{icon}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: '9px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                      <p style={{ fontSize: '18px', fontWeight: 800, color: '#1E293B', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</p>
+                      {sub === 'Live' && <span style={{ fontSize: '7px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '0.5px 4px', borderRadius: '3px', textTransform: 'uppercase', border: '1px solid #DBEAFE' }}>Live</span>}
+                    </div>
+                    {sub !== 'Live' && <p style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>{sub}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+
 
 
 
