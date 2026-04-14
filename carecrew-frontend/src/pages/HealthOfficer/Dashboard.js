@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, LineChart, Line,
@@ -1487,8 +1487,8 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
     setDeactivatingId(id)
     try {
       await axios.patch(
-        `https://carecrew-1.onrender.com/api/broadcasts/${id}/deactivate`,
-        {},
+        `https://carecrew-1.onrender.com/api/broadcasts/${id}`,
+        { isActive: false },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       onDeactivate(id)
@@ -1745,13 +1745,23 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
 
                     {/* Action buttons */}
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {indent.status === 'pending' && !isReviewing && (
-                        <button
-                          onClick={() => { setReviewingId(indent._id); setReviewNote('') }}
-                          style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#1D4ED8', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          📋 Review
-                        </button>
+                      {indent.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleReview(indent._id, 'approved')}
+                            disabled={isLoading}
+                            style={{ background: '#16A34A', color: '#fff', border: 'none', borderRadius: '7px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                          >
+                            {isLoading ? '...' : '✅ Approve'}
+                          </button>
+                          <button
+                            onClick={() => handleReview(indent._id, 'rejected')}
+                            disabled={isLoading}
+                            style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '7px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                          >
+                            {isLoading ? '...' : '✗ Reject'}
+                          </button>
+                        </>
                       )}
                       {indent.status === 'approved' && (
                         <button
@@ -1765,42 +1775,7 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
                     </div>
                   </div>
 
-                  {/* Inline review form */}
-                  {isReviewing && (
-                    <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.85)', borderRadius: '10px', padding: '14px', border: '1px solid #E2E8F0' }}>
-                      <p style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Review Note (optional)</p>
-                      <textarea
-                        value={reviewNote}
-                        onChange={e => setReviewNote(e.target.value)}
-                        rows={2}
-                        placeholder="e.g. Approved — stock will be dispatched by Thursday"
-                        style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1.5px solid #E2E8F0', borderRadius: '8px', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.5 }}
-                      />
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                        <button
-                          onClick={() => handleReview(indent._id, 'approved')}
-                          disabled={isLoading}
-                          style={{ background: '#16A34A', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.6 : 1 }}
-                        >
-                          {isLoading ? '...' : '✅ Approve'}
-                        </button>
-                        <button
-                          onClick={() => handleReview(indent._id, 'rejected')}
-                          disabled={isLoading}
-                          style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.6 : 1 }}
-                        >
-                          {isLoading ? '...' : '✗ Reject'}
-                        </button>
-                        <button
-                          onClick={() => { setReviewingId(null); setReviewNote('') }}
-                          style={{ background: '#F1F5F9', color: '#64748B', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
               </div>
             )
           })}
