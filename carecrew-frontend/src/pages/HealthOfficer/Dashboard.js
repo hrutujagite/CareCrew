@@ -1727,13 +1727,11 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
   const filtered = indents.filter(i => filter === 'all' || i.status === filter)
 
   const handleReview = async (id, status) => {
-    setActionLoading(id)
-    await onReview(id, status, reviewNote)
-    setReviewingId(null)
-    setReviewNote('')
-    setActionLoading(null)
-  }
-
+  setActionLoading(id)
+  await onReview(id, status, reviewNote)
+  setReviewNote('')
+  setActionLoading(null)
+}
   const ITEM_TYPE_ICONS = { medicine: '💊', equipment: '🩺', supply: '📦' }
 
   return (
