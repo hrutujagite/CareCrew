@@ -27,8 +27,10 @@ const chatRoutes = require('./routes/chat');
 const indentRoutes = require('./routes/indent');
 const broadcastRoutes = require('./routes/broadcasts');
 const alertRoutes = require('./routes/alerts');
+const notificationRoutes = require('./routes/notifications');
 
 app.use('/api/alerts', alertRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/broadcasts', broadcastRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/disease', diseaseRoutes);

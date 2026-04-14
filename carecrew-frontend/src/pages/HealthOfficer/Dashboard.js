@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+﻿import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, LineChart, Line,
@@ -7,7 +7,7 @@ import {
 } from 'recharts'
 
 import Navbar from '../../components/shared/Navbar'
-import Card, { StatCard } from '../../components/shared/Card'
+import Card from '../../components/shared/Card'
 import { InlineLoader } from '../../components/shared/Loader'
 import { useAuth } from '../../context/AuthContext'
 import Heatmap from './Heatmap'
@@ -55,7 +55,7 @@ const ALERT_THRESHOLDS = [
     check: (w) => (w.activeCases || w.todayCases || 0) > 100,
     message: (w) => `Active cases exceed 100 (currently ${w.activeCases || w.todayCases || 0})`,
     recommendation: 'Deploy mobile health units immediately. Coordinate with district health office for surge response team.',
-    icon: '🦠', color: '#DC2626', bg: '#FEE2E2', border: '#FCA5A5',
+    icon: '🦺', color: '#DC2626', bg: '#FEE2E2', border: '#FCA5A5',
   },
   {
     id: 'cases_warning', type: 'Case Surge', severity: 'High', priority: 2,
@@ -577,7 +577,7 @@ const HospitalPerformanceCards = ({ hospitals }) => {
     { icon: '🛏️', label: 'Beds Available', value: `${totalAvailBeds} / ${totalBeds}`, color: totalAvailBeds < totalBeds * 0.2 ? '#DC2626' : '#16A34A' },
     { icon: '🏨', label: 'ICU Available', value: `${totalIcuAvail} / ${totalIcu}`, color: totalIcuAvail < totalIcu * 0.2 ? '#DC2626' : '#2563EB' },
     { icon: '📊', label: 'Avg Bed Occupancy', value: `${avgBedOcc}%`, color: avgBedOcc > 80 ? '#DC2626' : avgBedOcc > 60 ? '#D97706' : '#16A34A' },
-    { icon: '🦠', label: 'Cases Today (All)', value: totalCases, color: totalCases > 200 ? '#DC2626' : '#475569' },
+    { icon: '🦺', label: 'Cases Today (All)', value: totalCases, color: totalCases > 200 ? '#DC2626' : '#475569' },
     { icon: '🚨', label: 'Active Alerts', value: totalAlerts, color: totalAlerts > 0 ? '#DC2626' : '#16A34A' },
   ]
 
@@ -667,7 +667,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             {[
               { label: 'RISK LEVEL', value: hospital.riskLevel || 'Green', color: riskColor, bg: riskBg },
               { label: 'CASES TODAY', value: hospital.todayCases ?? 0, color: '#DC2626', bg: '#FEF2F2' },
-              { label: 'APPOINTMENTS', value: hospital.appointmentsToday ?? 0, color: '#2563EB', bg: '#EFF6FF' },
               { label: 'ACTIVE ALERTS', value: hospital.activeAlerts ?? 0, color: hospital.activeAlerts > 0 ? '#DC2626' : '#16A34A', bg: hospital.activeAlerts > 0 ? '#FEF2F2' : '#F0FDF4' },
             ].map(({ label, value, color, bg }) => (
               <div key={label} style={{ background: bg, border: `1.5px solid ${color}30`, borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
@@ -727,7 +726,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             <MetricRow label='ICU Occupancy' value={`${icuPct}%`} color={icuPct > 80 ? '#DC2626' : '#2563EB'} />
             <MetricRow label='Medicine Stock' value={`${medPct}% — ${medLabel}`} color={medColor} />
             <MetricRow label='Staff Count' value={hospital.staffCount || '—'} />
-            <MetricRow label='Appointments Today' value={hospital.appointmentsToday ?? 0} color='#2563EB' />
           </div>
 
           {diseasePieData.length > 0 && (
@@ -795,6 +793,7 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
             </div>
           )}
 
+
           <button
             onClick={() => {
               const printWindow = window.open('', '_blank')
@@ -815,11 +814,10 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
               @media print{body{padding:12px;} @page{margin:10mm;size:A4;}}
               </style></head><body>
               <h1>🏥 ${hospital.hospitalName}</h1>
-              <p class="sub">Type: ${hospital.type || 'General'} · Wards: ${(hospital.wardNames || []).join(', ')} · Printed: ${new Date().toLocaleString()}</p>
-              <div class="grid">
+              <p class="sub">Type: ${hospital.type || 'General'} ┬╖ Wards: ${(hospital.wardNames || []).join(', ')} ┬╖ Printed: ${new Date().toLocaleString()}</p>
+              <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
                 <div class="card"><div class="label">Risk Level</div><div class="big">${hospital.riskLevel || '—'}</div></div>
                 <div class="card"><div class="label">Cases Today</div><div class="big">${hospital.todayCases ?? 0}</div></div>
-                <div class="card"><div class="label">Bed Occupancy</div><div class="big">${bedPct}%</div></div>
                 <div class="card"><div class="label">Active Alerts</div><div class="big">${hospital.activeAlerts ?? 0}</div></div>
               </div>
               <div class="section">
@@ -839,7 +837,6 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
                 <div class="row"><span class="row-label">ICU Total</span><span class="row-val">${hospital.icuTotal ?? 0}</span></div>
                 <div class="row"><span class="row-label">ICU Available</span><span class="row-val">${hospital.icuAvailable ?? 0}</span></div>
                 <div class="row"><span class="row-label">Medicine Stock</span><span class="row-val">${medPct}% (${medLabel})</span></div>
-                <div class="row"><span class="row-label">Appointments Today</span><span class="row-val">${hospital.appointmentsToday ?? 0}</span></div>
               </div>
               <p style="font-size:11px;color:#94A3B8;text-align:center;margin-top:24px">CareCrew — Solapur Municipal Corporation · Generated: ${new Date().toLocaleString()}</p>
               </body></html>`)
@@ -902,7 +899,7 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>{ward.wardName}</h2>
             <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>
-              Ward Code: {ward.wardCode} &nbsp;·&nbsp; Population: {(ward.population || 0).toLocaleString()} &nbsp;·&nbsp; Last updated: {ward.lastUpdated ? new Date(ward.lastUpdated).toLocaleTimeString() : '—'}
+              Ward Code: {ward.wardCode} &nbsp;┬╖&nbsp; Population: {(ward.population || 0).toLocaleString()} &nbsp;┬╖&nbsp; Last updated: {ward.lastUpdated ? new Date(ward.lastUpdated).toLocaleTimeString() : '—'}
             </p>
           </div>
           <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B', flexShrink: 0 }}>✕</button>
@@ -1162,7 +1159,7 @@ const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, 
         <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '14px' }}>
-              <p style={{ fontSize: '32px', marginBottom: '8px' }}>{filterStatus === 'resolved' ? '✅' : filterStatus === 'acknowledged' ? '👁️' : '🎉'}</p>
+              <p style={{ fontSize: '32px', marginBottom: '8px' }}>{filterStatus === 'resolved' ? '✅' : filterStatus === 'acknowledged' ? '👁️' : '🔔'}</p>
               <p>{filterStatus === 'active' ? 'No active alerts.' : filterStatus === 'acknowledged' ? 'No acknowledged alerts.' : filterStatus === 'resolved' ? 'No resolved alerts.' : 'No alerts found.'}</p>
             </div>
           ) : (
@@ -1188,7 +1185,7 @@ const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, 
                       {isAcknowledged && alert.acknowledgedBy && (
                         <p style={{ fontSize: '11px', color: '#1D4ED8', marginTop: '4px' }}>
                           👁️ Acknowledged by {alert.acknowledgedBy.name || alert.acknowledgedBy.email}
-                          {alert.acknowledgedAt ? ` · ${new Date(alert.acknowledgedAt).toLocaleString()}` : ''}
+                          {alert.acknowledgedAt ? ` ┬╖ ${new Date(alert.acknowledgedAt).toLocaleString()}` : ''}
                         </p>
                       )}
                       {isResolved && alert.resolvedBy && (
@@ -1242,7 +1239,7 @@ const AlertCommandCenter = ({ allAlerts, dismissedIds, onDismiss, onDismissAll, 
   )
 }
 
-// ─── Broadcast Composer Modal ─────────────────────────────────────────────────
+// ─── Broadcast Composer Modal ─────────────────────────────────────────────────────────────────────────────
 const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   const wardNames = wards.map(w => w.wardName)
   const hospitalNames = [...new Set(wards.map(w => w.hospitalName).filter(Boolean))].sort()
@@ -1327,8 +1324,6 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
       <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '660px', maxHeight: '94vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
-
-        {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
           <div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📢 Send Broadcast</h2>
@@ -1338,8 +1333,6 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
           </div>
           <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B', flexShrink: 0 }}>✕</button>
         </div>
-
-        {/* Success state */}
         {success ? (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
             <p style={{ fontSize: '52px', marginBottom: '14px' }}>📡</p>
@@ -1353,8 +1346,6 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
           </div>
         ) : (
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-
-            {/* Error banner */}
             {error && (
               <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#991B1B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>⚠️ {error}</span>
@@ -1399,49 +1390,43 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
 
             {/* Title */}
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
-                Broadcast Title <span style={{ color: '#DC2626' }}>*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Dengue Alert — Ward 7 & 8"
-                maxLength={120}
-                value={form.title}
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Send To</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setForm(f => ({ ...f, targetType: 'citizens', targetHospital: '' }))}
+                  style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${form.targetType === 'citizens' ? '#2563EB' : '#E2E8F0'}`, background: form.targetType === 'citizens' ? '#EFF6FF' : '#fff', color: form.targetType === 'citizens' ? '#2563EB' : '#64748B', transition: 'all 0.15s' }}>
+                  👨‍👩‍👧 Citizens
+                </button>
+                <button onClick={() => setForm(f => ({ ...f, targetType: 'hospitals', targetWards: [] }))}
+                  style={{ flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: `1.5px solid ${form.targetType === 'hospitals' ? '#059669' : '#E2E8F0'}`, background: form.targetType === 'hospitals' ? '#ECFDF5' : '#fff', color: form.targetType === 'hospitals' ? '#059669' : '#64748B', transition: 'all 0.15s' }}>
+                  🏥 Hospital Staff
+                </button>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Broadcast Title <span style={{ color: '#DC2626' }}>*</span></label>
+              <input type="text" placeholder="e.g. Dengue Alert — Ward 7 & 8" maxLength={120} value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                style={{ width: '100%', padding: '10px 14px', fontSize: '14px', border: `1.5px solid ${form.title ? '#2563EB40' : '#E2E8F0'}`, borderRadius: '10px', outline: 'none', color: '#1E293B', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
-              />
+                style={{ width: '100%', padding: '10px 14px', fontSize: '14px', border: `1.5px solid ${form.title ? '#2563EB40' : '#E2E8F0'}`, borderRadius: '10px', outline: 'none', color: '#1E293B', boxSizing: 'border-box', transition: 'border-color 0.2s' }} />
               <p style={{ fontSize: '11px', color: form.title.length > 100 ? '#EA580C' : '#CBD5E1', marginTop: '4px', textAlign: 'right' }}>{form.title.length}/120</p>
             </div>
-
-            {/* Type + Priority row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Message Type</label>
-                <select
-                  value={form.type}
-                  onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: `1.5px solid ${typeStyle.bg}`, borderRadius: '10px', outline: 'none', color: typeStyle.color, background: typeStyle.bg, cursor: 'pointer', fontWeight: 600 }}
-                >
+                <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: `1.5px solid ${typeStyle.bg}`, borderRadius: '10px', outline: 'none', color: typeStyle.color, background: typeStyle.bg, cursor: 'pointer', fontWeight: 600 }}>
                   {TYPES.map(t => <option key={t} value={t}>{BROADCAST_TYPE_STYLES[t]?.icon} {t}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Priority</label>
-                <select
-                  value={form.priority}
-                  onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: `1.5px solid ${PRIORITY_COLORS[form.priority]}50`, borderRadius: '10px', outline: 'none', color: PRIORITY_COLORS[form.priority], background: PRIORITY_BG[form.priority], cursor: 'pointer', fontWeight: 700 }}
-                >
+                <select value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 14px', fontSize: '13px', border: `1.5px solid ${PRIORITY_COLORS[form.priority]}50`, borderRadius: '10px', outline: 'none', color: PRIORITY_COLORS[form.priority], background: PRIORITY_BG[form.priority], cursor: 'pointer', fontWeight: 700 }}>
                   {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
             </div>
-
-            {/* Message body */}
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
-                Message <span style={{ color: '#DC2626' }}>*</span>
-              </label>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>Message <span style={{ color: '#DC2626' }}>*</span></label>
               <textarea
                 placeholder={
                   form.targetType === 'citizens'
@@ -1452,8 +1437,7 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
                 rows={5}
                 value={form.message}
                 onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                style={{ width: '100%', padding: '10px 14px', fontSize: '14px', border: `1.5px solid ${form.message ? '#2563EB40' : '#E2E8F0'}`, borderRadius: '10px', outline: 'none', color: '#1E293B', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.6, transition: 'border-color 0.2s' }}
-              />
+                style={{ width: '100%', padding: '10px 14px', fontSize: '14px', border: `1.5px solid ${form.message ? '#2563EB40' : '#E2E8F0'}`, borderRadius: '10px', outline: 'none', color: '#1E293B', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', lineHeight: 1.6, transition: 'border-color 0.2s' }} />
               <p style={{ fontSize: '11px', color: form.message.length > 1800 ? '#EA580C' : '#CBD5E1', marginTop: '4px', textAlign: 'right' }}>{form.message.length}/2000</p>
             </div>
 
@@ -1524,15 +1508,9 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '7px' }}>
                 Expires At &nbsp;<span style={{ fontWeight: 400, textTransform: 'none', color: '#94A3B8', fontSize: '11px' }}>optional — leave blank to keep active indefinitely</span>
               </label>
-              <input
-                type="datetime-local"
-                value={form.expiresAt}
-                onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
-                style={{ padding: '10px 14px', fontSize: '13px', border: '1.5px solid #E2E8F0', borderRadius: '10px', outline: 'none', color: '#1E293B' }}
-              />
+              <input type="datetime-local" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))}
+                style={{ padding: '10px 14px', fontSize: '13px', border: '1.5px solid #E2E8F0', borderRadius: '10px', outline: 'none', color: '#1E293B' }} />
             </div>
-
-            {/* Live preview */}
             {(form.title || form.message) && (
               <div>
                 <p style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
@@ -1567,11 +1545,7 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
                 </div>
               </div>
             )}
-
-            {/* Send button */}
-            <button
-              onClick={handleSend}
-              disabled={sending || !form.title.trim() || !form.message.trim()}
+            <button onClick={handleSend} disabled={sending || !form.title.trim() || !form.message.trim()}
               style={{
                 background: sending
                   ? '#93C5FD'
@@ -1583,11 +1557,7 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
                         ? '#059669'
                         : '#2563EB',
                 color: !form.title.trim() || !form.message.trim() ? '#94A3B8' : '#fff',
-                border: 'none',
-                borderRadius: '10px',
-                padding: '14px',
-                fontSize: '15px',
-                fontWeight: 700,
+                border: 'none', borderRadius: '10px', padding: '14px', fontSize: '15px', fontWeight: 700,
                 cursor: sending || !form.title.trim() || !form.message.trim() ? 'not-allowed' : 'pointer',
                 width: '100%',
                 boxShadow: sending || !form.title.trim() || !form.message.trim() ? 'none' : '0 4px 14px rgba(0,0,0,0.15)',
@@ -1606,7 +1576,6 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
                 <>🏥 Send to {form.targetHospital || 'All Hospitals'}</>
               )}
             </button>
-
           </div>
         )}
       </div>
@@ -1614,7 +1583,7 @@ const BroadcastComposer = ({ wards, token, onClose, onSent }) => {
   )
 }
 
-// ─── Broadcast History Panel ──────────────────────────────────────────────────
+// ─── Broadcast History Panel ──────────────────────────────────────────────────────────────────────────────
 const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => {
   const [deactivatingId, setDeactivatingId] = useState(null)
 
@@ -1622,8 +1591,8 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
     setDeactivatingId(id)
     try {
       await axios.patch(
-        `https://carecrew-1.onrender.com/api/broadcasts/${id}/deactivate`,
-        {},
+        `https://carecrew-1.onrender.com/api/broadcasts/${id}`,
+        { isActive: false },
         { headers: { Authorization: `Bearer ${token}` } }
       )
       onDeactivate(id)
@@ -1675,11 +1644,8 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
             </p>
           </div>
           {b.isActive && (
-            <button
-              onClick={() => handleDeactivate(b._id)}
-              disabled={deactivatingId === b._id}
-              style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '7px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, color: '#991B1B', cursor: deactivatingId === b._id ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, opacity: deactivatingId === b._id ? 0.6 : 1 }}
-            >
+            <button onClick={() => handleDeactivate(b._id)} disabled={deactivatingId === b._id}
+              style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '7px', padding: '5px 10px', fontSize: '11px', fontWeight: 600, color: '#991B1B', cursor: deactivatingId === b._id ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0, opacity: deactivatingId === b._id ? 0.6 : 1 }}>
               {deactivatingId === b._id ? '...' : '🔕 Deactivate'}
             </button>
           )}
@@ -1700,7 +1666,6 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
           </div>
           <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B' }}>✕</button>
         </div>
-
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {broadcasts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 20px' }}>
@@ -1712,9 +1677,7 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
             <>
               {active.length > 0 && (
                 <div>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                    ● Active Broadcasts ({active.length})
-                  </p>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>● Active Broadcasts ({active.length})</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {active.map(b => <BroadcastCard key={b._id} b={b} />)}
                   </div>
@@ -1722,9 +1685,7 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
               )}
               {inactive.length > 0 && (
                 <div>
-                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                    Deactivated ({inactive.length})
-                  </p>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Deactivated ({inactive.length})</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {inactive.map(b => <BroadcastCard key={b._id} b={b} />)}
                   </div>
@@ -1732,6 +1693,203 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
               )}
             </>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+// ─── Indent Panel ─────────────────────────────────────────────────────────────
+const IndentPanel = ({ indents, onReview, onClose }) => {
+  const [filter, setFilter] = useState('pending')
+  const [reviewingId, setReviewingId] = useState(null)
+  const [reviewNote, setReviewNote] = useState('')
+  const [actionLoading, setActionLoading] = useState(null)
+
+  const URGENCY_STYLES = {
+    routine:  { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
+    urgent:   { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
+    critical: { bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
+  }
+  const STATUS_STYLES = {
+    pending:   { bg: '#FEF3C7', color: '#92400E' },
+    approved:  { bg: '#F0FDF4', color: '#16A34A' },
+    rejected:  { bg: '#FEE2E2', color: '#991B1B' },
+    fulfilled: { bg: '#EFF6FF', color: '#1D4ED8' },
+  }
+
+  const counts = {
+    pending:   indents.filter(i => i.status === 'pending').length,
+    approved:  indents.filter(i => i.status === 'approved').length,
+    rejected:  indents.filter(i => i.status === 'rejected').length,
+    fulfilled: indents.filter(i => i.status === 'fulfilled').length,
+  }
+
+  const filtered = indents.filter(i => filter === 'all' || i.status === filter)
+
+  const handleReview = async (id, status) => {
+    setActionLoading(id)
+    await onReview(id, status, reviewNote)
+    setReviewingId(null)
+    setReviewNote('')
+    setActionLoading(null)
+  }
+
+  const ITEM_TYPE_ICONS = { medicine: '💊', equipment: '🩺', supply: '📦' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 2200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '820px', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.22)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E293B' }}>📦 Indent Requests</h2>
+              {counts.pending > 0 && (
+                <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', border: '1px solid #FDE68A' }}>
+                  {counts.pending} PENDING
+                </span>
+              )}
+              {counts.critical > 0 && (
+                <span style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
+                  🚨 {indents.filter(i => i.urgency === 'critical' && i.status === 'pending').length} CRITICAL
+                </span>
+              )}
+            </div>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '3px' }}>
+              {counts.pending} pending · {counts.approved} approved · {counts.fulfilled} fulfilled · {counts.rejected} rejected
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F1F5F9', border: 'none', borderRadius: '8px', width: '32px', height: '32px', fontSize: '16px', cursor: 'pointer', color: '#64748B' }}>✕</button>
+        </div>
+
+        {/* Summary cards */}
+        <div style={{ padding: '12px 24px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {[
+            { label: 'Pending', count: counts.pending, color: '#D97706', bg: '#FEF3C7', border: '#FDE68A' },
+            { label: 'Critical Urgency', count: indents.filter(i => i.urgency === 'critical' && i.status === 'pending').length, color: '#DC2626', bg: '#FEE2E2', border: '#FCA5A5' },
+            { label: 'Approved', count: counts.approved, color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+            { label: 'Fulfilled', count: counts.fulfilled, color: '#1D4ED8', bg: '#EFF6FF', border: '#BFDBFE' },
+          ].map(({ label, count, color, bg, border }) => (
+            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: '10px', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px', minWidth: '110px' }}>
+              <div>
+                <p style={{ fontSize: '18px', fontWeight: 700, color, lineHeight: 1 }}>{count}</p>
+                <p style={{ fontSize: '10px', color, fontWeight: 600 }}>{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Status tabs */}
+        <div style={{ display: 'flex', padding: '0 24px', borderBottom: '1px solid #F1F5F9' }}>
+          {[
+            { key: 'pending',   color: '#D97706', bg: '#FEF3C7' },
+            { key: 'approved',  color: '#16A34A', bg: '#F0FDF4' },
+            { key: 'fulfilled', color: '#1D4ED8', bg: '#EFF6FF' },
+            { key: 'rejected',  color: '#DC2626', bg: '#FEE2E2' },
+            { key: 'all',       color: '#475569', bg: '#F1F5F9' },
+          ].map(({ key, color, bg }) => (
+            <button key={key} onClick={() => setFilter(key)} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: filter === key ? `2px solid ${color}` : '2px solid transparent', background: 'none', color: filter === key ? color : '#64748B', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'capitalize', transition: 'all 0.15s' }}>
+              {key}
+              <span style={{ background: filter === key ? bg : '#F1F5F9', color: filter === key ? color : '#94A3B8', fontSize: '11px', fontWeight: 700, padding: '1px 6px', borderRadius: '20px' }}>
+                {key === 'all' ? indents.length : counts[key] ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* List */}
+        <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px', color: '#94A3B8' }}>
+              <p style={{ fontSize: '32px', marginBottom: '8px' }}>📭</p>
+              <p style={{ fontSize: '14px' }}>No {filter === 'all' ? '' : filter} requests.</p>
+            </div>
+          ) : filtered.map(indent => {
+            const urg = URGENCY_STYLES[indent.urgency] || URGENCY_STYLES.routine
+            const sta = STATUS_STYLES[indent.status]  || STATUS_STYLES.pending
+            const isReviewing = reviewingId === indent._id
+            const isLoading   = actionLoading === indent._id
+            const typeIcon    = ITEM_TYPE_ICONS[indent.itemType] || '📦'
+
+            return (
+              <div key={indent._id} style={{ border: `1.5px solid ${urg.border}`, borderRadius: '12px', overflow: 'hidden', background: urg.bg, opacity: indent.status === 'rejected' ? 0.7 : 1 }}>
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+
+                      {/* Title row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '16px' }}>{typeIcon}</span>
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: '#1E293B' }}>{indent.itemName}</span>
+                        <span style={{ ...pillBase, background: urg.bg, color: urg.color, border: `1px solid ${urg.border}`, textTransform: 'capitalize' }}>{indent.urgency}</span>
+                        <span style={{ ...pillBase, background: sta.bg, color: sta.color, textTransform: 'capitalize' }}>{indent.status}</span>
+                        <span style={{ ...pillBase, background: '#EFF6FF', color: '#1D4ED8', textTransform: 'capitalize' }}>{indent.itemType}</span>
+                      </div>
+
+                      {/* Meta row */}
+                      <p style={{ fontSize: '13px', color: '#475569', marginBottom: '4px' }}>
+                        🏥 <strong>{indent.hospitalName}</strong> &nbsp;·&nbsp; 📍 {indent.wardName} &nbsp;·&nbsp; Qty: <strong>{indent.quantityRequired}</strong>
+                      </p>
+
+                      {/* Reason */}
+                      {indent.reason && (
+                        <p style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', marginBottom: '4px' }}>
+                          "{indent.reason}"
+                        </p>
+                      )}
+
+                      {/* Timestamps */}
+                      <p style={{ fontSize: '11px', color: '#94A3B8' }}>
+                        Submitted {new Date(indent.createdAt).toLocaleString()}
+                        {indent.submittedBy?.name ? ` · by ${indent.submittedBy.name}` : ''}
+                        {indent.reviewedAt ? ` · Reviewed ${new Date(indent.reviewedAt).toLocaleString()}` : ''}
+                      </p>
+
+                      {/* Review note */}
+                      {indent.reviewNote && indent.reviewNote !== 'Cancelled by hospital' && (
+                        <div style={{ marginTop: '6px', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '6px', padding: '6px 10px', display: 'inline-block' }}>
+                          <p style={{ fontSize: '12px', color: '#1D4ED8' }}>💬 {indent.reviewNote}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {indent.status === 'pending' && (
+                        <>
+                          <button
+                            onClick={() => handleReview(indent._id, 'approved')}
+                            disabled={isLoading}
+                            style={{ background: '#16A34A', color: '#fff', border: 'none', borderRadius: '7px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                          >
+                            {isLoading ? '...' : '✅ Approve'}
+                          </button>
+                          <button
+                            onClick={() => handleReview(indent._id, 'rejected')}
+                            disabled={isLoading}
+                            style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: '7px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                          >
+                            {isLoading ? '...' : '✗ Reject'}
+                          </button>
+                        </>
+                      )}
+                      {indent.status === 'approved' && (
+                        <button
+                          onClick={() => onReview(indent._id, 'fulfilled', '')}
+                          disabled={isLoading}
+                          style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '7px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#1D4ED8', cursor: isLoading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', opacity: isLoading ? 0.6 : 1 }}
+                        >
+                          {isLoading ? '...' : '✅ Mark Fulfilled'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
@@ -1757,6 +1915,11 @@ export default function Dashboard() {
   const [showAlertCenter, setShowAlertCenter] = useState(false)
   const [thresholdAlerts, setThresholdAlerts] = useState([])
   const [alertStatusOverrides, setAlertStatusOverrides] = useState({})
+  const [indents, setIndents] = useState([])                    // ← NEW
+  const [showIndentPanel, setShowIndentPanel] = useState(false) // ← NEW
+  const sentAlertIds = React.useRef(new Set(JSON.parse(localStorage.getItem('sentWhatsAppIds') || '[]')))
+
+
 
   // ── Broadcast state ──────────────────────────────────────────────────────────
   const [broadcasts, setBroadcasts] = useState([])
@@ -1768,11 +1931,12 @@ export default function Dashboard() {
   const fetchAll = useCallback(async () => {
     try {
       setError(null)
-      const [wardsRes, alertsRes, chartsRes, broadcastsRes] = await Promise.all([
+      const [wardsRes, alertsRes, chartsRes, broadcastsRes, indentsRes] = await Promise.all([
         axios.get('https://carecrew-1.onrender.com/api/dashboard/wards', { headers: authHeaders }),
         axios.get('https://carecrew-1.onrender.com/api/dashboard/alerts', { headers: authHeaders }),
         axios.get('https://carecrew-1.onrender.com/api/dashboard/charts', { headers: authHeaders }),
         axios.get('https://carecrew-1.onrender.com/api/broadcasts', { headers: authHeaders }).catch(() => ({ data: { broadcasts: [] } })),
+        axios.get('https://carecrew-1.onrender.com/api/indent/all', { headers: authHeaders }).catch(() => ({ data: { requests: [] } })), // ← NEW
       ])
       const fetchedWards = toArray(wardsRes.data, 'wards')
       setWards(fetchedWards)
@@ -1781,6 +1945,7 @@ export default function Dashboard() {
       setCharts({ topDiseases: toArray(cd.topDiseases, 'topDiseases'), dailyCases: toArray(cd.dailyCases, 'dailyCases') })
       setThresholdAlerts(computeThresholdAlerts(fetchedWards))
       setBroadcasts(toArray(broadcastsRes.data, 'broadcasts'))
+      setIndents(toArray(indentsRes.data, 'requests')) // ← NEW
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.')
     } finally {
@@ -1801,10 +1966,45 @@ export default function Dashboard() {
   useEffect(() => { saveDismissedIds(dismissedIds) }, [dismissedIds])
 
   useEffect(() => {
+    allAlerts.forEach(async (alert) => {
+      // Only send if active, not resolved, severe ('High', 'Critical', 'Red'), and hasn't been sent yet
+      const isSevere = ['High', 'Critical', 'Red'].includes(alert.severity);
+      if (alert.isActive && alert.status !== 'resolved' && isSevere && !sentAlertIds.current.has(alert._id)) {
+        sentAlertIds.current.add(alert._id);
+        localStorage.setItem('sentWhatsAppIds', JSON.stringify([...sentAlertIds.current]));
+        try {
+          await axios.post(
+            'https://carecrew-1.onrender.com/api/notifications/whatsapp',
+            { alertId: alert._id, wardName: alert.wardName, alertType: alert.alertType, severity: alert.severity, message: alert.message },
+            { headers: { Authorization: `Bearer ${token}` } }
+          )
+          console.log('WhatsApp sent for trigger:', alert._id);
+        } catch (error) {
+          console.error('WhatsApp backend error:', error);
+        }
+      }
+    });
+  }, [allAlerts])
+
+  useEffect(() => {
     if (wards.length > 0) {
       setHospitals(deriveHospitalsFromWards(wards, allAlerts))
     }
   }, [wards, allAlerts]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ← NEW
+  const handleIndentReview = async (id, status, reviewNote = '') => {
+    try {
+      const res = await axios.patch(
+        `https://carecrew-1.onrender.com/api/indent/${id}/review`,
+        { status, reviewNote },
+        { headers: authHeaders }
+      )
+      setIndents(prev => prev.map(i => i._id === id ? res.data.request : i))
+    } catch (err) {
+      console.error('Indent review failed:', err)
+    }
+  }
 
   const toggleDisease = (disease) => {
     setActiveDiseases(prev => { const next = new Set(prev); next.has(disease) ? next.delete(disease) : next.add(disease); return next })
@@ -1877,6 +2077,14 @@ export default function Dashboard() {
           onSent={handleBroadcastSent}
         />
       )}
+      {/* ← NEW */}
+      {showIndentPanel && (
+        <IndentPanel
+          indents={indents}
+          onReview={handleIndentReview}
+          onClose={() => setShowIndentPanel(false)}
+        />
+      )}
 
       {showBroadcastHistory && (
         <BroadcastHistoryPanel
@@ -1887,81 +2095,12 @@ export default function Dashboard() {
         />
       )}
 
-      {/* ── Alert Banner ── */}
-      {activeAlerts.length > 0 && (
-        <div style={{ background: criticalCount > 0 ? '#FEF2F2' : '#FFF7ED', borderBottom: `1px solid ${criticalCount > 0 ? '#FECACA' : '#FED7AA'}`, padding: '10px 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ background: criticalCount > 0 ? '#DC2626' : '#EA580C', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
-                🚨 {activeAlerts.length} ACTIVE ALERT{activeAlerts.length > 1 ? 'S' : ''}
-              </span>
-              {criticalCount > 0 && <span style={{ fontSize: '12px', color: '#991B1B', fontWeight: 600 }}>{criticalCount} critical — immediate action required</span>}
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={handleDismissAll} style={{ background: 'none', border: `1px solid ${criticalCount > 0 ? '#FCA5A5' : '#FED7AA'}`, borderRadius: '6px', padding: '3px 10px', fontSize: '11px', color: criticalCount > 0 ? '#991B1B' : '#9A3412', cursor: 'pointer', fontWeight: 600 }}>Dismiss All</button>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {activeAlerts.slice(0, 8).map((a) => {
-              const isRed = a.severity === 'Critical'
-              const isHigh = a.severity === 'High'
-              const bg = isRed ? '#FEE2E2' : isHigh ? '#FFF7ED' : '#FEF3C7'
-              const border = isRed ? '#FCA5A5' : isHigh ? '#FED7AA' : '#FDE68A'
-              const dot = isRed ? '#DC2626' : isHigh ? '#EA580C' : '#D97706'
-              const textColor = isRed ? '#7F1D1D' : isHigh ? '#7C2D12' : '#78350F'
-              const sevColor = isRed ? '#991B1B' : isHigh ? '#9A3412' : '#92400E'
-              const sevBg = isRed ? '#FECACA' : isHigh ? '#FED7AA' : '#FDE68A'
-              return (
-                <div key={a._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: bg, border: `1px solid ${border}`, borderRadius: '8px', padding: '5px 10px' }}>
-                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0, background: dot, display: 'inline-block' }} />
-                  <span style={{ fontSize: '12px', color: textColor, fontWeight: 600 }}>{a.wardName}</span>
-                  <span style={{ fontSize: '10px', color: sevColor, background: sevBg, padding: '1px 6px', borderRadius: '20px', fontWeight: 600 }}>{a.severity}</span>
-                  <span style={{ fontSize: '11px', color: textColor }}>{a.alertType}</span>
-                  {a.isThreshold && <span style={{ fontSize: '10px', color: '#2563EB', background: '#EFF6FF', padding: '1px 5px', borderRadius: '20px', fontWeight: 600 }}>AUTO</span>}
-                  <span onClick={() => handleDismiss(a._id)} style={{ cursor: 'pointer', fontSize: '12px', color: sevColor, marginLeft: '2px', fontWeight: 700 }}>✕</span>
-                </div>
-              )
-            })}
-            {activeAlerts.length > 8 && (
-              <button onClick={() => setShowAlertCenter(true)} style={{ background: '#F1F5F9', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '5px 12px', fontSize: '11px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
-                +{activeAlerts.length - 8} more → View All
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6'>
 
-        {/* Summary Ribbon */}
-        {wards.length > 0 && (() => {
-          const highestRiskWard = wards.filter(w => (w.riskLevel || '').toLowerCase() === 'red').sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0] || wards.slice().sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
-          const diseaseMap = {}
-          wards.forEach(w => { if (w.topDisease && w.topDisease !== 'None') diseaseMap[w.topDisease] = (diseaseMap[w.topDisease] || 0) + (w.todayCases || 0) })
-          const topDisease = Object.entries(diseaseMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
-          const stats = [
-            { icon: '🦠', label: 'Total Active Cases', value: totalCases.toLocaleString(), valueColor: totalCases > 200 ? '#DC2626' : totalCases > 100 ? '#D97706' : '#16A34A' },
-            { icon: '🚨', label: 'Highest Risk Ward', value: highestRiskWard?.wardName || '—', sub: highestRiskWard ? `${highestRiskWard.activeCases || 0} active cases` : '', valueColor: highestRiskWard?.riskLevel?.toLowerCase() === 'red' ? '#DC2626' : highestRiskWard?.riskLevel?.toLowerCase() === 'yellow' ? '#D97706' : '#16A34A' },
-            { icon: '🔬', label: 'Most Reported Disease', value: topDisease, sub: diseaseMap[topDisease] ? `${diseaseMap[topDisease]} cases today` : '', valueColor: '#7C3AED' },
-          ]
-          return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '4px' }}>
-              {stats.map(({ icon, label, value, sub, valueColor }) => (
-                <div key={label} style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)' }}>
-                  <span style={{ fontSize: '26px', lineHeight: 1 }}>{icon}</span>
-                  <div>
-                    <p style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '3px' }}>{label}</p>
-                    <p style={{ fontSize: '18px', fontWeight: 700, color: valueColor, lineHeight: 1.1 }}>{value}</p>
-                    {sub && <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>{sub}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        })()}
 
         {/* Page Header */}
-        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4'>
           <div>
             <h1 className='text-3xl font-extrabold text-slate-800 tracking-tight'>Health Officer Dashboard</h1>
             <p className='text-sm font-medium text-slate-500 flex items-center gap-2 mt-1.5'>
@@ -1969,7 +2108,30 @@ export default function Dashboard() {
               Last updated: {new Date().toLocaleTimeString()}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1, paddingLeft: '20px' }}>
+
+            {/* ← NEW */}
+            <button
+              onClick={() => setShowIndentPanel(true)}
+              style={{
+                background: indents.filter(i => i.status === 'pending' && i.urgency === 'critical').length > 0
+                  ? '#DC2626'
+                  : indents.filter(i => i.status === 'pending').length > 0
+                  ? '#D97706'
+                  : '#64748B',
+                color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px',
+                fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                boxShadow: '0 4px 14px 0 rgba(0,0,0,0.15)',
+                display: 'flex', alignItems: 'center', gap: '6px'
+              }}
+            >
+              📦 Indent Requests
+              {indents.filter(i => i.status === 'pending').length > 0 && (
+                <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '20px', padding: '1px 7px', fontSize: '12px', fontWeight: 700 }}>
+                  {indents.filter(i => i.status === 'pending').length}
+                </span>
+              )}
+            </button>
 
             {/* Alert Center button */}
             <button onClick={() => setShowAlertCenter(true)} style={{ background: criticalCount > 0 ? '#DC2626' : activeAlerts.length > 0 ? '#EA580C' : '#64748B', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: criticalCount > 0 ? '0 4px 14px 0 rgba(220,38,38,0.4)' : '0 4px 14px 0 rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1982,7 +2144,7 @@ export default function Dashboard() {
               onClick={() => setShowBroadcastComposer(true)}
               style={{ background: '#059669', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(5,150,105,0.35)', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              📢 Broadcast to Citizens
+              📣 Broadcast to Citizens
               {activeBroadcastCount > 0 && (
                 <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: '20px', padding: '1px 7px', fontSize: '12px', fontWeight: 700 }}>
                   {activeBroadcastCount} live
@@ -2004,7 +2166,7 @@ export default function Dashboard() {
             {activeTab === 'wards' ? (
               <>
                 <button onClick={() => exportCSV(wards)} disabled={wards.length === 0} style={{ backgroundColor: wards.length === 0 ? '#BFDBFE' : '#2563EB', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: wards.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(37,99,235,0.3)' }}>
-                  ⬇ Export All Wards
+                  📤 Export All Wards
                 </button>
                 <button onClick={() => exportAlertZonesCSV(wards, allAlerts)} disabled={alertZoneCount === 0} style={{ backgroundColor: alertZoneCount === 0 ? '#FCA5A5' : '#EF4444', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: alertZoneCount === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(239,68,68,0.3)' }}>
                   🚨 Export Alert Zones ({alertZoneCount})
@@ -2012,7 +2174,7 @@ export default function Dashboard() {
               </>
             ) : (
               <button onClick={() => exportHospitalsCSV(hospitals)} disabled={hospitals.length === 0} style={{ backgroundColor: hospitals.length === 0 ? '#C4B5FD' : '#7C3AED', color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 600, cursor: hospitals.length === 0 ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 14px 0 rgba(124,58,237,0.3)' }}>
-                ⬇ Export Hospitals CSV
+                📤 Export Hospitals CSV
               </button>
             )}
           </div>
@@ -2020,24 +2182,52 @@ export default function Dashboard() {
 
         {error && <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', padding: '12px 16px', color: '#991B1B', fontSize: '14px' }}>{error}</div>}
 
-        {/* 3 Stat Cards */}
-        <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-          <StatCard title='Active Cases Today' value={totalCases} icon='🦠' />
-          <StatCard title='Wards on Alert' value={wardsOnAlert} icon='⚠️' />
-          <StatCard title='Hospitals Reporting' value={hospitalsReporting} icon='🏥' />
-        </div>
+        {/* Consolidated Summary Panel */}
+        {wards.length > 0 && (() => {
+          const highestRiskWard = wards.filter(w => (w.riskLevel || '').toLowerCase() === 'red').sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0] || wards.slice().sort((a, b) => (b.activeCases || 0) - (a.activeCases || 0))[0]
+          const diseaseMap = {}
+          wards.forEach(w => { if (w.topDisease && w.topDisease !== 'None') diseaseMap[w.topDisease] = (diseaseMap[w.topDisease] || 0) + (w.todayCases || 0) })
+          const topDisease = Object.entries(diseaseMap).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
+          const stats = [
+            { icon: '🦺', label: 'Total Active Cases', value: totalCases.toLocaleString(), sub: 'Live', valueColor: totalCases > 200 ? '#DC2626' : totalCases > 100 ? '#D97706' : '#16A34A' },
+            { icon: '🚨', label: 'Highest Risk Ward', value: highestRiskWard?.wardName || '—', sub: highestRiskWard ? `${highestRiskWard.activeCases || 0} active cases` : 'Stable', valueColor: highestRiskWard?.riskLevel?.toLowerCase() === 'red' ? '#DC2626' : highestRiskWard?.riskLevel?.toLowerCase() === 'yellow' ? '#D97706' : '#16A34A' },
+            { icon: '🔬', label: 'Most Reported Disease', value: topDisease, sub: diseaseMap[topDisease] ? `${diseaseMap[topDisease]} cases today` : 'No surge', valueColor: '#7C3AED' },
+            { icon: '⚠️', label: 'Wards on Alert', value: wardsOnAlert.toLocaleString(), sub: 'Live Status', valueColor: wardsOnAlert > 5 ? '#DC2626' : '#D97706' },
+            { icon: '🏥', label: 'Hospitals Reporting', value: hospitalsReporting.toLocaleString(), sub: 'Active Facilities', valueColor: '#2563EB' },
+          ]
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px', width: '100%' }}>
+              {stats.map(({ icon, label, value, sub, valueColor }) => (
+                <div key={label} style={{ background: '#fff', border: '1px solid #EAEDF1', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', minWidth: 0 }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>{icon}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: '9px', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</p>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                      <p style={{ fontSize: '18px', fontWeight: 800, color: '#1E293B', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</p>
+                      {sub === 'Live' && <span style={{ fontSize: '7px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '0.5px 4px', borderRadius: '3px', textTransform: 'uppercase', border: '1px solid #DBEAFE' }}>Live</span>}
+                    </div>
+                    {sub !== 'Live' && <p style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: '1px' }}>{sub}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+
+
+
 
         {/* Active Broadcasts ribbon — shows when there are live broadcasts */}
         {activeBroadcastCount > 0 && (
           <div style={{ background: '#ECFDF5', border: '1px solid #6EE7B7', borderRadius: '12px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <span style={{ background: '#059669', color: '#fff', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px' }}>
-                📢 {activeBroadcastCount} LIVE BROADCAST{activeBroadcastCount > 1 ? 'S' : ''}
+                📣 {activeBroadcastCount} LIVE BROADCAST{activeBroadcastCount > 1 ? 'S' : ''}
               </span>
               <span style={{ fontSize: '13px', color: '#065F46' }}>Citizens can currently see {activeBroadcastCount} message{activeBroadcastCount > 1 ? 's' : ''} on their dashboard</span>
               {broadcasts.filter(b => b.isActive).slice(0, 2).map(b => (
                 <span key={b._id} style={{ ...pillBase, background: '#D1FAE5', color: '#065F46', fontSize: '11px' }}>
-                  {BROADCAST_TYPE_STYLES[b.type]?.icon} {b.title.length > 30 ? b.title.slice(0, 30) + '…' : b.title}
+                  {BROADCAST_TYPE_STYLES[b.type]?.icon} {b.title.length > 30 ? b.title.slice(0, 30) + 'ΓÇª' : b.title}
                 </span>
               ))}
             </div>
@@ -2050,59 +2240,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Smart Alert Summary Panel */}
-        {activeAlerts.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1E293B' }}>🎯 Active Alert Summary</h2>
-                <span style={{ background: criticalCount > 0 ? '#FEE2E2' : '#FFF7ED', color: criticalCount > 0 ? '#991B1B' : '#9A3412', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', border: `1px solid ${criticalCount > 0 ? '#FCA5A5' : '#FED7AA'}` }}>
-                  {activeAlerts.length} active
-                </span>
-              </div>
-              <button onClick={() => setShowAlertCenter(true)} style={{ background: 'none', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '5px 12px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
-                View All & Actions →
-              </button>
-            </div>
-            <div style={{ padding: '14px 20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '10px' }}>
-                {activeAlerts.slice(0, 6).map((alert) => {
-                  const isRed = alert.severity === 'Critical'
-                  const isHigh = alert.severity === 'High'
-                  const bg = isRed ? '#FEF2F2' : isHigh ? '#FFF7ED' : '#FFFBEB'
-                  const border = isRed ? '#FECACA' : isHigh ? '#FED7AA' : '#FDE68A'
-                  const textColor = isRed ? '#7F1D1D' : isHigh ? '#7C2D12' : '#78350F'
-                  return (
-                    <div key={alert._id} style={{ background: bg, border: `1.5px solid ${border}`, borderRadius: '10px', padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                        <span style={{ fontSize: '18px', lineHeight: 1, flexShrink: 0 }}>{alert.icon || '⚠️'}</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '13px', fontWeight: 700, color: textColor }}>{alert.wardName}</span>
-                            <SeverityPill severity={alert.severity} />
-                            <StatusPill status={alert.status} />
-                            <span style={{ fontSize: '11px', color: textColor, opacity: 0.8 }}>{alert.alertType}</span>
-                          </div>
-                          <p style={{ fontSize: '12px', color: textColor, marginBottom: '6px' }}>{alert.message}</p>
-                          {alert.recommendation && (
-                            <p style={{ fontSize: '11px', color: '#1E293B', background: 'rgba(255,255,255,0.7)', padding: '5px 8px', borderRadius: '6px', border: `1px solid ${border}` }}>
-                              💡 {alert.recommendation}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-              {activeAlerts.length > 6 && (
-                <button onClick={() => setShowAlertCenter(true)} style={{ marginTop: '10px', background: 'none', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 600, color: '#475569', cursor: 'pointer', width: '100%' }}>
-                  View all {activeAlerts.length} alerts with full recommendations →
-                </button>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* ── Tab Toggle: View by Wards | View by Hospitals ── */}
         <div className="glass-panel border border-white/60 shadow-soft rounded-2xl overflow-hidden">
