@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import {
   BarChart, Bar, LineChart, Line,
@@ -1808,7 +1808,7 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
           ) : filtered.map(indent => {
             const urg = URGENCY_STYLES[indent.urgency] || URGENCY_STYLES.routine
             const sta = STATUS_STYLES[indent.status] || STATUS_STYLES.pending
-            const isReviewing = reviewingId === indent._id
+            //const isReviewing = reviewingId === indent._id
             const isLoading = actionLoading === indent._id
             const typeIcon = ITEM_TYPE_ICONS[indent.itemType] || '📦'
 
@@ -1965,33 +1965,52 @@ export default function Dashboard() {
   useEffect(() => { if (wards.length > 0) setThresholdAlerts(computeThresholdAlerts(wards)) }, [wards])
   useEffect(() => { saveDismissedIds(dismissedIds) }, [dismissedIds])
 
-  useEffect(() => {
-    allAlerts.forEach(async (alert) => {
-      // Only send if active, not resolved, severe ('High', 'Critical', 'Red'), and hasn't been sent yet
-      const isSevere = ['High', 'Critical', 'Red'].includes(alert.severity);
-      if (alert.isActive && alert.status !== 'resolved' && isSevere && !sentAlertIds.current.has(alert._id)) {
-        sentAlertIds.current.add(alert._id);
-        localStorage.setItem('sentWhatsAppIds', JSON.stringify([...sentAlertIds.current]));
-        try {
-          await axios.post(
-            'https://carecrew-1.onrender.com/api/notifications/whatsapp',
-            { alertId: alert._id, wardName: alert.wardName, alertType: alert.alertType, severity: alert.severity, message: alert.message },
-            { headers: { Authorization: `Bearer ${token}` } }
-          )
-          console.log('WhatsApp sent for trigger:', alert._id);
-        } catch (error) {
-          console.error('WhatsApp backend error:', error);
-        }
+ useEffect(() => {
+  if (!token) return; // ✅ safety check
+
+  allAlerts.forEach(async (alert) => {
+    const isSevere = ['High', 'Critical', 'Red'].includes(alert.severity);
+
+    if (
+      alert.isActive &&
+      alert.status !== 'resolved' &&
+      isSevere &&
+      !sentAlertIds.current.has(alert._id)
+    ) {
+      sentAlertIds.current.add(alert._id);
+      localStorage.setItem(
+        'sentWhatsAppIds',
+        JSON.stringify([...sentAlertIds.current])
+      );
+
+      try {
+        await axios.post(
+          'https://carecrew-1.onrender.com/api/notifications/whatsapp',
+          {
+            alertId: alert._id,
+            wardName: alert.wardName,
+            alertType: alert.alertType,
+            severity: alert.severity,
+            message: alert.message,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        console.log('WhatsApp sent for trigger:', alert._id);
+      } catch (error) {
+        console.error('WhatsApp backend error:', error);
       }
-    });
-  }, [allAlerts])
+    }
+  });
+}, [allAlerts, token]);
 
   useEffect(() => {
-    if (wards.length > 0) {
-      setHospitals(deriveHospitalsFromWards(wards, allAlerts))
-    }
-  }, [wards, allAlerts]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!wards.length) return;
 
+  setHospitals(deriveHospitalsFromWards(wards, allAlerts));
+}, [wards, allAlerts]);
   // ← NEW
   const handleIndentReview = async (id, status, reviewNote = '') => {
     try {
