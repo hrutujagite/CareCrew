@@ -925,12 +925,10 @@
 
     const loadBroadcasts = async () => {
       try {
-        const res = await fetch(`${API}/broadcasts`)
+        const res = await fetch(`${API}/broadcasts/public`)
         const data = await res.json()
 
-        const broadcasts = (data.broadcasts || data.data || []).filter(b =>
-          b.targetAudience === 'all_citizens' || b.targetAudience === 'ward_citizens'
-        )
+        const broadcasts = (data.broadcasts || data.data || [])
 
         if (!broadcasts.length) {
           document.getElementById('broadcastsContainer').innerHTML =

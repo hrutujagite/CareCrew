@@ -25,6 +25,21 @@ router.post('/', protect, authorizeRoles('healthOfficer'), async (req, res) => {
   }
 });
 
+// @route  GET /api/broadcasts/public
+// @desc   Get all active broadcasts for public homepage (no auth required)
+router.get('/public', async (req, res) => {
+  try {
+    const now = new Date();
+    const broadcasts = await Broadcast.find({
+      isActive: true,
+      expiresAt: { $gt: now }
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, broadcasts });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route  GET /api/broadcasts
 // @desc   Get all broadcasts (Officer)
 router.get('/', protect, authorizeRoles('healthOfficer'), async (req, res) => {
@@ -47,7 +62,6 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
       $or: [
         { targetAudience: 'all_hospitals' },
         { targetAudience: 'specific_hospital', targetHospitalName: req.user.hospitalName },
-        // Sometimes hospitals also need to see ward-specific alerts
         { targetAudience: 'ward_citizens', targetWard: req.user.ward }
       ]
     }).sort({ createdAt: -1 });
@@ -58,7 +72,7 @@ router.get('/hospital', protect, authorizeRoles('hospitalStaff'), async (req, re
 });
 
 // @route  GET /api/broadcasts/citizen
-// @desc   Get broadcasts for citizen's ward (No auth usually needed, but query by ward)
+// @desc   Get broadcasts for citizen's ward (No auth needed)
 router.get('/citizen', async (req, res) => {
   try {
     const ward = req.query.ward;
