@@ -239,7 +239,7 @@ const calcHAI = (ward) => {
 
 const STORAGE_KEY = 'carecrew_dismissed_alerts'
 const loadDismissedIds = () => { try { const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return new Set(); const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return new Set(parsed); return new Set() } catch { return new Set() } }
-const saveDismissedIds = (set) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])) } catch {} }
+const saveDismissedIds = (set) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])) } catch { } }
 
 // ─── Pill styles ──────────────────────────────────────────────────────────────
 const pillBase = { display: 'inline-block', fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '20px', whiteSpace: 'nowrap' }
@@ -294,16 +294,16 @@ const MedicinePill = ({ ward }) => {
 
 // ─── Broadcast pill helpers ────────────────────────────────────────────────────
 const BROADCAST_TYPE_STYLES = {
-  'General Info':      { bg: '#EFF6FF', color: '#1D4ED8', icon: 'ℹ️' },
-  'Health Advisory':   { bg: '#F0FDF4', color: '#16A34A', icon: '🩺' },
-  'Disease Alert':     { bg: '#FEF3C7', color: '#92400E', icon: '🦠' },
+  'General Info': { bg: '#EFF6FF', color: '#1D4ED8', icon: 'ℹ️' },
+  'Health Advisory': { bg: '#F0FDF4', color: '#16A34A', icon: '🩺' },
+  'Disease Alert': { bg: '#FEF3C7', color: '#92400E', icon: '🦠' },
   'Vaccination Drive': { bg: '#F3E8FF', color: '#6B21A8', icon: '💉' },
-  'Emergency':         { bg: '#FEE2E2', color: '#991B1B', icon: '🚨' },
+  'Emergency': { bg: '#FEE2E2', color: '#991B1B', icon: '🚨' },
 }
 const BROADCAST_PRIORITY_STYLES = {
-  Low:    { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
+  Low: { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
   Medium: { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
-  High:   { bg: '#FFF7ED', color: '#9A3412', border: '#FED7AA' },
+  High: { bg: '#FFF7ED', color: '#9A3412', border: '#FED7AA' },
   Urgent: { bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
 }
 
@@ -823,9 +823,9 @@ const HospitalDetailModal = ({ hospital, onClose }) => {
               <div class="section">
                 <div class="section-title">🛏️ Capacity</div>
                 <div class="bar-label"><span>General Beds</span><span>${hospital.availableBeds ?? 0}/${hospital.totalBeds ?? 0} available</span></div>
-                <div class="bar-track"><div class="bar-fill" style="width:${hospital.totalBeds ? Math.round(((hospital.availableBeds||0)/(hospital.totalBeds||1))*100) : 0}%;background:#16A34A"></div></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${hospital.totalBeds ? Math.round(((hospital.availableBeds || 0) / (hospital.totalBeds || 1)) * 100) : 0}%;background:#16A34A"></div></div>
                 <div class="bar-label"><span>ICU Beds</span><span>${hospital.icuAvailable ?? 0}/${hospital.icuTotal ?? 0} available</span></div>
-                <div class="bar-track"><div class="bar-fill" style="width:${hospital.icuTotal ? Math.round(((hospital.icuAvailable||0)/(hospital.icuTotal||1))*100) : 0}%;background:#2563EB"></div></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${hospital.icuTotal ? Math.round(((hospital.icuAvailable || 0) / (hospital.icuTotal || 1)) * 100) : 0}%;background:#2563EB"></div></div>
                 <div class="bar-label"><span>Medicine Stock</span><span>${medPct}%</span></div>
                 <div class="bar-track"><div class="bar-fill" style="width:${medPct}%;background:${medColor}"></div></div>
               </div>
@@ -984,7 +984,7 @@ const WardReportModal = ({ ward, alerts, onClose }) => {
           </div>
           <button
             onClick={() => {
-              const recHtml = recItems.map(rec => `<div style="display:flex;gap:10px;align-items:flex-start;background:${isGreen ? '#F0FDF4' : (rec.bg||'#FFF7ED')};border:1px solid ${isGreen ? '#A7F3D0' : (rec.border||'#FDE68A')};border-radius:6px;padding:10px;margin-bottom:8px;"><span style="font-size:16px;flex-shrink:0">${rec.icon}</span><div><p style="font-size:11px;font-weight:700;color:${isGreen ? '#065F46' : (rec.color||'#92400E')};margin-bottom:3px">${rec.title}${rec.severity ? ` — ${rec.severity}` : ''}</p><p style="font-size:11px;color:#374151;line-height:1.5">${rec.text}</p></div></div>`).join('')
+              const recHtml = recItems.map(rec => `<div style="display:flex;gap:10px;align-items:flex-start;background:${isGreen ? '#F0FDF4' : (rec.bg || '#FFF7ED')};border:1px solid ${isGreen ? '#A7F3D0' : (rec.border || '#FDE68A')};border-radius:6px;padding:10px;margin-bottom:8px;"><span style="font-size:16px;flex-shrink:0">${rec.icon}</span><div><p style="font-size:11px;font-weight:700;color:${isGreen ? '#065F46' : (rec.color || '#92400E')};margin-bottom:3px">${rec.title}${rec.severity ? ` — ${rec.severity}` : ''}</p><p style="font-size:11px;color:#374151;line-height:1.5">${rec.text}</p></div></div>`).join('')
               const printWindow = window.open('', '_blank')
               printWindow.document.write(`<!DOCTYPE html><html><head><title>${ward.wardName} — Ward Report</title><style>* { margin:0;padding:0;box-sizing:border-box; } body { font-family:Arial,sans-serif;padding:20px;color:#1E293B;font-size:12px; } h1 { font-size:18px;font-weight:700;margin-bottom:2px; } .sub { font-size:11px;color:#94A3B8;margin-bottom:12px; } .grid { display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px; } .card { border:1.5px solid #E2E8F0;border-radius:8px;padding:10px;text-align:center; } .label { font-size:10px;font-weight:600;color:#64748B;margin-bottom:4px;text-transform:uppercase; } .big { font-size:24px;font-weight:700; } .section { background:#F8FAFC;border-radius:8px;padding:10px;margin-bottom:10px; } .section-title { font-size:12px;font-weight:600;margin-bottom:8px; } .bar-label { display:flex;justify-content:space-between;font-size:11px;color:#64748B;margin-bottom:3px; } .bar-track { background:#E2E8F0;border-radius:4px;height:6px;margin-bottom:8px; } .bar-fill { height:6px;border-radius:4px; } .row { display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F5F9;font-size:12px; } .row-label { color:#64748B; } .row-val { font-weight:600; } .rec-section { background:${isGreen ? '#F0FDF4' : '#FFFBEB'};border:1.5px solid ${isGreen ? '#6EE7B7' : '#FDE68A'};border-radius:8px;padding:12px;margin-bottom:10px; } .rec-title { font-size:12px;font-weight:700;color:${isGreen ? '#065F46' : '#78350F'};margin-bottom:10px; } @media print { body { padding:12px; } @page { margin:10mm;size:A4; } }</style></head><body>
               <h1>${ward.wardName}</h1><p class="sub">Ward Code: ${ward.wardCode} · Population: ${(ward.population || 0).toLocaleString()} · Printed: ${new Date().toLocaleString()}</p>
@@ -1706,21 +1706,21 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
   const [actionLoading, setActionLoading] = useState(null)
 
   const URGENCY_STYLES = {
-    routine:  { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
-    urgent:   { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
+    routine: { bg: '#F0FDF4', color: '#16A34A', border: '#BBF7D0' },
+    urgent: { bg: '#FEF3C7', color: '#92400E', border: '#FDE68A' },
     critical: { bg: '#FEE2E2', color: '#991B1B', border: '#FCA5A5' },
   }
   const STATUS_STYLES = {
-    pending:   { bg: '#FEF3C7', color: '#92400E' },
-    approved:  { bg: '#F0FDF4', color: '#16A34A' },
-    rejected:  { bg: '#FEE2E2', color: '#991B1B' },
+    pending: { bg: '#FEF3C7', color: '#92400E' },
+    approved: { bg: '#F0FDF4', color: '#16A34A' },
+    rejected: { bg: '#FEE2E2', color: '#991B1B' },
     fulfilled: { bg: '#EFF6FF', color: '#1D4ED8' },
   }
 
   const counts = {
-    pending:   indents.filter(i => i.status === 'pending').length,
-    approved:  indents.filter(i => i.status === 'approved').length,
-    rejected:  indents.filter(i => i.status === 'rejected').length,
+    pending: indents.filter(i => i.status === 'pending').length,
+    approved: indents.filter(i => i.status === 'approved').length,
+    rejected: indents.filter(i => i.status === 'rejected').length,
     fulfilled: indents.filter(i => i.status === 'fulfilled').length,
   }
 
@@ -1783,11 +1783,11 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
         {/* Status tabs */}
         <div style={{ display: 'flex', padding: '0 24px', borderBottom: '1px solid #F1F5F9' }}>
           {[
-            { key: 'pending',   color: '#D97706', bg: '#FEF3C7' },
-            { key: 'approved',  color: '#16A34A', bg: '#F0FDF4' },
+            { key: 'pending', color: '#D97706', bg: '#FEF3C7' },
+            { key: 'approved', color: '#16A34A', bg: '#F0FDF4' },
             { key: 'fulfilled', color: '#1D4ED8', bg: '#EFF6FF' },
-            { key: 'rejected',  color: '#DC2626', bg: '#FEE2E2' },
-            { key: 'all',       color: '#475569', bg: '#F1F5F9' },
+            { key: 'rejected', color: '#DC2626', bg: '#FEE2E2' },
+            { key: 'all', color: '#475569', bg: '#F1F5F9' },
           ].map(({ key, color, bg }) => (
             <button key={key} onClick={() => setFilter(key)} style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', borderBottom: filter === key ? `2px solid ${color}` : '2px solid transparent', background: 'none', color: filter === key ? color : '#64748B', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'capitalize', transition: 'all 0.15s' }}>
               {key}
@@ -1807,10 +1807,10 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
             </div>
           ) : filtered.map(indent => {
             const urg = URGENCY_STYLES[indent.urgency] || URGENCY_STYLES.routine
-            const sta = STATUS_STYLES[indent.status]  || STATUS_STYLES.pending
+            const sta = STATUS_STYLES[indent.status] || STATUS_STYLES.pending
             const isReviewing = reviewingId === indent._id
-            const isLoading   = actionLoading === indent._id
-            const typeIcon    = ITEM_TYPE_ICONS[indent.itemType] || '📦'
+            const isLoading = actionLoading === indent._id
+            const typeIcon = ITEM_TYPE_ICONS[indent.itemType] || '📦'
 
             return (
               <div key={indent._id} style={{ border: `1.5px solid ${urg.border}`, borderRadius: '12px', overflow: 'hidden', background: urg.bg, opacity: indent.status === 'rejected' ? 0.7 : 1 }}>
@@ -1886,7 +1886,7 @@ const IndentPanel = ({ indents, onReview, onClose }) => {
                     </div>
                   </div>
 
-                  </div>
+                </div>
               </div>
             )
           })}
@@ -2117,8 +2117,8 @@ export default function Dashboard() {
                 background: indents.filter(i => i.status === 'pending' && i.urgency === 'critical').length > 0
                   ? '#DC2626'
                   : indents.filter(i => i.status === 'pending').length > 0
-                  ? '#D97706'
-                  : '#64748B',
+                    ? '#D97706'
+                    : '#64748B',
                 color: '#fff', border: 'none', borderRadius: '10px', padding: '10px 18px',
                 fontSize: '13px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
                 boxShadow: '0 4px 14px 0 rgba(0,0,0,0.15)',
