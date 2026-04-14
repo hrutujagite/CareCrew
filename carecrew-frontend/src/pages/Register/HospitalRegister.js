@@ -70,6 +70,13 @@ const STEPS = [
   'Staff Account'
 ]
 
+
+const FACILITY_LABELS = {
+  general: 'Hospital',
+  uphc: 'UPHC',
+  maternity_home: 'Maternity Home',
+}
+
 const HospitalRegister = () => {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
@@ -218,7 +225,7 @@ const HospitalRegister = () => {
             </div>
             <div>
               <h1 className='text-lg font-bold text-gray-800'>
-                Register Your Hospital
+                Register Your {FACILITY_LABELS[form.facilityType] || 'Hospital'}
               </h1>
               <p className='text-xs text-gray-500'>
                 SwasthSolapur — SMC Health Platform
@@ -278,11 +285,28 @@ const HospitalRegister = () => {
             <div className='flex flex-col gap-4'>
               <h2 className='text-sm font-semibold text-gray-700 uppercase
                              tracking-wide'>
-                Hospital Information
+                {FACILITY_LABELS[form.facilityType] || 'Hospital'} Information
               </h2>
               <div className='flex flex-col gap-1'>
                 <label className='text-sm font-medium text-gray-700'>
-                  Hospital Name <span className='text-red-500'>*</span>
+                  Facility Type <span className='text-red-500'>*</span>
+                </label>
+                <select
+                  name='facilityType'
+                  value={form.facilityType}
+                  onChange={handleChange}
+                  className='w-full px-3 py-2 border border-gray-300
+                             rounded-lg text-sm focus:outline-none
+                             focus:ring-2 focus:ring-blue-500 bg-white'
+                >
+                  {FACILITY_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className='flex flex-col gap-1'>
+                <label className='text-sm font-medium text-gray-700'>
+                  {FACILITY_LABELS[form.facilityType] || 'Hospital'} Name <span className='text-red-500'>*</span>
                 </label>
                 <input
                   name='hospitalName'
@@ -339,23 +363,6 @@ const HospitalRegister = () => {
                     <option key={w.wardName} value={w.wardName}>
                       {w.wardName}
                     </option>
-                  ))}
-                </select>
-              </div>
-              <div className='flex flex-col gap-1'>
-                <label className='text-sm font-medium text-gray-700'>
-                  Facility Type <span className='text-red-500'>*</span>
-                </label>
-                <select
-                  name='facilityType'
-                  value={form.facilityType}
-                  onChange={handleChange}
-                  className='w-full px-3 py-2 border border-gray-300
-                             rounded-lg text-sm focus:outline-none
-                             focus:ring-2 focus:ring-blue-500 bg-white'
-                >
-                  {FACILITY_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
               </div>
@@ -597,7 +604,7 @@ const HospitalRegister = () => {
                          text-sm font-semibold hover:bg-blue-700
                          transition-colors disabled:opacity-50'
             >
-              {loading ? 'Registering...' : 'Register Hospital ✓'}
+              {loading ? 'Registering...' : `Register ${FACILITY_LABELS[form.facilityType] || 'Hospital'} ✓`}
             </button>
           )}
         </div>
