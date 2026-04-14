@@ -1701,7 +1701,7 @@ const BroadcastHistoryPanel = ({ broadcasts, token, onDeactivate, onClose }) => 
 // ─── Indent Panel ─────────────────────────────────────────────────────────────
 const IndentPanel = ({ indents, onReview, onClose }) => {
   const [filter, setFilter] = useState('pending')
-  const [reviewingId, setReviewingId] = useState(null)
+  //const [reviewingId, setReviewingId] = useState(null)
   const [reviewNote, setReviewNote] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
